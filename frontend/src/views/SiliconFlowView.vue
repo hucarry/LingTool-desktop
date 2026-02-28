@@ -1,7 +1,8 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useToolHub } from '../composables/useToolHub'
+import { useI18n } from '../composables/useI18n'
 
 interface ModelRow {
   id: string
@@ -10,6 +11,7 @@ interface ModelRow {
 }
 
 const hub = useToolHub()
+const { t } = useI18n()
 
 const apiKey = ref('')
 const models = ref<ModelRow[]>([])
@@ -76,13 +78,13 @@ function hasActiveTerminal(): boolean {
     return true
   }
 
-  ElMessage.warning('No active terminal available. Wait for terminal startup.')
+  ElMessage.warning(t('silicon.noActiveTerminal'))
   return false
 }
 
 function getModelList(): void {
   if (!apiKey.value.trim()) {
-    ElMessage.warning('Please enter an API key.')
+    ElMessage.warning(t('silicon.enterApiKey'))
     return
   }
 
@@ -110,7 +112,7 @@ function startScan(): void {
   }
 
   if (models.value.length === 0) {
-    ElMessage.warning('Fetch model list before scanning.')
+    ElMessage.warning(t('silicon.fetchBeforeScan'))
     return
   }
 
@@ -127,7 +129,7 @@ function continueScan(): void {
   scanIndex.value += 1
   if (scanIndex.value >= models.value.length) {
     scanning.value = false
-    ElMessage.success('Model scan completed.')
+    ElMessage.success(t('silicon.scanCompleted'))
     return
   }
 
@@ -154,9 +156,9 @@ function stopScan(): void {
 async function copyId(id: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(id)
-    ElMessage.success(`Copied: ${id}`)
+    ElMessage.success(t('silicon.copySuccess', { id }))
   } catch {
-    ElMessage.error('Copy failed. Clipboard permission denied.')
+    ElMessage.error(t('silicon.copyFailed'))
   }
 }
 
@@ -169,38 +171,38 @@ onBeforeUnmount(() => {
   <section class="silicon-view">
     <header class="header">
       <div class="title-area">
-        <h2>SiliconFlow Model Scanner</h2>
-        <p>Run model list and model test scripts through the integrated terminal.</p>
+        <h2>{{ t('silicon.title') }}</h2>
+        <p>{{ t('silicon.desc') }}</p>
       </div>
 
       <div class="actions">
-        <el-input v-model="apiKey" placeholder="API Key" style="width: 300px" type="password" show-password />
-        <el-button type="warning" :loading="loading" @click="getModelList">Fetch List</el-button>
+        <el-input v-model="apiKey" :placeholder="t('silicon.apiKey')" style="width: 300px" type="password" show-password />
+        <el-button type="warning" :loading="loading" @click="getModelList">{{ t('silicon.fetchList') }}</el-button>
         <el-button type="primary" :disabled="models.length === 0 || scanning" @click="startScan">
-          Start Scan
+          {{ t('silicon.startScan') }}
         </el-button>
-        <el-button v-if="scanning" type="danger" @click="stopScan">Stop</el-button>
+        <el-button v-if="scanning" type="danger" @click="stopScan">{{ t('silicon.stop') }}</el-button>
       </div>
     </header>
 
     <div class="table-container">
       <el-table :data="models" stripe height="100%" @row-dblclick="(row: ModelRow) => copyId(row.id)">
-        <el-table-column prop="id" label="Model ID" min-width="320">
+        <el-table-column prop="id" :label="t('silicon.modelId')" min-width="320">
           <template #default="{ row }">
-            <span class="model-id" title="Double click to copy">{{ row.id }}</span>
+            <span class="model-id" :title="t('silicon.doubleClickCopy')">{{ row.id }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="Status" width="130">
+        <el-table-column prop="status" :label="t('silicon.status')" width="130">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'success'" type="success">Success</el-tag>
-            <el-tag v-else-if="row.status === 'fail'" type="danger">Failed</el-tag>
-            <el-tag v-else-if="row.status === 'testing'" type="warning">Testing</el-tag>
-            <el-tag v-else type="info">Idle</el-tag>
+            <el-tag v-if="row.status === 'success'" type="success">{{ t('silicon.status.success') }}</el-tag>
+            <el-tag v-else-if="row.status === 'fail'" type="danger">{{ t('silicon.status.failed') }}</el-tag>
+            <el-tag v-else-if="row.status === 'testing'" type="warning">{{ t('silicon.status.testing') }}</el-tag>
+            <el-tag v-else type="info">{{ t('silicon.status.idle') }}</el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column prop="message" label="Response / Error" min-width="320" />
+        <el-table-column prop="message" :label="t('silicon.responseError')" min-width="320" />
       </el-table>
     </div>
   </section>

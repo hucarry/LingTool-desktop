@@ -1,6 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ToolItem } from '../types'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   tools: ToolItem[]
@@ -9,10 +10,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'openTool', tool: ToolItem): void
+  (e: 'runTool', tool: ToolItem): void
   (e: 'refresh'): void
 }>()
 
 const keyword = ref('')
+const { t } = useI18n()
 
 const filteredTools = computed(() => {
   const text = keyword.value.trim().toLowerCase()
@@ -30,20 +33,24 @@ const filteredTools = computed(() => {
 function openTool(tool: ToolItem): void {
   emit('openTool', tool)
 }
+
+function runTool(tool: ToolItem): void {
+  emit('runTool', tool)
+}
 </script>
 
 <template>
   <section class="tool-list">
     <header class="tool-list-header">
       <div>
-        <h2>Tool Catalog</h2>
-        <p>{{ filteredTools.length }} / {{ tools.length }} items</p>
+        <h2>{{ t('tools.catalog') }}</h2>
+        <p>{{ t('tools.items', { filtered: filteredTools.length, total: tools.length }) }}</p>
       </div>
 
-      <el-button size="small" @click="emit('refresh')">Refresh</el-button>
+      <el-button size="small" @click="emit('refresh')">{{ t('python.refresh') }}</el-button>
     </header>
 
-    <el-input v-model="keyword" clearable placeholder="Search by name or tag" />
+    <el-input v-model="keyword" clearable :placeholder="t('tools.search')" />
 
     <div class="list-scroll">
       <el-scrollbar height="100%">
@@ -67,7 +74,7 @@ function openTool(tool: ToolItem): void {
             <div class="row-meta">
               <span class="tool-type">{{ tool.type }}</span>
               <span class="tool-status" :class="{ invalid: !tool.valid }">
-                {{ tool.valid ? 'Ready' : 'Invalid Path' }}
+                {{ tool.valid ? t('tools.ready') : t('tools.invalidPath') }}
               </span>
             </div>
 
@@ -75,11 +82,18 @@ function openTool(tool: ToolItem): void {
               <div class="tool-tags">
                 <span v-for="tag in tool.tags" :key="tag" class="tag">{{ tag }}</span>
               </div>
-              <el-button type="primary" size="small" @click.stop="openTool(tool)">Run</el-button>
+              <el-button
+                type="primary"
+                size="small"
+                :disabled="!tool.valid"
+                @click.stop="runTool(tool)"
+              >
+                {{ t('tools.run') }}
+              </el-button>
             </div>
           </article>
 
-          <el-empty v-if="filteredTools.length === 0 && !loading" description="No matching tools" />
+          <el-empty v-if="filteredTools.length === 0 && !loading" :description="t('tools.noMatch')" />
         </div>
       </el-scrollbar>
     </div>

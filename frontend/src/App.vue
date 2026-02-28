@@ -5,16 +5,18 @@ import { Box, Cpu, SetUp, Setting } from '@element-plus/icons-vue'
 import ToolRunner from './components/ToolRunner.vue'
 import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
+import { useI18n, type Locale } from './composables/useI18n'
 
 interface MenuItem {
   path: '/python' | '/tools' | '/siliconflow'
   icon: typeof Box
-  title: string
+  titleKey: string
 }
 
 const hub = useToolHub()
 const route = useRoute()
 const router = useRouter()
+const { locale, setLocale, t, formatSessionCount } = useI18n()
 
 const runnerVisible = hub.runnerVisible
 const pythonOverride = hub.pythonOverride
@@ -30,9 +32,9 @@ const isDragging = ref(false)
 const editorStackRef = ref<HTMLElement>()
 
 const menuItems: MenuItem[] = [
-  { path: '/python', icon: Box, title: 'Python Packages' },
-  { path: '/tools', icon: Cpu, title: 'Tools' },
-  { path: '/siliconflow', icon: SetUp, title: 'Model Scanner' },
+  { path: '/python', icon: Box, titleKey: 'app.menu.python' },
+  { path: '/tools', icon: Cpu, titleKey: 'app.menu.tools' },
+  { path: '/siliconflow', icon: SetUp, titleKey: 'app.menu.siliconflow' },
 ]
 const fallbackMenuItem: MenuItem = menuItems[0]!
 
@@ -59,12 +61,20 @@ const panelHeight = computed(() => {
 const activeTerminalStatus = computed(() => {
   const terminal = hub.terminals.value.find((item) => item.terminalId === hub.activeTerminalId.value)
   if (!terminal) {
-    return 'No Active Terminal'
+    return t('app.noActiveTerminal')
   }
 
   const shellName = terminal.shell.split(/[\\/]/).pop() || terminal.shell
-  return `${shellName} (${terminal.status})`
+  return `${shellName} (${t(`terminal.status.${terminal.status}`)})`
 })
+
+const terminalSessionCaption = computed(() => {
+  return formatSessionCount(hub.terminals.value.length)
+})
+
+function switchLocale(next: Locale): void {
+  setLocale(next)
+}
 
 function navigate(path: MenuItem['path']): void {
   if (activeMenu.value === path) {
@@ -137,21 +147,41 @@ onBeforeUnmount(() => {
     <header class="title-bar">
       <div class="title-left">
         <span class="app-badge">TH</span>
-        <span class="app-name">ToolHub</span>
+        <span class="app-name">{{ t('app.brand') }}</span>
       </div>
-      <div class="title-center">{{ activeMenuItem.title }} - ToolHub Workspace</div>
-      <div class="title-right">VS Code Style Layout</div>
+      <div class="title-center">{{ t(activeMenuItem.titleKey) }} - {{ t('app.workspace') }}</div>
+      <div class="title-right">
+        <span>{{ t('app.layout') }}</span>
+        <div class="locale-switch">
+          <button
+            type="button"
+            class="locale-btn"
+            :class="{ active: locale === 'zh-CN' }"
+            @click="switchLocale('zh-CN')"
+          >
+            {{ t('app.lang.zh') }}
+          </button>
+          <button
+            type="button"
+            class="locale-btn"
+            :class="{ active: locale === 'en-US' }"
+            @click="switchLocale('en-US')"
+          >
+            {{ t('app.lang.en') }}
+          </button>
+        </div>
+      </div>
     </header>
 
     <div class="workbench-main">
-      <nav class="activity-bar" aria-label="Activity Bar">
+      <nav class="activity-bar" :aria-label="t('app.activityBar')">
         <button
           v-for="item in menuItems"
           :key="item.path"
           class="activity-item"
           :class="{ active: activeMenu === item.path }"
           type="button"
-          :title="item.title"
+          :title="t(item.titleKey)"
           @click="navigate(item.path)"
         >
           <el-icon :size="20"><component :is="item.icon" /></el-icon>
@@ -159,13 +189,13 @@ onBeforeUnmount(() => {
 
         <div class="activity-spacer" />
 
-        <button class="activity-item utility-item" type="button" title="Settings">
+        <button class="activity-item utility-item" type="button" :title="t('app.settings')">
           <el-icon :size="18"><Setting /></el-icon>
         </button>
       </nav>
 
-      <aside class="side-bar" aria-label="Explorer">
-        <header class="side-bar-head">EXPLORER</header>
+      <aside class="side-bar" :aria-label="t('app.explorer')">
+        <header class="side-bar-head">{{ t('app.explorer') }}</header>
 
         <button
           v-for="item in menuItems"
@@ -175,7 +205,7 @@ onBeforeUnmount(() => {
           type="button"
           @click="navigate(item.path)"
         >
-          <span class="side-item-title">{{ item.title }}</span>
+          <span class="side-item-title">{{ t(item.titleKey) }}</span>
           <span class="side-item-path">{{ item.path }}</span>
         </button>
       </aside>
@@ -184,7 +214,7 @@ onBeforeUnmount(() => {
         <header class="editor-tabs">
           <div class="editor-tab is-active">
             <el-icon :size="14"><component :is="activeMenuItem.icon" /></el-icon>
-            <span>{{ activeMenuItem.title }}</span>
+            <span>{{ t(activeMenuItem.titleKey) }}</span>
           </div>
         </header>
 
@@ -199,14 +229,12 @@ onBeforeUnmount(() => {
 
           <header class="panel-header">
             <div class="panel-header-left">
-              <button class="panel-tab is-active" type="button" @click="expandTerminal">TERMINAL</button>
-              <span class="panel-caption">
-                {{ hub.terminals.value.length }} session{{ hub.terminals.value.length === 1 ? '' : 's' }}
-              </span>
+              <button class="panel-tab is-active" type="button" @click="expandTerminal">{{ t('terminal.panel') }}</button>
+              <span class="panel-caption">{{ terminalSessionCaption }}</span>
             </div>
 
             <button class="panel-toggle" type="button" @click="toggleTerminal">
-              {{ terminalExpanded ? 'Hide' : 'Show' }}
+              {{ terminalExpanded ? t('app.hide') : t('app.show') }}
             </button>
           </header>
 
@@ -230,8 +258,8 @@ onBeforeUnmount(() => {
 
     <footer class="status-bar">
       <div class="status-left">
-        <span class="status-item">ToolHub</span>
-        <span class="status-item">{{ activeMenuItem.title }}</span>
+        <span class="status-item">{{ t('app.brand') }}</span>
+        <span class="status-item">{{ t(activeMenuItem.titleKey) }}</span>
       </div>
       <div class="status-right">
         <span class="status-item">{{ activeTerminalStatus }}</span>
@@ -310,6 +338,38 @@ onBeforeUnmount(() => {
 .app-name {
   color: var(--vscode-text-primary);
   font-weight: 600;
+}
+
+.locale-switch {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.locale-btn {
+  height: 20px;
+  min-width: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.locale-btn + .locale-btn {
+  border-left: 1px solid var(--vscode-border-color);
+}
+
+.locale-btn:hover {
+  background: var(--vscode-hover-bg);
+  color: var(--vscode-text-primary);
+}
+
+.locale-btn.active {
+  background: var(--vscode-accent-color);
+  color: #ffffff;
 }
 
 .workbench-main {

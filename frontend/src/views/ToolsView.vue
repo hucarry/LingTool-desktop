@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import ToolList from '../components/ToolList.vue'
 import { useToolHub } from '../composables/useToolHub'
+import type { ToolItem } from '../types'
 
 const hub = useToolHub()
 const tools = hub.tools
 const loadingTools = hub.loadingTools
+
+function runToolDirect(tool: ToolItem): void {
+  hub.handleRun({
+    toolId: tool.id,
+    args: {},
+    python: tool.type === 'python' ? tool.python : undefined,
+  })
+}
 </script>
 
 <template>
@@ -14,6 +23,7 @@ const loadingTools = hub.loadingTools
       :loading="loadingTools"
       @refresh="hub.fetchTools"
       @open-tool="hub.openTool"
+      @run-tool="runToolDirect"
     />
   </section>
 </template>

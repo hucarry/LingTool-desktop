@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import TerminalViewport from './TerminalViewport.vue'
 import type { TerminalInfo } from '../types'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   terminals: TerminalInfo[]
@@ -33,6 +34,7 @@ const splitEnabled = ref(false)
 const secondaryTerminalId = ref('')
 const focusedTerminalId = ref('')
 const pendingSplitCreation = ref(false)
+const { t } = useI18n()
 
 const contextMenu = reactive<ContextMenuState>({
   visible: false,
@@ -43,7 +45,7 @@ const contextMenu = reactive<ContextMenuState>({
 
 const terminalTabs = computed(() => {
   return props.terminals.map((terminal, index) => {
-    const shellName = terminal.shell.split(/[\\/]/).pop() || terminal.shell || 'shell'
+    const shellName = terminal.shell.split(/[\\/]/).pop() || terminal.shell || t('terminal.shellFallback')
     const order = props.terminals.length - index
     return {
       ...terminal,
@@ -361,7 +363,7 @@ onBeforeUnmount(() => {
   <section class="terminal-panel">
     <header class="terminal-toolbar">
       <div class="terminal-tab-strip">
-        <span class="panel-tab is-active">TERMINAL</span>
+        <span class="panel-tab is-active">{{ t('terminal.panel') }}</span>
 
         <div
           v-for="terminal in terminalTabs"
@@ -378,44 +380,44 @@ onBeforeUnmount(() => {
           <button
             class="terminal-close"
             type="button"
-            title="Kill terminal"
+            :title="t('terminal.killTitle')"
             @click.stop="stopTerminalById(terminal.terminalId)"
           >
-            ×
+            &times;
           </button>
         </div>
 
-        <span v-if="terminalTabs.length === 0" class="terminal-empty">No terminal sessions</span>
+        <span v-if="terminalTabs.length === 0" class="terminal-empty">{{ t('terminal.noSessions') }}</span>
       </div>
 
       <div class="toolbar-actions">
         <button class="toolbar-action" type="button" @click="showToolbar = !showToolbar">
-          {{ showToolbar ? 'Hide Profile' : 'New Profile' }}
+          {{ showToolbar ? t('terminal.hideProfile') : t('terminal.newProfile') }}
         </button>
         <button class="toolbar-action" type="button" :disabled="!primaryTerminalId" @click="toggleSplit">
-          {{ splitEnabled ? 'Unsplit' : 'Split' }}
+          {{ splitEnabled ? t('terminal.unsplit') : t('terminal.split') }}
         </button>
         <button class="toolbar-action" type="button" @click="createTerminalFromToolbar">+</button>
-        <button class="toolbar-action" type="button" :disabled="!commandTerminalId" @click="clearOutput">Clear</button>
-        <button class="toolbar-action danger" type="button" :disabled="!commandTerminalId" @click="stopActiveTerminal">Kill</button>
+        <button class="toolbar-action" type="button" :disabled="!commandTerminalId" @click="clearOutput">{{ t('terminal.clear') }}</button>
+        <button class="toolbar-action danger" type="button" :disabled="!commandTerminalId" @click="stopActiveTerminal">{{ t('terminal.kill') }}</button>
         <button v-if="terminals.length > 1" class="toolbar-action danger" type="button" @click="stopAllTerminals">
-          Kill All
+          {{ t('terminal.killAll') }}
         </button>
       </div>
     </header>
 
     <div v-show="showToolbar" class="advanced-toolbar">
       <label class="profile-field">
-        <span>Shell</span>
+        <span>{{ t('terminal.shell') }}</span>
         <input v-model="shellInput" type="text" placeholder="powershell.exe" />
       </label>
 
       <label class="profile-field">
-        <span>Working Directory</span>
+        <span>{{ t('terminal.workingDir') }}</span>
         <input v-model="cwdInput" type="text" placeholder="C:\\project" />
       </label>
 
-      <button class="profile-create" type="button" @click="createTerminalFromToolbar">Create Terminal</button>
+      <button class="profile-create" type="button" @click="createTerminalFromToolbar">{{ t('terminal.create') }}</button>
     </div>
 
     <div class="terminal-layout" :class="{ 'is-split': splitActive }">
@@ -423,7 +425,7 @@ onBeforeUnmount(() => {
         <article class="terminal-pane" :class="{ focused: commandTerminalId === primaryTerminalId }">
           <header class="pane-header">
             <span class="pane-title">{{ getLabel(primaryTerminalId) }}</span>
-            <span class="pane-meta">Primary</span>
+            <span class="pane-meta">{{ t('terminal.primary') }}</span>
           </header>
           <div class="pane-body">
             <TerminalViewport
@@ -443,9 +445,9 @@ onBeforeUnmount(() => {
         >
           <header class="pane-header">
             <span class="pane-title">
-              {{ resolvedSecondaryTerminalId ? getLabel(resolvedSecondaryTerminalId) : 'Creating split terminal...' }}
+              {{ resolvedSecondaryTerminalId ? getLabel(resolvedSecondaryTerminalId) : t('terminal.creatingSplit') }}
             </span>
-            <button class="pane-close" type="button" @click="closeSplit">Close Split</button>
+            <button class="pane-close" type="button" @click="closeSplit">{{ t('terminal.closeSplit') }}</button>
           </header>
 
           <div class="pane-body">
@@ -457,12 +459,12 @@ onBeforeUnmount(() => {
               @input="emit('input', $event)"
               @resize="emit('resizeTerminal', $event)"
             />
-            <div v-else class="split-placeholder">Waiting for split terminal...</div>
+            <div v-else class="split-placeholder">{{ t('terminal.waitingSplit') }}</div>
           </div>
         </article>
       </template>
 
-      <div v-else class="terminal-placeholder">No terminal sessions</div>
+      <div v-else class="terminal-placeholder">{{ t('terminal.noSessions') }}</div>
     </div>
 
     <teleport to="body">
@@ -472,11 +474,11 @@ onBeforeUnmount(() => {
         :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
         @mousedown.stop
       >
-        <button class="menu-item" type="button" @click="splitWithTerminal(contextMenu.terminalId)">Split</button>
-        <button class="menu-item" type="button" @click="clearOutput">Clear Active</button>
-        <button class="menu-item danger" type="button" @click="stopTerminalById(contextMenu.terminalId)">Kill</button>
-        <button class="menu-item" type="button" @click="stopOtherTerminals(contextMenu.terminalId)">Kill Others</button>
-        <button class="menu-item" type="button" @click="copyTerminalId(contextMenu.terminalId)">Copy Terminal ID</button>
+        <button class="menu-item" type="button" @click="splitWithTerminal(contextMenu.terminalId)">{{ t('terminal.split') }}</button>
+        <button class="menu-item" type="button" @click="clearOutput">{{ t('terminal.clearActive') }}</button>
+        <button class="menu-item danger" type="button" @click="stopTerminalById(contextMenu.terminalId)">{{ t('terminal.kill') }}</button>
+        <button class="menu-item" type="button" @click="stopOtherTerminals(contextMenu.terminalId)">{{ t('terminal.killOthers') }}</button>
+        <button class="menu-item" type="button" @click="copyTerminalId(contextMenu.terminalId)">{{ t('terminal.copyId') }}</button>
       </div>
     </teleport>
   </section>

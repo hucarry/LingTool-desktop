@@ -1,6 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import type { ToolItem } from '../types'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   visible: boolean
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (e: 'run', payload: { toolId: string; args: Record<string, string>; python?: string }): void
 }>()
 
+const { t } = useI18n()
 const formState = reactive<Record<string, string>>({})
 
 const placeholders = computed(() => {
@@ -79,7 +81,7 @@ function runTool(): void {
 <template>
   <el-drawer
     :model-value="visible"
-    title="Tool Details"
+    :title="t('runner.title')"
     size="520px"
     destroy-on-close
     @close="closeDrawer"
@@ -88,54 +90,54 @@ function runTool(): void {
     <template v-if="tool">
       <el-alert v-if="!tool.valid" type="error" :closable="false" show-icon>
         <template #title>
-          {{ tool.validationMessage || 'Invalid tool configuration. Running is disabled.' }}
+          {{ tool.validationMessage || t('runner.invalidConfig') }}
         </template>
       </el-alert>
 
       <el-descriptions :column="1" border class="tool-desc">
-        <el-descriptions-item label="Name">{{ tool.name }}</el-descriptions-item>
-        <el-descriptions-item label="ID">{{ tool.id }}</el-descriptions-item>
-        <el-descriptions-item label="Type">{{ tool.type }}</el-descriptions-item>
-        <el-descriptions-item label="Path">{{ tool.path }}</el-descriptions-item>
-        <el-descriptions-item label="Working Directory">{{ tool.cwd || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="Python">{{ tool.python || 'system python' }}</el-descriptions-item>
-        <el-descriptions-item label="Args Template">
-          <code>{{ tool.argsTemplate || '(none)' }}</code>
+        <el-descriptions-item :label="t('runner.name')">{{ tool.name }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.id')">{{ tool.id }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.type')">{{ tool.type }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.path')">{{ tool.path }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.cwd')">{{ tool.cwd || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.python')">{{ tool.python || t('runner.systemPython') }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.argsTemplate')">
+          <code>{{ tool.argsTemplate || t('runner.none') }}</code>
         </el-descriptions-item>
-        <el-descriptions-item label="Description">{{ tool.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('runner.description')">{{ tool.description || '-' }}</el-descriptions-item>
       </el-descriptions>
 
       <el-form label-position="top" class="runner-form">
-        <el-form-item v-if="tool.type === 'python'" label="Python Interpreter">
+        <el-form-item v-if="tool.type === 'python'" :label="t('runner.pythonInterpreter')">
           <div class="python-picker">
             <el-input
               :model-value="pythonOverride || ''"
               readonly
-              placeholder="Fallback order: custom override -> tools.json python -> system python"
+              :placeholder="t('runner.pythonFallback')"
             />
             <div class="python-picker-actions">
-              <el-button @click="emit('pickPython')">Browse...</el-button>
-              <el-button @click="emit('update:pythonOverride', tool.python || '')">Use Tool Default</el-button>
-              <el-button @click="emit('update:pythonOverride', '')">Use System Python</el-button>
+              <el-button @click="emit('pickPython')">{{ t('python.browse') }}</el-button>
+              <el-button @click="emit('update:pythonOverride', tool.python || '')">{{ t('runner.useToolDefault') }}</el-button>
+              <el-button @click="emit('update:pythonOverride', '')">{{ t('runner.useSystemPython') }}</el-button>
             </div>
           </div>
-          <div class="python-tip">Example: C:\\project\\.venv\\Scripts\\python.exe</div>
+          <div class="python-tip">{{ t('runner.pythonExample') }}</div>
         </el-form-item>
 
-        <el-form-item v-for="field in placeholders" :key="field" :label="`Argument ${field}`">
-          <el-input v-model="formState[field]" :placeholder="`Enter ${field}`" clearable />
+        <el-form-item v-for="field in placeholders" :key="field" :label="t('runner.argument', { field })">
+          <el-input v-model="formState[field]" :placeholder="t('runner.enterArgument', { field })" clearable />
         </el-form-item>
 
         <el-empty
           v-if="placeholders.length === 0"
-          description="This tool has no dynamic arguments. You can run it directly."
+          :description="t('runner.noDynamicArgs')"
           :image-size="92"
         />
       </el-form>
 
       <div class="drawer-actions">
-        <el-button @click="closeDrawer">Cancel</el-button>
-        <el-button type="primary" :disabled="!tool.valid" @click="runTool">Run In Terminal</el-button>
+        <el-button @click="closeDrawer">{{ t('runner.cancel') }}</el-button>
+        <el-button type="primary" :disabled="!tool.valid" @click="runTool">{{ t('runner.runInTerminal') }}</el-button>
       </div>
     </template>
   </el-drawer>

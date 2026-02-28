@@ -1,6 +1,7 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { bridge } from '../services/bridge'
+import { useI18n } from './useI18n'
 import type {
   BackMessage,
   PythonPackageInstallStatusMessage,
@@ -27,7 +28,9 @@ const loadingPythonPackages = ref(false)
 const pythonOperationBusy = ref(false)
 const pythonOperationAction = ref<'install' | 'uninstall' | ''>('')
 const pythonOperationPackage = ref('')
-const pythonPackageStatus = ref('灏辩华')
+
+const { locale, t } = useI18n()
+const pythonPackageStatus = ref(t('python.ready'))
 
 const terminals = ref<TerminalInfo[]>([])
 const ACTIVE_TERMINAL_STORAGE_KEY = 'toolhub.activeTerminalId'
@@ -52,6 +55,12 @@ let lastTerminalCreateAt = 0
 const TERMINAL_CREATE_COOLDOWN_MS = 900
 const TERMINAL_CREATE_UNLOCK_MS = 1200
 const TERMINAL_OUTPUT_BUFFER_LIMIT = 10000
+
+watch(locale, () => {
+  if (!pythonOperationBusy.value) {
+    pythonPackageStatus.value = t('python.ready')
+  }
+})
 
 function loadPersistedActiveTerminalId(): string {
   if (typeof window === 'undefined') {
@@ -136,6 +145,10 @@ function removeTerminal(terminalId: string): void {
   }
 }
 
+function packageActionText(action: 'install' | 'uninstall'): string {
+  return action === 'uninstall' ? t('python.action.uninstall') : t('python.action.install')
+}
+
 function fetchTools(): void {
   loadingTools.value = true
   bridge.send({ type: 'getTools' })
@@ -203,7 +216,7 @@ function installPythonPackage(packageName: string): void {
   pythonOperationBusy.value = true
   pythonOperationAction.value = 'install'
   pythonOperationPackage.value = normalized
-  pythonPackageStatus.value = `瀹夎涓細${normalized}`
+  pythonPackageStatus.value = t('python.installing', { packageName: normalized })
 
   bridge.send({
     type: 'installPythonPackage',
@@ -221,7 +234,7 @@ function uninstallPythonPackage(packageName: string): void {
   pythonOperationBusy.value = true
   pythonOperationAction.value = 'uninstall'
   pythonOperationPackage.value = normalized
-  pythonPackageStatus.value = `鍗歌浇涓細${normalized}`
+  pythonPackageStatus.value = t('python.uninstalling', { packageName: normalized })
 
   bridge.send({
     type: 'uninstallPythonPackage',
@@ -322,24 +335,45 @@ function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
 }
 
 function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallStatusMessage): void {
-  const actionText = message.action === 'uninstall' ? '鍗歌浇' : '瀹夎'
+  const actionText = packageActionText(message.action)
 
   switch (message.status) {
     case 'running':
       pythonOperationBusy.value = true
       pythonOperationAction.value = message.action
       pythonOperationPackage.value = message.packageName
-      pythonPackageStatus.value = `${actionText}涓細${message.packageName}`
+      pythonPackageStatus.value = t('python.status.running', {
+        action: actionText,
+        packageName: message.packageName,
+      })
       break
     case 'succeeded':
       resetPythonOperationState()
-      pythonPackageStatus.value = `${actionText}鎴愬姛锛?{message.packageName}`
-      ElMessage.success(`${actionText}鎴愬姛锛?{message.packageName}`)
+      pythonPackageStatus.value = t('python.status.succeeded', {
+        action: actionText,
+        packageName: message.packageName,
+      })
+      ElMessage.success(
+        t('python.status.succeeded', {
+          action: actionText,
+          packageName: message.packageName,
+        }),
+      )
       break
     case 'failed':
       resetPythonOperationState()
-      pythonPackageStatus.value = `${actionText}澶辫触锛?{message.packageName}${message.message ? ` (${message.message})` : ''}`
-      ElMessage.error(`${actionText}澶辫触锛?{message.packageName}`)
+      pythonPackageStatus.value = t('python.status.failed', {
+        action: actionText,
+        packageName: message.packageName,
+        details: message.message ? ` (${message.message})` : '',
+      })
+      ElMessage.error(
+        t('python.status.failed', {
+          action: actionText,
+          packageName: message.packageName,
+          details: '',
+        }),
+      )
       break
     default:
       break
@@ -415,9 +449,10 @@ function handleBackendMessage(message: BackMessage): void {
       loadingTools.value = false
       loadingPythonPackages.value = false
       resetPythonOperationState()
+
       if (message.message.includes('Terminal not found or not running')) {
         fetchTerminals()
-        ElMessage.warning('Current terminal is unavailable. Please select or create a terminal.')
+        ElMessage.warning(t('terminal.currentUnavailable'))
         break
       }
 
