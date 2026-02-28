@@ -1,0 +1,2 @@
+C:\Users\89352\Desktop\插件管理平台\.tmp_build\publish\win-x64\ToolHub.App.pdb
+C:\Users\89352\Desktop\插件管理平台\.tmp_build\publish\win-x64\ToolHub.App.exe

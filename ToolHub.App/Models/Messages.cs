@@ -4,6 +4,8 @@ public static class BridgeMessageTypes
 {
     public const string GetTools = "getTools";
     public const string AddTool = "addTool";
+    public const string UpdateTool = "updateTool";
+    public const string DeleteTools = "deleteTools";
     public const string RunTool = "runTool";
     public const string RunToolInTerminal = "runToolInTerminal";
     public const string StopRun = "stopRun";
@@ -27,6 +29,8 @@ public static class BridgeMessageTypes
     public const string PythonSelected = "pythonSelected";
     public const string FileSelected = "fileSelected";
     public const string ToolAdded = "toolAdded";
+    public const string ToolUpdated = "toolUpdated";
+    public const string ToolsDeleted = "toolsDeleted";
     public const string PythonPackages = "pythonPackages";
     public const string PythonPackageInstallStatus = "pythonPackageInstallStatus";
     public const string Terminals = "terminals";
@@ -59,6 +63,16 @@ public sealed class RunToolRequest : IncomingMessage
 public sealed class AddToolRequest : IncomingMessage
 {
     public ToolItem? Tool { get; set; }
+}
+
+public sealed class UpdateToolRequest : IncomingMessage
+{
+    public ToolItem? Tool { get; set; }
+}
+
+public sealed class DeleteToolsRequest : IncomingMessage
+{
+    public List<string>? ToolIds { get; set; }
 }
 
 public sealed class RunToolInTerminalRequest : IncomingMessage
@@ -249,6 +263,30 @@ public sealed class ToolAddedMessage
     public string Type { get; } = BridgeMessageTypes.ToolAdded;
 
     public string ToolId { get; }
+}
+
+public sealed class ToolUpdatedMessage
+{
+    public ToolUpdatedMessage(string toolId)
+    {
+        ToolId = toolId;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.ToolUpdated;
+
+    public string ToolId { get; }
+}
+
+public sealed class ToolsDeletedMessage
+{
+    public ToolsDeletedMessage(int deletedCount)
+    {
+        DeletedCount = deletedCount;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.ToolsDeleted;
+
+    public int DeletedCount { get; }
 }
 
 public sealed class PythonPackagesMessage

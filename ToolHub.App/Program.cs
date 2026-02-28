@@ -37,11 +37,35 @@ internal static class Program
 
         var processManager = new ProcessManager(SendMessage);
         var terminalManager = new TerminalManager(SendMessage);
-        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        var shutdownTriggered = 0;
+
+        void ShutdownManagers()
         {
-            processManager.Dispose();
-            terminalManager.Dispose();
-        };
+            if (Interlocked.Exchange(ref shutdownTriggered, 1) == 1)
+            {
+                return;
+            }
+
+            try
+            {
+                terminalManager.Dispose();
+            }
+            catch
+            {
+                // Ignore shutdown errors.
+            }
+
+            try
+            {
+                processManager.Dispose();
+            }
+            catch
+            {
+                // Ignore shutdown errors.
+            }
+        }
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => ShutdownManagers();
 
         var indexPath = ResolveFrontendIndexPath(appRoot);
         if (!File.Exists(indexPath))
@@ -55,6 +79,11 @@ internal static class Program
             .SetUseOsDefaultLocation(true)
             .SetSize(1380, 900)
             .Center()
+            .RegisterWindowClosingHandler((sender, eventArgs) =>
+            {
+                ShutdownManagers();
+                return false;
+            })
             .RegisterWebMessageReceivedHandler((sender, rawMessage) =>
             {
                 HandleMessage(
@@ -76,6 +105,7 @@ internal static class Program
 
         window.Load(indexPath);
         window.WaitForClose();
+        ShutdownManagers();
     }
 
     private static void HandleMessage(
@@ -114,6 +144,29 @@ internal static class Program
 
                     var addedTool = registry.AddTool(addToolRequest.Tool);
                     sendMessage(new ToolAddedMessage(addedTool.Id));
+                    sendMessage(new ToolsMessage(registry.GetTools()));
+                    break;
+                }
+                case BridgeMessageTypes.UpdateTool:
+                {
+                    var updateToolRequest = JsonSerializer.Deserialize<UpdateToolRequest>(rawMessage, JsonOptions);
+                    if (updateToolRequest?.Tool is null)
+                    {
+                        sendMessage(new ErrorMessage("updateTool request is missing tool payload."));
+                        return;
+                    }
+
+                    var updatedTool = registry.UpdateTool(updateToolRequest.Tool);
+                    sendMessage(new ToolUpdatedMessage(updatedTool.Id));
+                    sendMessage(new ToolsMessage(registry.GetTools()));
+                    break;
+                }
+                case BridgeMessageTypes.DeleteTools:
+                {
+                    var deleteRequest = JsonSerializer.Deserialize<DeleteToolsRequest>(rawMessage, JsonOptions);
+                    var ids = deleteRequest?.ToolIds ?? new List<string>();
+                    var deletedCount = registry.DeleteTools(ids);
+                    sendMessage(new ToolsDeletedMessage(deletedCount));
                     sendMessage(new ToolsMessage(registry.GetTools()));
                     break;
                 }
@@ -542,23 +595,65 @@ internal static class Program
             return null;
         }
 
-        var extensions = filter
+        var patterns = filter
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(value => value.Trim().TrimStart('.').ToLowerInvariant())
+            .Select(value => value.Trim().ToLowerInvariant())
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value =>
+            {
+                if (value is "*" or "*.*")
+                {
+                    return "*";
+                }
+
+                if (value.StartsWith("*."))
+                {
+                    return value;
+                }
+
+                if (value.StartsWith('.'))
+                {
+                    return $"*{value}";
+                }
+
+                return $"*.{value}";
+            })
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (extensions.Length == 0)
+        if (patterns.Length == 0)
         {
             return null;
         }
 
-        var name = extensions.Length == 1
-            ? $"{extensions[0].ToUpperInvariant()} Files"
-            : "Filtered Files";
+        var normalized = patterns
+            .Select(pattern => pattern.TrimStart('*', '.'))
+            .ToArray();
 
-        return new[] { (name, extensions) };
+        string name;
+        if (normalized.Length == 1 && string.Equals(normalized[0], "py", StringComparison.OrdinalIgnoreCase))
+        {
+            name = "Python Files (*.py)";
+        }
+        else if (normalized.Length == 1 && string.Equals(normalized[0], "exe", StringComparison.OrdinalIgnoreCase))
+        {
+            name = "Executable Files (*.exe)";
+        }
+        else if (normalized.Length == 1)
+        {
+            name = $"{normalized[0].ToLowerInvariant()} files";
+        }
+        else
+        {
+            var display = string.Join(", ", patterns);
+            name = $"Filtered Files ({display})";
+        }
+
+        return
+        [
+            (name, patterns),
+            ("All Files (*.*)", new[] { "*" })
+        ];
     }
 
     private static string? ResolveDialogDefaultPath(string? rawPath)

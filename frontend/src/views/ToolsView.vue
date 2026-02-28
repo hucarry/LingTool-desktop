@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ToolList from '../components/ToolList.vue'
 import { useToolHub } from '../composables/useToolHub'
-import type { ToolItem } from '../types'
+import type { AddToolPayload, ToolItem } from '../types'
 
 const hub = useToolHub()
 const tools = hub.tools
@@ -14,6 +14,14 @@ function runToolDirect(tool: ToolItem): void {
     python: tool.type === 'python' ? tool.python : undefined,
   })
 }
+
+function updateTool(payload: AddToolPayload): void {
+  hub.updateTool(payload)
+}
+
+function deleteTools(toolIds: string[]): void {
+  hub.deleteTools(toolIds)
+}
 </script>
 
 <template>
@@ -21,9 +29,17 @@ function runToolDirect(tool: ToolItem): void {
     <ToolList
       :tools="tools"
       :loading="loadingTools"
+      :updating="hub.updatingTool.value"
+      :deleting="hub.deletingTools.value"
+      :edit-tool-path-selection="hub.editToolPathSelection.value"
+      :edit-tool-python-selection="hub.editToolPythonSelection.value"
       @refresh="hub.fetchTools"
       @open-tool="hub.openTool"
       @run-tool="runToolDirect"
+      @update-tool="updateTool"
+      @delete-tools="deleteTools"
+      @pick-edit-tool-path="({ defaultPath, toolType }) => hub.pickEditToolPath(defaultPath, toolType)"
+      @pick-edit-tool-python="({ defaultPath }) => hub.pickEditToolPython(defaultPath)"
     />
   </section>
 </template>

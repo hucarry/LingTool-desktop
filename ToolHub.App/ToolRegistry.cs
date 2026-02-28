@@ -83,6 +83,87 @@ public sealed class ToolRegistry
         }
     }
 
+    public ToolItem UpdateTool(ToolItem source)
+    {
+        lock (_syncRoot)
+        {
+            var registryFile = ReadRegistryFile();
+            var candidate = NormalizeDraft(source);
+
+            if (string.IsNullOrWhiteSpace(candidate.Id))
+            {
+                throw new InvalidOperationException("Tool id is required.");
+            }
+
+            var existingIndex = registryFile.Tools.FindIndex(item =>
+                string.Equals(item.Id?.Trim(), candidate.Id, StringComparison.OrdinalIgnoreCase)
+            );
+            if (existingIndex < 0)
+            {
+                throw new InvalidOperationException($"Tool id not found: {candidate.Id}");
+            }
+
+            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+            var validatedCandidate = ValidateTool(ToToolItem(candidate), baseDirectory);
+            if (!validatedCandidate.Valid)
+            {
+                throw new InvalidOperationException(
+                    validatedCandidate.ValidationMessage ?? "Tool configuration is invalid."
+                );
+            }
+
+            registryFile.Tools[existingIndex] = candidate;
+            SaveRegistryFile(registryFile);
+
+            _tools = registryFile.Tools
+                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .ToList();
+            _lastLoadedUtc = DateTime.UtcNow;
+
+            return CloneTool(validatedCandidate);
+        }
+    }
+
+    public int DeleteTools(IReadOnlyCollection<string> toolIds)
+    {
+        lock (_syncRoot)
+        {
+            var normalizedIds = new HashSet<string>(
+                toolIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => id.Trim()),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+            if (normalizedIds.Count == 0)
+            {
+                return 0;
+            }
+
+            var registryFile = ReadRegistryFile();
+            var before = registryFile.Tools.Count;
+            registryFile.Tools = registryFile.Tools
+                .Where(item => !normalizedIds.Contains((item.Id ?? string.Empty).Trim()))
+                .ToList();
+
+            var deleted = before - registryFile.Tools.Count;
+            if (deleted <= 0)
+            {
+                return 0;
+            }
+
+            SaveRegistryFile(registryFile);
+
+            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+            _tools = registryFile.Tools
+                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .ToList();
+            _lastLoadedUtc = DateTime.UtcNow;
+
+            return deleted;
+        }
+    }
+
     private void Reload(bool force = false)
     {
         lock (_syncRoot)
@@ -103,11 +184,10 @@ public sealed class ToolRegistry
             var parsed = ReadRegistryFile();
 
             var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
-            var validated = parsed.Tools
+            _tools = parsed.Tools
                 .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
                 .ToList();
 
-            _tools = validated;
             _lastLoadedUtc = DateTime.UtcNow;
         }
     }
@@ -119,29 +199,10 @@ public sealed class ToolRegistry
             return;
         }
 
+        // Keep initial config portable for published builds on any drive.
         var template = """
 {
-  "tools": [
-    {
-      "id": "demo_py",
-      "name": "示例 Python 工具",
-      "type": "python",
-      "path": "D:/tools/demo.py",
-      "python": "D:/tools/venv/Scripts/python.exe",
-      "cwd": "D:/tools",
-      "argsTemplate": "--date {date} --mode {mode}",
-      "tags": ["数据"]
-    },
-    {
-      "id": "demo_exe",
-      "name": "示例 EXE 工具",
-      "type": "exe",
-      "path": "D:/tools/demo.exe",
-      "cwd": "D:/tools",
-      "argsTemplate": "",
-      "tags": ["系统"]
-    }
-  ]
+  "tools": []
 }
 """;
 
@@ -159,7 +220,15 @@ public sealed class ToolRegistry
         EnsureToolsFileExists();
 
         var fileContent = File.ReadAllText(_toolsFilePath);
-        return JsonSerializer.Deserialize<ToolRegistryFile>(fileContent, _jsonOptions) ?? new ToolRegistryFile();
+        var parsed = JsonSerializer.Deserialize<ToolRegistryFile>(fileContent, _jsonOptions) ?? new ToolRegistryFile();
+
+        if (IsLegacyFixedPathTemplate(parsed))
+        {
+            parsed.Tools.Clear();
+            SaveRegistryFile(parsed);
+        }
+
+        return parsed;
     }
 
     private void SaveRegistryFile(ToolRegistryFile file)
@@ -274,7 +343,9 @@ public sealed class ToolRegistry
             tool.Python = PathUtils.ResolvePath(tool.Python, baseDirectory);
             if (!File.Exists(tool.Python))
             {
-                errors.Add($"Python 解释器不存在: {tool.Python}");
+                // Missing configured interpreter should not make the tool unusable.
+                // Runtime will fall back to system python or user override.
+                tool.Python = null;
             }
         }
 
@@ -301,6 +372,35 @@ public sealed class ToolRegistry
             Valid = source.Valid,
             ValidationMessage = source.ValidationMessage
         };
+    }
+
+    private static bool IsLegacyFixedPathTemplate(ToolRegistryFile file)
+    {
+        if (file.Tools.Count != 2)
+        {
+            return false;
+        }
+
+        var ids = file.Tools
+            .Select(tool => tool.Id.Trim().ToLowerInvariant())
+            .OrderBy(id => id)
+            .ToArray();
+
+        if (ids[0] != "demo_exe" || ids[1] != "demo_py")
+        {
+            return false;
+        }
+
+        return file.Tools.All(tool =>
+        {
+            var normalizedPath = (tool.Path ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
+            var normalizedCwd = (tool.Cwd ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
+            var normalizedPython = (tool.Python ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
+
+            return normalizedPath.StartsWith("d:/tools/")
+                || normalizedCwd.StartsWith("d:/tools")
+                || normalizedPython.StartsWith("d:/tools/");
+        });
     }
 
     private sealed class ToolRegistryFile

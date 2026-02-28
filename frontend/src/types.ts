@@ -56,6 +56,16 @@ export interface AddToolRequest {
   tool: AddToolPayload
 }
 
+export interface UpdateToolRequest {
+  type: 'updateTool'
+  tool: AddToolPayload
+}
+
+export interface DeleteToolsRequest {
+  type: 'deleteTools'
+  toolIds: string[]
+}
+
 export interface RunToolRequest {
   type: 'runTool'
   toolId: string
@@ -90,7 +100,7 @@ export interface BrowseFileRequest {
   type: 'browseFile'
   defaultPath?: string
   filter?: string
-  purpose?: 'addToolPath' | 'addToolPython'
+  purpose?: 'addToolPath' | 'addToolPython' | 'editToolPath' | 'editToolPython'
 }
 
 export interface GetPythonPackagesRequest {
@@ -141,6 +151,8 @@ export interface StopTerminalRequest {
 export type FrontMessage =
   | GetToolsRequest
   | AddToolRequest
+  | UpdateToolRequest
+  | DeleteToolsRequest
   | RunToolRequest
   | RunToolInTerminalRequest
   | StopRunRequest
@@ -199,12 +211,22 @@ export interface PythonSelectedMessage {
 export interface FileSelectedMessage {
   type: 'fileSelected'
   path?: string
-  purpose?: 'addToolPath' | 'addToolPython'
+  purpose?: 'addToolPath' | 'addToolPython' | 'editToolPath' | 'editToolPython'
 }
 
 export interface ToolAddedMessage {
   type: 'toolAdded'
   toolId: string
+}
+
+export interface ToolUpdatedMessage {
+  type: 'toolUpdated'
+  toolId: string
+}
+
+export interface ToolsDeletedMessage {
+  type: 'toolsDeleted'
+  deletedCount: number
 }
 
 export interface PythonPackageItem {
@@ -264,6 +286,8 @@ export interface TerminalStatusMessage {
 export type BackMessage =
   | ToolsMessage
   | ToolAddedMessage
+  | ToolUpdatedMessage
+  | ToolsDeletedMessage
   | RunStartedMessage
   | RunStatusMessage
   | RunsMessage

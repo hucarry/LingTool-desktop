@@ -14,6 +14,8 @@ import type {
   TerminalStatusMessage,
   TerminalsMessage,
   ToolAddedMessage,
+  ToolsDeletedMessage,
+  ToolUpdatedMessage,
   ToolItem,
   ToolsMessage,
 } from '../types'
@@ -21,9 +23,14 @@ import type {
 const tools = ref<ToolItem[]>([])
 const loadingTools = ref(false)
 const addingTool = ref(false)
+const updatingTool = ref(false)
+const deletingTools = ref(false)
 const addToolPathSelection = ref('')
 const addToolPythonSelection = ref('')
+const editToolPathSelection = ref('')
+const editToolPythonSelection = ref('')
 const lastAddedToolId = ref('')
+const lastUpdatedToolId = ref('')
 
 const activeTool = ref<ToolItem | null>(null)
 const runnerVisible = ref(false)
@@ -171,11 +178,37 @@ function addTool(tool: AddToolPayload): void {
   })
 }
 
+function updateTool(tool: AddToolPayload): void {
+  updatingTool.value = true
+  lastUpdatedToolId.value = ''
+
+  bridge.send({
+    type: 'updateTool',
+    tool,
+  })
+}
+
+function deleteTools(toolIds: string[]): void {
+  const normalized = toolIds
+    .map((item) => item.trim())
+    .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index)
+
+  if (normalized.length === 0) {
+    return
+  }
+
+  deletingTools.value = true
+  bridge.send({
+    type: 'deleteTools',
+    toolIds: normalized,
+  })
+}
+
 function pickAddToolPath(defaultPath?: string, toolType?: string): void {
   bridge.send({
     type: 'browseFile',
     defaultPath,
-    filter: toolType === 'python' ? 'py' : 'exe',
+    filter: toolType === 'python' ? '*.py' : '*.exe',
     purpose: 'addToolPath',
   })
 }
@@ -184,8 +217,26 @@ function pickAddToolPython(defaultPath?: string): void {
   bridge.send({
     type: 'browseFile',
     defaultPath,
-    filter: 'exe',
+    filter: '*.exe',
     purpose: 'addToolPython',
+  })
+}
+
+function pickEditToolPath(defaultPath?: string, toolType?: string): void {
+  bridge.send({
+    type: 'browseFile',
+    defaultPath,
+    filter: toolType === 'python' ? '*.py' : '*.exe',
+    purpose: 'editToolPath',
+  })
+}
+
+function pickEditToolPython(defaultPath?: string): void {
+  bridge.send({
+    type: 'browseFile',
+    defaultPath,
+    filter: '*.exe',
+    purpose: 'editToolPython',
   })
 }
 
@@ -357,6 +408,8 @@ function handleToolsMessage(message: ToolsMessage): void {
   tools.value = message.tools
   loadingTools.value = false
   addingTool.value = false
+  updatingTool.value = false
+  deletingTools.value = false
 
   if (!packagePythonPath.value) {
     const firstPythonTool = message.tools.find((item) => item.type === 'python')
@@ -376,6 +429,16 @@ function handleFileSelectedMessage(message: FileSelectedMessage): void {
 
   if (message.purpose === 'addToolPython') {
     addToolPythonSelection.value = message.path
+    return
+  }
+
+  if (message.purpose === 'editToolPath') {
+    editToolPathSelection.value = message.path
+    return
+  }
+
+  if (message.purpose === 'editToolPython') {
+    editToolPythonSelection.value = message.path
   }
 }
 
@@ -386,6 +449,24 @@ function handleToolAddedMessage(message: ToolAddedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `工具已新增：${message.toolId}`
     : `Tool added: ${message.toolId}`
+  ElMessage.success(successMessage)
+}
+
+function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
+  updatingTool.value = false
+  lastUpdatedToolId.value = message.toolId
+
+  const successMessage = locale.value === 'zh-CN'
+    ? `工具已更新：${message.toolId}`
+    : `Tool updated: ${message.toolId}`
+  ElMessage.success(successMessage)
+}
+
+function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
+  deletingTools.value = false
+  const successMessage = locale.value === 'zh-CN'
+    ? `已删除 ${message.deletedCount} 个工具`
+    : `${message.deletedCount} tool(s) deleted`
   ElMessage.success(successMessage)
 }
 
@@ -510,6 +591,8 @@ function handleBackendMessage(message: BackMessage): void {
       loadingTools.value = false
       loadingPythonPackages.value = false
       addingTool.value = false
+      updatingTool.value = false
+      deletingTools.value = false
       resetPythonOperationState()
 
       if (message.message.includes('Terminal not found or not running')) {
@@ -549,6 +632,12 @@ function handleBackendMessage(message: BackMessage): void {
       break
     case 'toolAdded':
       handleToolAddedMessage(message)
+      break
+    case 'toolUpdated':
+      handleToolUpdatedMessage(message)
+      break
+    case 'toolsDeleted':
+      handleToolsDeletedMessage(message)
       break
     case 'pythonPackageInstallStatus':
       handlePythonPackageInstallStatusMessage(message)
@@ -595,9 +684,14 @@ export function useToolHub() {
     tools,
     loadingTools,
     addingTool,
+    updatingTool,
+    deletingTools,
     addToolPathSelection,
     addToolPythonSelection,
+    editToolPathSelection,
+    editToolPythonSelection,
     lastAddedToolId,
+    lastUpdatedToolId,
     activeTool,
     runnerVisible,
     pythonOverride,
@@ -614,8 +708,12 @@ export function useToolHub() {
     activeTerminalOutputs,
     fetchTools,
     addTool,
+    updateTool,
+    deleteTools,
     pickAddToolPath,
     pickAddToolPython,
+    pickEditToolPath,
+    pickEditToolPython,
     openTool,
     handleRun,
     pickPythonInterpreter,

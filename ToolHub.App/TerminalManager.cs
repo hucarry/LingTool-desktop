@@ -152,14 +152,7 @@ public sealed class TerminalManager : IDisposable
         if (_terminals.TryRemove(terminalId, out var context))
         {
             context.StopRequested = true;
-            try
-            {
-                context.Connection.Kill();
-            }
-            catch
-            {
-                // Ignore kill errors.
-            }
+            ForceStopTerminalProcess(context);
 
             context.Info.Status = TerminalStates.Stopped;
             context.Info.EndTime = DateTimeOffset.UtcNow;
@@ -400,6 +393,32 @@ public sealed class TerminalManager : IDisposable
         if (_isDisposed)
         {
             throw new ObjectDisposedException(nameof(TerminalManager));
+        }
+    }
+
+    private static void ForceStopTerminalProcess(TerminalContext context)
+    {
+        try
+        {
+            context.Connection.Kill();
+        }
+        catch
+        {
+            // Ignore direct PTY kill errors.
+        }
+
+        if (context.Info.Pid is not int pid || pid <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            ProcessKiller.KillProcessTreeAsync(pid).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Ignore process tree kill errors.
         }
     }
 
