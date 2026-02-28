@@ -1,0 +1,198 @@
+﻿:root {
+  --vscode-workbench-bg: #1e1e1e;
+  --vscode-titlebar-bg: #3c3c3c;
+  --vscode-activitybar-bg: #333333;
+  --vscode-sidebar-bg: #252526;
+  --vscode-editor-bg: #1e1e1e;
+  --vscode-tabs-bg: #252526;
+  --vscode-panel-bg: #1e1e1e;
+  --vscode-statusbar-bg: #007acc;
+  --vscode-border-color: #3c3c3c;
+  --vscode-hover-bg: #2a2d2e;
+  --vscode-active-bg: #37373d;
+  --vscode-text-primary: #cccccc;
+  --vscode-text-muted: #9d9d9d;
+  --vscode-accent-color: #007acc;
+  --vscode-font-ui: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --vscode-font-mono: Consolas, 'Courier New', monospace;
+
+  /* Compatibility tokens for existing components */
+  --text-primary: var(--vscode-text-primary);
+  --text-secondary: var(--vscode-text-muted);
+  --glass-border: var(--vscode-border-color);
+  --radius-lg: 4px;
+  --radius-md: 3px;
+  --radius-sm: 2px;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --transition: all 0.16s ease;
+  --font-mono: var(--vscode-font-mono);
+
+  color-scheme: dark;
+
+  --el-color-primary: var(--vscode-accent-color);
+  --el-bg-color: #252526;
+  --el-bg-color-overlay: #252526;
+  --el-bg-color-page: var(--vscode-editor-bg);
+  --el-fill-color-blank: #252526;
+  --el-fill-color-light: #333333;
+  --el-fill-color-lighter: #3c3c3c;
+  --el-text-color-primary: var(--vscode-text-primary);
+  --el-text-color-regular: #c5c5c5;
+  --el-text-color-secondary: var(--vscode-text-muted);
+  --el-border-color: var(--vscode-border-color);
+  --el-border-color-light: var(--vscode-border-color);
+  --el-mask-color: rgba(0, 0, 0, 0.55);
+  --el-fill-color-dark: #1f1f1f;
+  --el-font-family: var(--vscode-font-ui);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--vscode-workbench-bg);
+  color: var(--vscode-text-primary);
+  font-family: var(--vscode-font-ui);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+.glass {
+  background: transparent;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
+}
+
+.el-button {
+  border-radius: 2px;
+}
+
+.el-button:not(.is-text):not(.is-link) {
+  background: #3c3c3c;
+  border-color: #3c3c3c;
+  color: var(--vscode-text-primary);
+}
+
+.el-button:not(.is-text):not(.is-link):hover {
+  background: #4b4b4b;
+  border-color: #4b4b4b;
+}
+
+.el-button--primary {
+  --el-button-bg-color: #0e639c;
+  --el-button-border-color: #0e639c;
+  --el-button-hover-bg-color: #1177bb;
+  --el-button-hover-border-color: #1177bb;
+  --el-button-active-bg-color: #0c5f95;
+  --el-button-active-border-color: #0c5f95;
+  --el-button-text-color: #ffffff;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select .el-input__wrapper {
+  background: #3c3c3c !important;
+  box-shadow: 0 0 0 1px #3c3c3c inset !important;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  color: var(--vscode-text-primary);
+}
+
+.el-input__wrapper.is-focus,
+.el-select .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--vscode-accent-color) inset !important;
+}
+
+.el-select-dropdown,
+.el-popper.is-light,
+.el-popconfirm {
+  background: #252526 !important;
+  border-color: var(--vscode-border-color) !important;
+  color: var(--vscode-text-primary) !important;
+}
+
+.el-table {
+  --el-table-bg-color: #1e1e1e;
+  --el-table-tr-bg-color: #1e1e1e;
+  --el-table-header-bg-color: #252526;
+  --el-table-text-color: var(--vscode-text-primary);
+  --el-table-header-text-color: #d4d4d4;
+  --el-table-border-color: var(--vscode-border-color);
+}
+
+.el-table th.el-table__cell,
+.el-table td.el-table__cell {
+  background: transparent;
+}
+
+.el-drawer {
+  background: #252526 !important;
+  color: var(--vscode-text-primary);
+}
+
+.el-drawer__header {
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--vscode-border-color);
+}
+
+.el-descriptions__table {
+  --el-descriptions-table-border: var(--vscode-border-color);
+}
+
+.el-tag {
+  border-color: #4b4b4b;
+  background: #333333;
+  color: #d4d4d4;
+}
+
+.el-empty__description p {
+  color: var(--vscode-text-muted);
+}
