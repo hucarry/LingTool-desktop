@@ -39,55 +39,8 @@ const editForm = reactive({
   description: '',
 })
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 
-const text = computed(() => {
-  if (locale.value === 'zh-CN') {
-    return {
-      edit: '编辑',
-      editSelected: '编辑所选',
-      deleteSelected: '删除所选',
-      selected: '已选',
-      confirmDeleteTitle: '批量删除',
-      confirmDeleteMessage: `确定删除所选工具吗？`,
-      save: '保存',
-      cancel: '取消',
-      browse: '浏览...',
-      name: '名称',
-      type: '类型',
-      path: '路径',
-      python: 'Python',
-      cwd: '工作目录',
-      argsTemplate: '参数模板',
-      tags: '标签（逗号分隔）',
-      description: '描述',
-      noSelection: '请先选择工具',
-      editDialog: '编辑工具',
-    }
-  }
-
-  return {
-    edit: 'Edit',
-    editSelected: 'Edit Selected',
-    deleteSelected: 'Delete Selected',
-    selected: 'Selected',
-    confirmDeleteTitle: 'Batch Delete',
-    confirmDeleteMessage: 'Delete selected tools?',
-    save: 'Save',
-    cancel: 'Cancel',
-    browse: 'Browse...',
-    name: 'Name',
-    type: 'Type',
-    path: 'Path',
-    python: 'Python',
-    cwd: 'Working Directory',
-    argsTemplate: 'Args Template',
-    tags: 'Tags (comma separated)',
-    description: 'Description',
-    noSelection: 'Select at least one tool',
-    editDialog: 'Edit Tool',
-  }
-})
 
 const filteredTools = computed(() => {
   const text = keyword.value.trim().toLowerCase()
@@ -196,10 +149,10 @@ async function deleteSelected(): Promise<void> {
   }
 
   try {
-    await ElMessageBox.confirm(text.value.confirmDeleteMessage, text.value.confirmDeleteTitle, {
+    await ElMessageBox.confirm(t('tools.confirmDeleteMessage'), t('tools.confirmDeleteTitle'), {
       type: 'warning',
-      confirmButtonText: text.value.deleteSelected,
-      cancelButtonText: text.value.cancel,
+      confirmButtonText: t('tools.deleteSelected'),
+      cancelButtonText: t('tools.cancel'),
     })
   } catch {
     return
@@ -252,11 +205,11 @@ function saveEdit(): void {
       </div>
 
       <div class="header-actions">
-        <span class="selected-count">{{ text.selected }}: {{ selectedCount }}</span>
+        <span class="selected-count">{{ t('tools.selected') }}: {{ selectedCount }}</span>
         <el-button size="small" @click="emit('refresh')">{{ t('python.refresh') }}</el-button>
-        <el-button size="small" :disabled="selectedCount !== 1" @click="openEditSelected">{{ text.editSelected }}</el-button>
+        <el-button size="small" :disabled="selectedCount !== 1" @click="openEditSelected">{{ t('tools.editSelected') }}</el-button>
         <el-button size="small" type="danger" :disabled="selectedCount === 0" :loading="deleting" @click="deleteSelected">
-          {{ text.deleteSelected }}
+          {{ t('tools.deleteSelected') }}
         </el-button>
       </div>
     </header>
@@ -303,7 +256,7 @@ function saveEdit(): void {
 
               <div class="action-buttons">
                 <el-button size="small" :loading="updating && editForm.id === tool.id" @click.stop="openEdit(tool)">
-                  {{ text.edit }}
+                  {{ t('tools.edit') }}
                 </el-button>
                 <el-button
                   type="primary"
@@ -322,55 +275,55 @@ function saveEdit(): void {
       </el-scrollbar>
     </div>
 
-    <el-dialog v-model="editVisible" :title="text.editDialog" width="620px">
+    <el-dialog v-model="editVisible" :title="t('tools.editDialog')" width="620px">
       <el-form label-position="top">
         <el-form-item label="ID">
           <el-input v-model="editForm.id" disabled />
         </el-form-item>
 
-        <el-form-item :label="text.name">
+        <el-form-item :label="t('tools.name')">
           <el-input v-model="editForm.name" />
         </el-form-item>
 
-        <el-form-item :label="text.type">
+        <el-form-item :label="t('tools.type')">
           <el-segmented v-model="editForm.type" :options="[{ label: 'python', value: 'python' }, { label: 'exe', value: 'exe' }]" />
         </el-form-item>
 
-        <el-form-item :label="text.path">
+        <el-form-item :label="t('tools.path')">
           <div class="path-row">
             <el-input v-model="editForm.path" />
-            <el-button @click="browseEditToolPath">{{ text.browse }}</el-button>
+            <el-button @click="browseEditToolPath">{{ t('tools.browse') }}</el-button>
           </div>
         </el-form-item>
 
-        <el-form-item v-if="isPythonEdit" :label="text.python">
+        <el-form-item v-if="isPythonEdit" :label="t('tools.python')">
           <div class="path-row">
             <el-input v-model="editForm.python" />
-            <el-button @click="browseEditToolPython">{{ text.browse }}</el-button>
+            <el-button @click="browseEditToolPython">{{ t('tools.browse') }}</el-button>
           </div>
         </el-form-item>
 
-        <el-form-item :label="text.cwd">
+        <el-form-item :label="t('tools.cwd')">
           <el-input v-model="editForm.cwd" />
         </el-form-item>
 
-        <el-form-item :label="text.argsTemplate">
+        <el-form-item :label="t('tools.argsTemplate')">
           <el-input v-model="editForm.argsTemplate" />
         </el-form-item>
 
-        <el-form-item :label="text.tags">
+        <el-form-item :label="t('tools.tags')">
           <el-input v-model="editForm.tagsText" />
         </el-form-item>
 
-        <el-form-item :label="text.description">
+        <el-form-item :label="t('tools.description')">
           <el-input v-model="editForm.description" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="editVisible = false">{{ text.cancel }}</el-button>
-          <el-button type="primary" :loading="updating" @click="saveEdit">{{ text.save }}</el-button>
+          <el-button @click="editVisible = false">{{ t('tools.cancel') }}</el-button>
+          <el-button type="primary" :loading="updating" @click="saveEdit">{{ t('tools.save') }}</el-button>
         </div>
       </template>
     </el-dialog>
