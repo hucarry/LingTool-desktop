@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import EnvironmentView from '../views/EnvironmentView.vue'
 import ToolsView from '../views/ToolsView.vue'
-import SiliconFlowView from '../views/SiliconFlowView.vue'
+import AddToolView from '../views/AddToolView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -22,9 +22,9 @@ export const router = createRouter({
       component: ToolsView,
     },
     {
-      path: '/siliconflow',
-      name: 'siliconflow',
-      component: SiliconFlowView,
+      path: '/tools/new',
+      name: 'addTool',
+      component: AddToolView,
     },
   ],
 })

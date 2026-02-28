@@ -3,7 +3,9 @@ import { ElMessage } from 'element-plus'
 import { bridge } from '../services/bridge'
 import { useI18n } from './useI18n'
 import type {
+  AddToolPayload,
   BackMessage,
+  FileSelectedMessage,
   PythonPackageInstallStatusMessage,
   PythonPackagesMessage,
   TerminalInfo,
@@ -11,12 +13,17 @@ import type {
   TerminalStartedMessage,
   TerminalStatusMessage,
   TerminalsMessage,
+  ToolAddedMessage,
   ToolItem,
   ToolsMessage,
 } from '../types'
 
 const tools = ref<ToolItem[]>([])
 const loadingTools = ref(false)
+const addingTool = ref(false)
+const addToolPathSelection = ref('')
+const addToolPythonSelection = ref('')
+const lastAddedToolId = ref('')
 
 const activeTool = ref<ToolItem | null>(null)
 const runnerVisible = ref(false)
@@ -152,6 +159,34 @@ function packageActionText(action: 'install' | 'uninstall'): string {
 function fetchTools(): void {
   loadingTools.value = true
   bridge.send({ type: 'getTools' })
+}
+
+function addTool(tool: AddToolPayload): void {
+  addingTool.value = true
+  lastAddedToolId.value = ''
+
+  bridge.send({
+    type: 'addTool',
+    tool,
+  })
+}
+
+function pickAddToolPath(defaultPath?: string, toolType?: string): void {
+  bridge.send({
+    type: 'browseFile',
+    defaultPath,
+    filter: toolType === 'python' ? 'py' : 'exe',
+    purpose: 'addToolPath',
+  })
+}
+
+function pickAddToolPython(defaultPath?: string): void {
+  bridge.send({
+    type: 'browseFile',
+    defaultPath,
+    filter: 'exe',
+    purpose: 'addToolPython',
+  })
 }
 
 function fetchTerminals(): void {
@@ -321,11 +356,37 @@ function selectTerminal(terminalId: string): void {
 function handleToolsMessage(message: ToolsMessage): void {
   tools.value = message.tools
   loadingTools.value = false
+  addingTool.value = false
 
   if (!packagePythonPath.value) {
     const firstPythonTool = message.tools.find((item) => item.type === 'python')
     packagePythonPath.value = firstPythonTool?.python ?? ''
   }
+}
+
+function handleFileSelectedMessage(message: FileSelectedMessage): void {
+  if (!message.path?.trim()) {
+    return
+  }
+
+  if (message.purpose === 'addToolPath') {
+    addToolPathSelection.value = message.path
+    return
+  }
+
+  if (message.purpose === 'addToolPython') {
+    addToolPythonSelection.value = message.path
+  }
+}
+
+function handleToolAddedMessage(message: ToolAddedMessage): void {
+  addingTool.value = false
+  lastAddedToolId.value = message.toolId
+
+  const successMessage = locale.value === 'zh-CN'
+    ? `工具已新增：${message.toolId}`
+    : `Tool added: ${message.toolId}`
+  ElMessage.success(successMessage)
 }
 
 function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
@@ -448,6 +509,7 @@ function handleBackendMessage(message: BackMessage): void {
     case 'error':
       loadingTools.value = false
       loadingPythonPackages.value = false
+      addingTool.value = false
       resetPythonOperationState()
 
       if (message.message.includes('Terminal not found or not running')) {
@@ -481,6 +543,12 @@ function handleBackendMessage(message: BackMessage): void {
       break
     case 'pythonPackages':
       handlePythonPackagesMessage(message)
+      break
+    case 'fileSelected':
+      handleFileSelectedMessage(message)
+      break
+    case 'toolAdded':
+      handleToolAddedMessage(message)
       break
     case 'pythonPackageInstallStatus':
       handlePythonPackageInstallStatusMessage(message)
@@ -526,6 +594,10 @@ export function useToolHub() {
   return {
     tools,
     loadingTools,
+    addingTool,
+    addToolPathSelection,
+    addToolPythonSelection,
+    lastAddedToolId,
     activeTool,
     runnerVisible,
     pythonOverride,
@@ -541,6 +613,9 @@ export function useToolHub() {
     terminalOutputsById,
     activeTerminalOutputs,
     fetchTools,
+    addTool,
+    pickAddToolPath,
+    pickAddToolPython,
     openTool,
     handleRun,
     pickPythonInterpreter,

@@ -42,6 +42,47 @@ public sealed class ToolRegistry
         }
     }
 
+    public ToolItem AddTool(ToolItem source)
+    {
+        lock (_syncRoot)
+        {
+            var registryFile = ReadRegistryFile();
+            var candidate = NormalizeDraft(source);
+
+            if (string.IsNullOrWhiteSpace(candidate.Id))
+            {
+                throw new InvalidOperationException("Tool id is required.");
+            }
+
+            var duplicate = registryFile.Tools.Any(item =>
+                string.Equals(item.Id?.Trim(), candidate.Id, StringComparison.OrdinalIgnoreCase)
+            );
+            if (duplicate)
+            {
+                throw new InvalidOperationException($"Tool id already exists: {candidate.Id}");
+            }
+
+            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+            var validatedCandidate = ValidateTool(ToToolItem(candidate), baseDirectory);
+            if (!validatedCandidate.Valid)
+            {
+                throw new InvalidOperationException(
+                    validatedCandidate.ValidationMessage ?? "Tool configuration is invalid."
+                );
+            }
+
+            registryFile.Tools.Add(candidate);
+            SaveRegistryFile(registryFile);
+
+            _tools = registryFile.Tools
+                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .ToList();
+            _lastLoadedUtc = DateTime.UtcNow;
+
+            return CloneTool(validatedCandidate);
+        }
+    }
+
     private void Reload(bool force = false)
     {
         lock (_syncRoot)
@@ -59,12 +100,11 @@ public sealed class ToolRegistry
                 return;
             }
 
-            var fileContent = File.ReadAllText(_toolsFilePath);
-            var parsed = JsonSerializer.Deserialize<ToolRegistryFile>(fileContent, _jsonOptions) ?? new ToolRegistryFile();
+            var parsed = ReadRegistryFile();
 
             var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
             var validated = parsed.Tools
-                .Select(item => ValidateTool(item, baseDirectory))
+                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
                 .ToList();
 
             _tools = validated;
@@ -112,6 +152,66 @@ public sealed class ToolRegistry
         }
 
         File.WriteAllText(_toolsFilePath, template);
+    }
+
+    private ToolRegistryFile ReadRegistryFile()
+    {
+        EnsureToolsFileExists();
+
+        var fileContent = File.ReadAllText(_toolsFilePath);
+        return JsonSerializer.Deserialize<ToolRegistryFile>(fileContent, _jsonOptions) ?? new ToolRegistryFile();
+    }
+
+    private void SaveRegistryFile(ToolRegistryFile file)
+    {
+        var directory = Path.GetDirectoryName(_toolsFilePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var writeOptions = new JsonSerializerOptions(_jsonOptions)
+        {
+            WriteIndented = true
+        };
+        var json = JsonSerializer.Serialize(file, writeOptions);
+        File.WriteAllText(_toolsFilePath, json);
+    }
+
+    private static ToolDraft NormalizeDraft(ToolItem source)
+    {
+        return new ToolDraft
+        {
+            Id = source.Id.Trim(),
+            Name = source.Name.Trim(),
+            Type = source.Type.Trim().ToLowerInvariant(),
+            Path = source.Path.Trim(),
+            Python = string.IsNullOrWhiteSpace(source.Python) ? null : source.Python.Trim(),
+            Cwd = string.IsNullOrWhiteSpace(source.Cwd) ? null : source.Cwd.Trim(),
+            ArgsTemplate = source.ArgsTemplate?.Trim() ?? string.Empty,
+            Tags = (source.Tags ?? new List<string>())
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            Description = string.IsNullOrWhiteSpace(source.Description) ? null : source.Description.Trim()
+        };
+    }
+
+    private static ToolItem ToToolItem(ToolDraft source)
+    {
+        return new ToolItem
+        {
+            Id = source.Id ?? string.Empty,
+            Name = source.Name ?? string.Empty,
+            Type = source.Type ?? string.Empty,
+            Path = source.Path ?? string.Empty,
+            Python = source.Python,
+            Cwd = source.Cwd,
+            ArgsTemplate = source.ArgsTemplate ?? string.Empty,
+            Tags = source.Tags?.ToList() ?? new List<string>(),
+            Description = source.Description
+        };
     }
 
     private static ToolItem ValidateTool(ToolItem source, string baseDirectory)
@@ -205,6 +305,27 @@ public sealed class ToolRegistry
 
     private sealed class ToolRegistryFile
     {
-        public List<ToolItem> Tools { get; set; } = new();
+        public List<ToolDraft> Tools { get; set; } = new();
+    }
+
+    private sealed class ToolDraft
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Type { get; set; } = string.Empty;
+
+        public string Path { get; set; } = string.Empty;
+
+        public string? Python { get; set; }
+
+        public string? Cwd { get; set; }
+
+        public string ArgsTemplate { get; set; } = string.Empty;
+
+        public List<string> Tags { get; set; } = new();
+
+        public string? Description { get; set; }
     }
 }

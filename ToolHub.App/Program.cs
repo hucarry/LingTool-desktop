@@ -64,7 +64,13 @@ internal static class Program
                     pythonPackageManager,
                     terminalManager,
                     SendMessage,
-                    defaultPath => window is null ? null : ShowPythonPicker(window, defaultPath)
+                    defaultPath => window is null ? null : ShowPythonPicker(window, defaultPath),
+                    (defaultPath, filter) => window is null ? null : ShowFilePicker(
+                        window,
+                        "Select File",
+                        defaultPath,
+                        filter
+                    )
                 );
             });
 
@@ -79,7 +85,8 @@ internal static class Program
         PythonPackageManager pythonPackageManager,
         TerminalManager terminalManager,
         Action<object> sendMessage,
-        Func<string?, string?> browsePython
+        Func<string?, string?> browsePython,
+        Func<string?, string?, string?> browseFile
     )
     {
         try
@@ -96,6 +103,20 @@ internal static class Program
                 case BridgeMessageTypes.GetTools:
                     sendMessage(new ToolsMessage(registry.GetTools()));
                     break;
+                case BridgeMessageTypes.AddTool:
+                {
+                    var addToolRequest = JsonSerializer.Deserialize<AddToolRequest>(rawMessage, JsonOptions);
+                    if (addToolRequest?.Tool is null)
+                    {
+                        sendMessage(new ErrorMessage("addTool request is missing tool payload."));
+                        return;
+                    }
+
+                    var addedTool = registry.AddTool(addToolRequest.Tool);
+                    sendMessage(new ToolAddedMessage(addedTool.Id));
+                    sendMessage(new ToolsMessage(registry.GetTools()));
+                    break;
+                }
                 case BridgeMessageTypes.GetRuns:
                     sendMessage(new RunsMessage(processManager.GetRuns()));
                     break;
@@ -221,6 +242,13 @@ internal static class Program
                     var browseRequest = JsonSerializer.Deserialize<BrowsePythonRequest>(rawMessage, JsonOptions);
                     var selectedPath = browsePython(browseRequest?.DefaultPath);
                     sendMessage(new PythonSelectedMessage(selectedPath, browseRequest?.Purpose));
+                    break;
+                }
+                case BridgeMessageTypes.BrowseFile:
+                {
+                    var browseRequest = JsonSerializer.Deserialize<BrowseFileRequest>(rawMessage, JsonOptions);
+                    var selectedPath = browseFile(browseRequest?.DefaultPath, browseRequest?.Filter);
+                    sendMessage(new FileSelectedMessage(selectedPath, browseRequest?.Purpose));
                     break;
                 }
                 case BridgeMessageTypes.GetPythonPackages:
@@ -482,18 +510,55 @@ internal static class Program
 
     private static string? ShowPythonPicker(PhotinoWindow window, string? defaultPath)
     {
+        return ShowFilePicker(window, "Select Python Interpreter", defaultPath, null);
+    }
+
+    private static string? ShowFilePicker(
+        PhotinoWindow window,
+        string title,
+        string? defaultPath,
+        string? filter
+    )
+    {
         var safeDefaultPath = ResolveDialogDefaultPath(defaultPath);
+        var filters = ResolveFileFilters(filter);
 
         var candidates = window.ShowOpenFile(
-            title: "Select Python Interpreter",
+            title: title,
             defaultPath: safeDefaultPath,
             multiSelect: false,
-            filters: null
+            filters: filters
         );
 
         return candidates is { Length: > 0 }
             ? candidates[0]
             : null;
+    }
+
+    private static (string Name, string[] Extensions)[]? ResolveFileFilters(string? filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return null;
+        }
+
+        var extensions = filter
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => value.Trim().TrimStart('.').ToLowerInvariant())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (extensions.Length == 0)
+        {
+            return null;
+        }
+
+        var name = extensions.Length == 1
+            ? $"{extensions[0].ToUpperInvariant()} Files"
+            : "Filtered Files";
+
+        return new[] { (name, extensions) };
     }
 
     private static string? ResolveDialogDefaultPath(string? rawPath)

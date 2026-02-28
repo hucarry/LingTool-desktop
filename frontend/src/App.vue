@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Box, Cpu, SetUp, Setting } from '@element-plus/icons-vue'
+import { Box, Cpu, Plus, Setting } from '@element-plus/icons-vue'
 import ToolRunner from './components/ToolRunner.vue'
 import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
 import { useI18n, type Locale } from './composables/useI18n'
 
 interface MenuItem {
-  path: '/python' | '/tools' | '/siliconflow'
+  path: '/python' | '/tools' | '/tools/new'
   icon: typeof Box
-  titleKey: string
+  titleKey?: string
+  title?: Record<Locale, string>
 }
 
 const hub = useToolHub()
@@ -22,29 +23,50 @@ const runnerVisible = hub.runnerVisible
 const pythonOverride = hub.pythonOverride
 const activeTool = hub.activeTool
 
+type DragKind = 'none' | 'terminal' | 'sidebar'
+
+const SIDEBAR_WIDTH_STORAGE_KEY = 'toolhub.sidebarWidth'
+const ACTIVITY_BAR_WIDTH = 48
+const SIDEBAR_SASH_WIDTH = 4
+const MIN_EDITOR_WIDTH = 420
+const MIN_SIDEBAR_WIDTH = 180
+const DEFAULT_SIDEBAR_WIDTH = 248
+const MAX_SIDEBAR_WIDTH = 560
+
 const MIN_TERMINAL_HEIGHT = 140
 const DEFAULT_TERMINAL_HEIGHT = 260
 const COLLAPSED_TERMINAL_HEIGHT = 34
 
 const terminalHeight = ref(DEFAULT_TERMINAL_HEIGHT)
 const terminalExpanded = ref(true)
-const isDragging = ref(false)
+const dragKind = ref<DragKind>('none')
+const isDragging = computed(() => dragKind.value !== 'none')
+const isSidebarDragging = computed(() => dragKind.value === 'sidebar')
+const sidebarWidth = ref(loadSidebarWidth())
+const workbenchMainRef = ref<HTMLElement>()
 const editorStackRef = ref<HTMLElement>()
 
 const menuItems: MenuItem[] = [
   { path: '/python', icon: Box, titleKey: 'app.menu.python' },
   { path: '/tools', icon: Cpu, titleKey: 'app.menu.tools' },
-  { path: '/siliconflow', icon: SetUp, titleKey: 'app.menu.siliconflow' },
+  {
+    path: '/tools/new',
+    icon: Plus,
+    title: {
+      'zh-CN': '新增工具',
+      'en-US': 'Add Tool',
+    },
+  },
 ]
 const fallbackMenuItem: MenuItem = menuItems[0]!
 
 const activeMenu = computed<MenuItem['path']>(() => {
-  if (route.path.startsWith('/tools')) {
-    return '/tools'
+  if (route.path.startsWith('/tools/new')) {
+    return '/tools/new'
   }
 
-  if (route.path.startsWith('/siliconflow')) {
-    return '/siliconflow'
+  if (route.path.startsWith('/tools')) {
+    return '/tools'
   }
 
   return '/python'
@@ -72,6 +94,14 @@ const terminalSessionCaption = computed(() => {
   return formatSessionCount(hub.terminals.value.length)
 })
 
+function menuTitle(item: MenuItem): string {
+  if (item.titleKey) {
+    return t(item.titleKey)
+  }
+
+  return item.title?.[locale.value] ?? item.path
+}
+
 function switchLocale(next: Locale): void {
   setLocale(next)
 }
@@ -84,42 +114,121 @@ function navigate(path: MenuItem['path']): void {
   router.push(path)
 }
 
-function onDragStart(event: MouseEvent): void {
-  event.preventDefault()
-  isDragging.value = true
+function loadSidebarWidth(): number {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SIDEBAR_WIDTH
+  }
 
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-  document.body.style.cursor = 'ns-resize'
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN
+    if (Number.isFinite(parsed)) {
+      return Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, parsed))
+    }
+  } catch {
+    // ignore
+  }
+
+  return DEFAULT_SIDEBAR_WIDTH
+}
+
+function getSidebarMaxWidth(): number {
+  if (!workbenchMainRef.value) {
+    return MAX_SIDEBAR_WIDTH
+  }
+
+  const rect = workbenchMainRef.value.getBoundingClientRect()
+  const dynamicMax = Math.max(
+    MIN_SIDEBAR_WIDTH,
+    Math.round(rect.width - ACTIVITY_BAR_WIDTH - SIDEBAR_SASH_WIDTH - MIN_EDITOR_WIDTH),
+  )
+
+  return Math.min(MAX_SIDEBAR_WIDTH, dynamicMax)
+}
+
+function setSidebarWidth(nextWidth: number): void {
+  const maxWidth = getSidebarMaxWidth()
+  const normalized = Math.max(MIN_SIDEBAR_WIDTH, Math.min(maxWidth, Math.round(nextWidth)))
+  sidebarWidth.value = normalized
+
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(normalized))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function beginDrag(kind: DragKind, cursor: 'ns-resize' | 'ew-resize'): void {
+  if (dragKind.value !== 'none') {
+    return
+  }
+
+  dragKind.value = kind
+  document.addEventListener('mousemove', onGlobalDragMove)
+  document.addEventListener('mouseup', onGlobalDragEnd)
+  document.body.style.cursor = cursor
   document.body.style.userSelect = 'none'
 }
 
-function onDragMove(event: MouseEvent): void {
-  if (!isDragging.value || !editorStackRef.value) {
+function onTerminalDragStart(event: MouseEvent): void {
+  event.preventDefault()
+  beginDrag('terminal', 'ns-resize')
+}
+
+function onSidebarDragStart(event: MouseEvent): void {
+  event.preventDefault()
+  beginDrag('sidebar', 'ew-resize')
+}
+
+function onGlobalDragMove(event: MouseEvent): void {
+  if (dragKind.value === 'terminal' && editorStackRef.value) {
+    const rect = editorStackRef.value.getBoundingClientRect()
+    const maxHeight = Math.max(MIN_TERMINAL_HEIGHT, rect.height - 160)
+    const nextHeight = Math.round(rect.bottom - event.clientY)
+
+    terminalHeight.value = Math.max(MIN_TERMINAL_HEIGHT, Math.min(maxHeight, nextHeight))
+
+    if (!terminalExpanded.value) {
+      terminalExpanded.value = true
+    }
     return
   }
 
-  const rect = editorStackRef.value.getBoundingClientRect()
-  const maxHeight = Math.max(MIN_TERMINAL_HEIGHT, rect.height - 160)
-  const nextHeight = Math.round(rect.bottom - event.clientY)
-
-  terminalHeight.value = Math.max(MIN_TERMINAL_HEIGHT, Math.min(maxHeight, nextHeight))
-
-  if (!terminalExpanded.value) {
-    terminalExpanded.value = true
+  if (dragKind.value === 'sidebar' && workbenchMainRef.value) {
+    const rect = workbenchMainRef.value.getBoundingClientRect()
+    const nextWidth = event.clientX - rect.left - ACTIVITY_BAR_WIDTH
+    setSidebarWidth(nextWidth)
   }
 }
 
-function onDragEnd(): void {
-  if (!isDragging.value) {
+function onGlobalDragEnd(): void {
+  if (dragKind.value === 'none') {
     return
   }
 
-  isDragging.value = false
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
+  dragKind.value = 'none'
+  document.removeEventListener('mousemove', onGlobalDragMove)
+  document.removeEventListener('mouseup', onGlobalDragEnd)
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
+}
+
+function clampSidebarWidthIfNeeded(): void {
+  if (typeof window !== 'undefined' && window.innerWidth <= 960) {
+    return
+  }
+
+  setSidebarWidth(sidebarWidth.value)
+}
+
+function onWindowResize(): void {
+  clampSidebarWidthIfNeeded()
+}
+
+function onDragEnd(): void {
+  onGlobalDragEnd()
 }
 
 function toggleTerminal(): void {
@@ -134,10 +243,13 @@ function expandTerminal(): void {
 
 onMounted(() => {
   hub.initToolHub()
+  clampSidebarWidthIfNeeded()
+  window.addEventListener('resize', onWindowResize)
 })
 
 onBeforeUnmount(() => {
   onDragEnd()
+  window.removeEventListener('resize', onWindowResize)
   hub.disposeToolHub()
 })
 </script>
@@ -149,7 +261,7 @@ onBeforeUnmount(() => {
         <span class="app-badge">TH</span>
         <span class="app-name">{{ t('app.brand') }}</span>
       </div>
-      <div class="title-center">{{ t(activeMenuItem.titleKey) }} - {{ t('app.workspace') }}</div>
+      <div class="title-center">{{ menuTitle(activeMenuItem) }} - {{ t('app.workspace') }}</div>
       <div class="title-right">
         <span>{{ t('app.layout') }}</span>
         <div class="locale-switch">
@@ -173,7 +285,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div class="workbench-main">
+    <div ref="workbenchMainRef" class="workbench-main">
       <nav class="activity-bar" :aria-label="t('app.activityBar')">
         <button
           v-for="item in menuItems"
@@ -181,7 +293,7 @@ onBeforeUnmount(() => {
           class="activity-item"
           :class="{ active: activeMenu === item.path }"
           type="button"
-          :title="t(item.titleKey)"
+          :title="menuTitle(item)"
           @click="navigate(item.path)"
         >
           <el-icon :size="20"><component :is="item.icon" /></el-icon>
@@ -194,7 +306,7 @@ onBeforeUnmount(() => {
         </button>
       </nav>
 
-      <aside class="side-bar" :aria-label="t('app.explorer')">
+      <aside class="side-bar" :aria-label="t('app.explorer')" :style="{ width: `${sidebarWidth}px` }">
         <header class="side-bar-head">{{ t('app.explorer') }}</header>
 
         <button
@@ -205,16 +317,22 @@ onBeforeUnmount(() => {
           type="button"
           @click="navigate(item.path)"
         >
-          <span class="side-item-title">{{ t(item.titleKey) }}</span>
+          <span class="side-item-title">{{ menuTitle(item) }}</span>
           <span class="side-item-path">{{ item.path }}</span>
         </button>
       </aside>
+
+      <div
+        class="side-sash"
+        :class="{ active: isSidebarDragging }"
+        @mousedown="onSidebarDragStart"
+      />
 
       <section ref="editorStackRef" class="editor-stack">
         <header class="editor-tabs">
           <div class="editor-tab is-active">
             <el-icon :size="14"><component :is="activeMenuItem.icon" /></el-icon>
-            <span>{{ t(activeMenuItem.titleKey) }}</span>
+            <span>{{ menuTitle(activeMenuItem) }}</span>
           </div>
         </header>
 
@@ -223,7 +341,7 @@ onBeforeUnmount(() => {
         </main>
 
         <section class="panel-dock" :style="{ height: panelHeight }">
-          <div class="drag-handle" @mousedown="onDragStart">
+          <div class="drag-handle" @mousedown="onTerminalDragStart">
             <div class="drag-handle-line" />
           </div>
 
@@ -259,7 +377,7 @@ onBeforeUnmount(() => {
     <footer class="status-bar">
       <div class="status-left">
         <span class="status-item">{{ t('app.brand') }}</span>
-        <span class="status-item">{{ t(activeMenuItem.titleKey) }}</span>
+        <span class="status-item">{{ menuTitle(activeMenuItem) }}</span>
       </div>
       <div class="status-right">
         <span class="status-item">{{ activeTerminalStatus }}</span>
@@ -430,12 +548,35 @@ onBeforeUnmount(() => {
 }
 
 .side-bar {
-  width: 248px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--vscode-sidebar-bg);
   border-right: 1px solid var(--vscode-border-color);
+}
+
+.side-sash {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: ew-resize;
+  position: relative;
+  background: transparent;
+}
+
+.side-sash::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 1px;
+  width: 1px;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.side-sash:hover::before,
+.side-sash.active::before {
+  background: var(--vscode-accent-color);
 }
 
 .side-bar-head {
@@ -637,6 +778,10 @@ onBeforeUnmount(() => {
 
 @media (max-width: 960px) {
   .side-bar {
+    display: none;
+  }
+
+  .side-sash {
     display: none;
   }
 

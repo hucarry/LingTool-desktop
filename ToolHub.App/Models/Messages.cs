@@ -3,11 +3,13 @@
 public static class BridgeMessageTypes
 {
     public const string GetTools = "getTools";
+    public const string AddTool = "addTool";
     public const string RunTool = "runTool";
     public const string RunToolInTerminal = "runToolInTerminal";
     public const string StopRun = "stopRun";
     public const string GetRuns = "getRuns";
     public const string BrowsePython = "browsePython";
+    public const string BrowseFile = "browseFile";
     public const string GetPythonPackages = "getPythonPackages";
     public const string InstallPythonPackage = "installPythonPackage";
     public const string UninstallPythonPackage = "uninstallPythonPackage";
@@ -23,6 +25,8 @@ public static class BridgeMessageTypes
     public const string RunStatus = "runStatus";
     public const string Runs = "runs";
     public const string PythonSelected = "pythonSelected";
+    public const string FileSelected = "fileSelected";
+    public const string ToolAdded = "toolAdded";
     public const string PythonPackages = "pythonPackages";
     public const string PythonPackageInstallStatus = "pythonPackageInstallStatus";
     public const string Terminals = "terminals";
@@ -52,6 +56,11 @@ public sealed class RunToolRequest : IncomingMessage
     public string? Python { get; set; }
 }
 
+public sealed class AddToolRequest : IncomingMessage
+{
+    public ToolItem? Tool { get; set; }
+}
+
 public sealed class RunToolInTerminalRequest : IncomingMessage
 {
     public string ToolId { get; set; } = string.Empty;
@@ -71,6 +80,15 @@ public sealed class StopRunRequest : IncomingMessage
 public sealed class BrowsePythonRequest : IncomingMessage
 {
     public string? DefaultPath { get; set; }
+
+    public string? Purpose { get; set; }
+}
+
+public sealed class BrowseFileRequest : IncomingMessage
+{
+    public string? DefaultPath { get; set; }
+
+    public string? Filter { get; set; }
 
     public string? Purpose { get; set; }
 }
@@ -206,6 +224,33 @@ public sealed class PythonSelectedMessage
     public string? Purpose { get; }
 }
 
+public sealed class FileSelectedMessage
+{
+    public FileSelectedMessage(string? path, string? purpose = null)
+    {
+        Path = path;
+        Purpose = purpose;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.FileSelected;
+
+    public string? Path { get; }
+
+    public string? Purpose { get; }
+}
+
+public sealed class ToolAddedMessage
+{
+    public ToolAddedMessage(string toolId)
+    {
+        ToolId = toolId;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.ToolAdded;
+
+    public string ToolId { get; }
+}
+
 public sealed class PythonPackagesMessage
 {
     public PythonPackagesMessage(string pythonPath, IReadOnlyList<PythonPackageItem> packages)
@@ -322,4 +367,3 @@ public sealed class ErrorMessage
 
     public object? Details { get; }
 }
-

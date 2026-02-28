@@ -39,6 +39,23 @@ export interface GetToolsRequest {
   type: 'getTools'
 }
 
+export interface AddToolPayload {
+  id: string
+  name: string
+  type: ToolType
+  path: string
+  python?: string
+  cwd?: string
+  argsTemplate?: string
+  tags?: string[]
+  description?: string
+}
+
+export interface AddToolRequest {
+  type: 'addTool'
+  tool: AddToolPayload
+}
+
 export interface RunToolRequest {
   type: 'runTool'
   toolId: string
@@ -67,6 +84,13 @@ export interface BrowsePythonRequest {
   type: 'browsePython'
   defaultPath?: string
   purpose?: 'toolRunner' | 'packageManager'
+}
+
+export interface BrowseFileRequest {
+  type: 'browseFile'
+  defaultPath?: string
+  filter?: string
+  purpose?: 'addToolPath' | 'addToolPython'
 }
 
 export interface GetPythonPackagesRequest {
@@ -116,11 +140,13 @@ export interface StopTerminalRequest {
 
 export type FrontMessage =
   | GetToolsRequest
+  | AddToolRequest
   | RunToolRequest
   | RunToolInTerminalRequest
   | StopRunRequest
   | GetRunsRequest
   | BrowsePythonRequest
+  | BrowseFileRequest
   | GetPythonPackagesRequest
   | InstallPythonPackageRequest
   | UninstallPythonPackageRequest
@@ -168,6 +194,17 @@ export interface PythonSelectedMessage {
   type: 'pythonSelected'
   path?: string
   purpose?: 'toolRunner' | 'packageManager'
+}
+
+export interface FileSelectedMessage {
+  type: 'fileSelected'
+  path?: string
+  purpose?: 'addToolPath' | 'addToolPython'
+}
+
+export interface ToolAddedMessage {
+  type: 'toolAdded'
+  toolId: string
 }
 
 export interface PythonPackageItem {
@@ -226,11 +263,13 @@ export interface TerminalStatusMessage {
 
 export type BackMessage =
   | ToolsMessage
+  | ToolAddedMessage
   | RunStartedMessage
   | RunStatusMessage
   | RunsMessage
   | LogMessage
   | PythonSelectedMessage
+  | FileSelectedMessage
   | PythonPackagesMessage
   | PythonPackageInstallStatusMessage
   | TerminalsMessage
