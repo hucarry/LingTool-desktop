@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Terminal } from '@xterm/xterm'
-import { FitAddon } from '@xterm/addon-fit'
-import '@xterm/xterm/css/xterm.css'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import TerminalViewport from './TerminalViewport.vue'
 import type { TerminalInfo } from '../types'
 
 const props = defineProps<{
   terminals: TerminalInfo[]
   activeTerminalId: string
-  outputs: string[]
+  outputsByTerminal: Record<string, string[]>
 }>()
 
 const emit = defineEmits<{
@@ -21,11 +19,27 @@ const emit = defineEmits<{
   (e: 'clearOutput', terminalId: string): void
 }>()
 
-const hostRef = ref<HTMLElement>()
+interface ContextMenuState {
+  visible: boolean
+  x: number
+  y: number
+  terminalId: string
+}
+
 const shellInput = ref('')
 const cwdInput = ref('')
-const renderedChunks = ref(0)
 const showToolbar = ref(false)
+const splitEnabled = ref(false)
+const secondaryTerminalId = ref('')
+const focusedTerminalId = ref('')
+const pendingSplitCreation = ref(false)
+
+const contextMenu = reactive<ContextMenuState>({
+  visible: false,
+  x: 0,
+  y: 0,
+  terminalId: '',
+})
 
 const terminalTabs = computed(() => {
   return props.terminals.map((terminal, index) => {
@@ -38,187 +52,309 @@ const terminalTabs = computed(() => {
   })
 })
 
-let term: Terminal | null = null
-let fitAddon: FitAddon | null = null
-let resizeObserver: ResizeObserver | null = null
+const terminalIdList = computed(() => props.terminals.map((terminal) => terminal.terminalId))
 
-function setupTerminal(): void {
-  term = new Terminal({
-    convertEol: true,
-    cursorBlink: true,
-    fontFamily: "Consolas, 'Courier New', monospace",
-    fontSize: 13,
-    lineHeight: 1.25,
-    scrollback: 10000,
-    theme: {
-      background: '#1e1e1e',
-      foreground: '#cccccc',
-      cursor: '#aeafad',
-      selectionBackground: '#264f78',
-      black: '#000000',
-      red: '#cd3131',
-      green: '#0dbc79',
-      yellow: '#e5e510',
-      blue: '#2472c8',
-      magenta: '#bc3fbc',
-      cyan: '#11a8cd',
-      white: '#e5e5e5',
-      brightBlack: '#666666',
-      brightRed: '#f14c4c',
-      brightGreen: '#23d18b',
-      brightYellow: '#f5f543',
-      brightBlue: '#3b8eea',
-      brightMagenta: '#d670d6',
-      brightCyan: '#29b8db',
-      brightWhite: '#e5e5e5',
-    },
+const terminalLabelMap = computed(() => {
+  const map = new Map<string, string>()
+  terminalTabs.value.forEach((terminal) => {
+    map.set(terminal.terminalId, terminal.label)
   })
+  return map
+})
 
-  fitAddon = new FitAddon()
-  term.loadAddon(fitAddon)
-
-  if (hostRef.value) {
-    term.open(hostRef.value)
-    fitAddon.fit()
+const primaryTerminalId = computed(() => {
+  if (props.activeTerminalId && terminalIdList.value.includes(props.activeTerminalId)) {
+    return props.activeTerminalId
   }
 
-  term.onData((data) => {
-    if (!props.activeTerminalId) {
-      return
-    }
+  return terminalIdList.value[0] ?? ''
+})
 
-    emit('input', {
-      terminalId: props.activeTerminalId,
-      data,
-    })
-  })
-
-  term.onResize(({ cols, rows }) => {
-    if (props.activeTerminalId && cols > 0 && rows > 0) {
-      emit('resizeTerminal', {
-        terminalId: props.activeTerminalId,
-        cols,
-        rows,
-      })
-    }
-  })
-
-  if (hostRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      fitTerminal()
-    })
-    resizeObserver.observe(hostRef.value)
+const resolvedSecondaryTerminalId = computed(() => {
+  if (!splitEnabled.value || !secondaryTerminalId.value) {
+    return ''
   }
+
+  if (!terminalIdList.value.includes(secondaryTerminalId.value)) {
+    return ''
+  }
+
+  if (secondaryTerminalId.value === primaryTerminalId.value) {
+    return ''
+  }
+
+  return secondaryTerminalId.value
+})
+
+const splitActive = computed(() => splitEnabled.value && !!resolvedSecondaryTerminalId.value)
+
+const commandTerminalId = computed(() => {
+  if (focusedTerminalId.value && terminalIdList.value.includes(focusedTerminalId.value)) {
+    return focusedTerminalId.value
+  }
+
+  return primaryTerminalId.value
+})
+
+const primaryOutputs = computed(() => {
+  if (!primaryTerminalId.value) {
+    return []
+  }
+
+  return props.outputsByTerminal[primaryTerminalId.value] ?? []
+})
+
+const secondaryOutputs = computed(() => {
+  if (!resolvedSecondaryTerminalId.value) {
+    return []
+  }
+
+  return props.outputsByTerminal[resolvedSecondaryTerminalId.value] ?? []
+})
+
+function getLabel(terminalId: string): string {
+  return terminalLabelMap.value.get(terminalId) ?? terminalId
 }
 
-function teardownTerminal(): void {
-  resizeObserver?.disconnect()
-  resizeObserver = null
+function findAlternativeTerminalId(primaryId: string, preferredId = ''): string {
+  if (preferredId && preferredId !== primaryId && terminalIdList.value.includes(preferredId)) {
+    return preferredId
+  }
 
-  term?.dispose()
-  term = null
-  fitAddon = null
+  const fallback = props.terminals.find((terminal) => terminal.terminalId !== primaryId)
+  return fallback?.terminalId ?? ''
 }
 
-function fitTerminal(): void {
-  fitAddon?.fit()
+function closeContextMenu(): void {
+  contextMenu.visible = false
 }
 
-function redrawAll(): void {
-  if (!term) {
+function onGlobalPointerDown(event: MouseEvent): void {
+  if (!contextMenu.visible) {
     return
   }
 
-  term.reset()
-  renderedChunks.value = 0
-  writeNewChunks()
-}
-
-function writeNewChunks(): void {
-  if (!term) {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('.terminal-context-menu')) {
     return
   }
 
-  if (props.outputs.length < renderedChunks.value) {
-    renderedChunks.value = 0
-    term.reset()
-  }
-
-  for (let index = renderedChunks.value; index < props.outputs.length; index += 1) {
-    const chunk = props.outputs[index]
-    if (typeof chunk === 'string') {
-      term.write(chunk)
-    }
-  }
-
-  renderedChunks.value = props.outputs.length
+  closeContextMenu()
 }
 
-function createTerminal(): void {
-  emit('createTerminal', {
+function onGlobalKeyDown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && contextMenu.visible) {
+    closeContextMenu()
+  }
+}
+
+function createTerminal(payload: { shell?: string; cwd?: string } = {}): void {
+  emit('createTerminal', payload)
+}
+
+function createTerminalFromToolbar(): void {
+  createTerminal({
     shell: shellInput.value.trim() || undefined,
     cwd: cwdInput.value.trim() || undefined,
   })
 }
 
-function stopTerminal(): void {
-  if (!props.activeTerminalId) {
+function focusTerminal(terminalId: string): void {
+  focusedTerminalId.value = terminalId
+  emit('selectTerminal', terminalId)
+}
+
+function selectTab(terminalId: string): void {
+  focusTerminal(terminalId)
+  closeContextMenu()
+}
+
+function stopTerminalById(terminalId: string): void {
+  if (!terminalId) {
     return
   }
 
-  emit('stopTerminal', props.activeTerminalId)
+  emit('stopTerminal', terminalId)
+
+  if (secondaryTerminalId.value === terminalId) {
+    secondaryTerminalId.value = ''
+  }
+
+  closeContextMenu()
+}
+
+function stopActiveTerminal(): void {
+  if (!commandTerminalId.value) {
+    return
+  }
+
+  stopTerminalById(commandTerminalId.value)
+}
+
+function stopOtherTerminals(keepTerminalId: string): void {
+  props.terminals
+    .filter((terminal) => terminal.terminalId !== keepTerminalId)
+    .forEach((terminal) => emit('stopTerminal', terminal.terminalId))
+
+  if (secondaryTerminalId.value && secondaryTerminalId.value !== keepTerminalId) {
+    secondaryTerminalId.value = ''
+  }
+
+  emit('selectTerminal', keepTerminalId)
+  focusedTerminalId.value = keepTerminalId
+  closeContextMenu()
 }
 
 function stopAllTerminals(): void {
   emit('stopAllTerminals')
+  splitEnabled.value = false
+  secondaryTerminalId.value = ''
+  focusedTerminalId.value = ''
+  pendingSplitCreation.value = false
+  closeContextMenu()
 }
 
 function clearOutput(): void {
-  if (!props.activeTerminalId) {
+  if (!commandTerminalId.value) {
     return
   }
 
-  emit('clearOutput', props.activeTerminalId)
-  term?.reset()
-  renderedChunks.value = 0
+  emit('clearOutput', commandTerminalId.value)
 }
 
-onMounted(async () => {
-  setupTerminal()
-  await nextTick()
-  redrawAll()
-  fitTerminal()
-  window.addEventListener('resize', fitTerminal)
-})
+function openTabContextMenu(event: MouseEvent, terminalId: string): void {
+  event.preventDefault()
+  event.stopPropagation()
 
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', fitTerminal)
-  teardownTerminal()
-})
+  contextMenu.visible = true
+  contextMenu.x = event.clientX
+  contextMenu.y = event.clientY
+  contextMenu.terminalId = terminalId
+
+  focusTerminal(terminalId)
+}
+
+function splitWithTerminal(targetTerminalId: string): void {
+  if (!primaryTerminalId.value) {
+    return
+  }
+
+  splitEnabled.value = true
+
+  const selected = findAlternativeTerminalId(primaryTerminalId.value, targetTerminalId)
+  if (selected) {
+    secondaryTerminalId.value = selected
+    pendingSplitCreation.value = false
+    closeContextMenu()
+    return
+  }
+
+  secondaryTerminalId.value = ''
+
+  if (!pendingSplitCreation.value) {
+    pendingSplitCreation.value = true
+    createTerminal()
+  }
+
+  closeContextMenu()
+}
+
+function toggleSplit(): void {
+  if (splitEnabled.value) {
+    splitEnabled.value = false
+    secondaryTerminalId.value = ''
+    pendingSplitCreation.value = false
+    return
+  }
+
+  splitWithTerminal('')
+}
+
+function closeSplit(): void {
+  splitEnabled.value = false
+  secondaryTerminalId.value = ''
+  pendingSplitCreation.value = false
+}
+
+function copyTerminalId(terminalId: string): void {
+  if (!terminalId || typeof navigator === 'undefined' || !navigator.clipboard) {
+    closeContextMenu()
+    return
+  }
+
+  navigator.clipboard.writeText(terminalId).finally(() => {
+    closeContextMenu()
+  })
+}
 
 watch(
-  () => props.activeTerminalId,
-  async () => {
-    await nextTick()
-    redrawAll()
-    fitTerminal()
+  () => [primaryTerminalId.value, terminalIdList.value.join('|')],
+  () => {
+    if (!focusedTerminalId.value || !terminalIdList.value.includes(focusedTerminalId.value)) {
+      focusedTerminalId.value = primaryTerminalId.value
+    }
+
+    if (!splitEnabled.value) {
+      if (contextMenu.visible && contextMenu.terminalId && !terminalIdList.value.includes(contextMenu.terminalId)) {
+        closeContextMenu()
+      }
+      return
+    }
+
+    if (pendingSplitCreation.value) {
+      const candidate = findAlternativeTerminalId(primaryTerminalId.value, secondaryTerminalId.value)
+      if (candidate) {
+        secondaryTerminalId.value = candidate
+        pendingSplitCreation.value = false
+      }
+      return
+    }
+
+    if (!resolvedSecondaryTerminalId.value) {
+      const candidate = findAlternativeTerminalId(primaryTerminalId.value)
+      if (candidate) {
+        secondaryTerminalId.value = candidate
+      } else {
+        closeSplit()
+      }
+    }
   },
+  { immediate: true },
 )
 
 watch(
-  () => props.outputs.length,
+  () => contextMenu.terminalId,
   () => {
-    writeNewChunks()
+    if (!contextMenu.terminalId) {
+      return
+    }
+
+    if (!terminalIdList.value.includes(contextMenu.terminalId)) {
+      closeContextMenu()
+    }
   },
 )
 
 watch(
   () => showToolbar.value,
-  async () => {
-    await nextTick()
-    fitTerminal()
+  () => {
+    closeContextMenu()
   },
 )
+
+onMounted(() => {
+  window.addEventListener('mousedown', onGlobalPointerDown)
+  window.addEventListener('keydown', onGlobalKeyDown)
+  window.addEventListener('blur', closeContextMenu)
+  window.addEventListener('resize', closeContextMenu)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', onGlobalPointerDown)
+  window.removeEventListener('keydown', onGlobalKeyDown)
+  window.removeEventListener('blur', closeContextMenu)
+  window.removeEventListener('resize', closeContextMenu)
+})
 </script>
 
 <template>
@@ -227,17 +363,27 @@ watch(
       <div class="terminal-tab-strip">
         <span class="panel-tab is-active">TERMINAL</span>
 
-        <button
+        <div
           v-for="terminal in terminalTabs"
           :key="terminal.terminalId"
           class="terminal-instance"
           :class="{ active: terminal.terminalId === activeTerminalId }"
-          type="button"
-          @click="emit('selectTerminal', terminal.terminalId)"
+          role="button"
+          tabindex="0"
+          @click="selectTab(terminal.terminalId)"
+          @contextmenu="openTabContextMenu($event, terminal.terminalId)"
         >
           <span class="terminal-state" :class="terminal.status" />
           <span class="terminal-label">{{ terminal.label }}</span>
-        </button>
+          <button
+            class="terminal-close"
+            type="button"
+            title="Kill terminal"
+            @click.stop="stopTerminalById(terminal.terminalId)"
+          >
+            ×
+          </button>
+        </div>
 
         <span v-if="terminalTabs.length === 0" class="terminal-empty">No terminal sessions</span>
       </div>
@@ -246,15 +392,13 @@ watch(
         <button class="toolbar-action" type="button" @click="showToolbar = !showToolbar">
           {{ showToolbar ? 'Hide Profile' : 'New Profile' }}
         </button>
-        <button class="toolbar-action" type="button" @click="createTerminal">+</button>
-        <button class="toolbar-action" type="button" :disabled="!activeTerminalId" @click="clearOutput">Clear</button>
-        <button class="toolbar-action danger" type="button" :disabled="!activeTerminalId" @click="stopTerminal">Kill</button>
-        <button
-          v-if="terminals.length > 1"
-          class="toolbar-action danger"
-          type="button"
-          @click="stopAllTerminals"
-        >
+        <button class="toolbar-action" type="button" :disabled="!primaryTerminalId" @click="toggleSplit">
+          {{ splitEnabled ? 'Unsplit' : 'Split' }}
+        </button>
+        <button class="toolbar-action" type="button" @click="createTerminalFromToolbar">+</button>
+        <button class="toolbar-action" type="button" :disabled="!commandTerminalId" @click="clearOutput">Clear</button>
+        <button class="toolbar-action danger" type="button" :disabled="!commandTerminalId" @click="stopActiveTerminal">Kill</button>
+        <button v-if="terminals.length > 1" class="toolbar-action danger" type="button" @click="stopAllTerminals">
           Kill All
         </button>
       </div>
@@ -271,10 +415,70 @@ watch(
         <input v-model="cwdInput" type="text" placeholder="C:\\project" />
       </label>
 
-      <button class="profile-create" type="button" @click="createTerminal">Create Terminal</button>
+      <button class="profile-create" type="button" @click="createTerminalFromToolbar">Create Terminal</button>
     </div>
 
-    <div ref="hostRef" class="terminal-host" />
+    <div class="terminal-layout" :class="{ 'is-split': splitActive }">
+      <template v-if="primaryTerminalId">
+        <article class="terminal-pane" :class="{ focused: commandTerminalId === primaryTerminalId }">
+          <header class="pane-header">
+            <span class="pane-title">{{ getLabel(primaryTerminalId) }}</span>
+            <span class="pane-meta">Primary</span>
+          </header>
+          <div class="pane-body">
+            <TerminalViewport
+              :terminal-id="primaryTerminalId"
+              :outputs="primaryOutputs"
+              @focus="focusTerminal"
+              @input="emit('input', $event)"
+              @resize="emit('resizeTerminal', $event)"
+            />
+          </div>
+        </article>
+
+        <article
+          v-if="splitEnabled"
+          class="terminal-pane"
+          :class="{ focused: commandTerminalId === resolvedSecondaryTerminalId }"
+        >
+          <header class="pane-header">
+            <span class="pane-title">
+              {{ resolvedSecondaryTerminalId ? getLabel(resolvedSecondaryTerminalId) : 'Creating split terminal...' }}
+            </span>
+            <button class="pane-close" type="button" @click="closeSplit">Close Split</button>
+          </header>
+
+          <div class="pane-body">
+            <TerminalViewport
+              v-if="resolvedSecondaryTerminalId"
+              :terminal-id="resolvedSecondaryTerminalId"
+              :outputs="secondaryOutputs"
+              @focus="focusTerminal"
+              @input="emit('input', $event)"
+              @resize="emit('resizeTerminal', $event)"
+            />
+            <div v-else class="split-placeholder">Waiting for split terminal...</div>
+          </div>
+        </article>
+      </template>
+
+      <div v-else class="terminal-placeholder">No terminal sessions</div>
+    </div>
+
+    <teleport to="body">
+      <div
+        v-if="contextMenu.visible"
+        class="terminal-context-menu"
+        :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+        @mousedown.stop
+      >
+        <button class="menu-item" type="button" @click="splitWithTerminal(contextMenu.terminalId)">Split</button>
+        <button class="menu-item" type="button" @click="clearOutput">Clear Active</button>
+        <button class="menu-item danger" type="button" @click="stopTerminalById(contextMenu.terminalId)">Kill</button>
+        <button class="menu-item" type="button" @click="stopOtherTerminals(contextMenu.terminalId)">Kill Others</button>
+        <button class="menu-item" type="button" @click="copyTerminalId(contextMenu.terminalId)">Copy Terminal ID</button>
+      </div>
+    </teleport>
   </section>
 </template>
 
@@ -342,6 +546,37 @@ watch(
 .terminal-instance.active {
   background: var(--vscode-active-bg);
   color: var(--vscode-text-primary);
+}
+
+.terminal-label {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.terminal-close {
+  opacity: 0;
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.terminal-instance:hover .terminal-close,
+.terminal-instance.active .terminal-close {
+  opacity: 0.9;
+}
+
+.terminal-close:hover {
+  background: #5a5d5e;
+  opacity: 1;
 }
 
 .terminal-state {
@@ -456,25 +691,120 @@ watch(
   background: #1177bb;
 }
 
-.terminal-host {
+.terminal-layout {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
   background: #1e1e1e;
 }
 
-:deep(.xterm) {
-  height: 100%;
-  padding: 4px 8px;
+.terminal-layout.is-split {
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--vscode-border-color);
 }
 
-:deep(.xterm-viewport) {
-  overflow-y: auto;
+.terminal-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border: 1px solid transparent;
+}
+
+.terminal-pane.focused {
+  border-color: #0e639c;
+}
+
+.pane-header {
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--vscode-border-color);
+  background: #181818;
+}
+
+.pane-title {
+  color: var(--vscode-text-primary);
+  font-size: 11px;
+}
+
+.pane-meta {
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+}
+
+.pane-close {
+  border: 0;
+  background: transparent;
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pane-close:hover {
+  color: var(--vscode-text-primary);
+}
+
+.pane-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.split-placeholder,
+.terminal-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
+.terminal-context-menu {
+  position: fixed;
+  z-index: 4000;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #252526;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
+}
+
+.menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--vscode-text-primary);
+  text-align: left;
+  font-size: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #094771;
+}
+
+.menu-item.danger:hover {
+  background: #5f2120;
 }
 
 @media (max-width: 980px) {
   .advanced-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .terminal-layout.is-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
   }
 }
 </style>

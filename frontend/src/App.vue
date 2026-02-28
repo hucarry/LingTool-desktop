@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
             <TerminalPanel
               :terminals="hub.terminals.value"
               :active-terminal-id="hub.activeTerminalId.value"
-              :outputs="hub.activeTerminalOutputs.value"
+              :outputs-by-terminal="hub.terminalOutputsById"
               @select-terminal="hub.selectTerminal"
               @create-terminal="hub.createTerminal"
               @stop-terminal="hub.stopTerminal"

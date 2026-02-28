@@ -27,13 +27,14 @@ const loadingPythonPackages = ref(false)
 const pythonOperationBusy = ref(false)
 const pythonOperationAction = ref<'install' | 'uninstall' | ''>('')
 const pythonOperationPackage = ref('')
-const pythonPackageStatus = ref('就绪')
+const pythonPackageStatus = ref('灏辩华')
 
 const terminals = ref<TerminalInfo[]>([])
 const ACTIVE_TERMINAL_STORAGE_KEY = 'toolhub.activeTerminalId'
 
 const activeTerminalId = ref(loadPersistedActiveTerminalId())
 const terminalBuffers = reactive<Record<string, string[]>>({})
+const terminalOutputsById = terminalBuffers
 const activeTerminalOutputs = computed(() => {
   if (!activeTerminalId.value) {
     return []
@@ -202,7 +203,7 @@ function installPythonPackage(packageName: string): void {
   pythonOperationBusy.value = true
   pythonOperationAction.value = 'install'
   pythonOperationPackage.value = normalized
-  pythonPackageStatus.value = `安装中：${normalized}`
+  pythonPackageStatus.value = `瀹夎涓細${normalized}`
 
   bridge.send({
     type: 'installPythonPackage',
@@ -220,7 +221,7 @@ function uninstallPythonPackage(packageName: string): void {
   pythonOperationBusy.value = true
   pythonOperationAction.value = 'uninstall'
   pythonOperationPackage.value = normalized
-  pythonPackageStatus.value = `卸载中：${normalized}`
+  pythonPackageStatus.value = `鍗歌浇涓細${normalized}`
 
   bridge.send({
     type: 'uninstallPythonPackage',
@@ -321,24 +322,24 @@ function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
 }
 
 function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallStatusMessage): void {
-  const actionText = message.action === 'uninstall' ? '卸载' : '安装'
+  const actionText = message.action === 'uninstall' ? '鍗歌浇' : '瀹夎'
 
   switch (message.status) {
     case 'running':
       pythonOperationBusy.value = true
       pythonOperationAction.value = message.action
       pythonOperationPackage.value = message.packageName
-      pythonPackageStatus.value = `${actionText}中：${message.packageName}`
+      pythonPackageStatus.value = `${actionText}涓細${message.packageName}`
       break
     case 'succeeded':
       resetPythonOperationState()
-      pythonPackageStatus.value = `${actionText}成功：${message.packageName}`
-      ElMessage.success(`${actionText}成功：${message.packageName}`)
+      pythonPackageStatus.value = `${actionText}鎴愬姛锛?{message.packageName}`
+      ElMessage.success(`${actionText}鎴愬姛锛?{message.packageName}`)
       break
     case 'failed':
       resetPythonOperationState()
-      pythonPackageStatus.value = `${actionText}失败：${message.packageName}${message.message ? ` (${message.message})` : ''}`
-      ElMessage.error(`${actionText}失败：${message.packageName}`)
+      pythonPackageStatus.value = `${actionText}澶辫触锛?{message.packageName}${message.message ? ` (${message.message})` : ''}`
+      ElMessage.error(`${actionText}澶辫触锛?{message.packageName}`)
       break
     default:
       break
@@ -502,6 +503,7 @@ export function useToolHub() {
     pythonPackageStatus,
     terminals,
     activeTerminalId,
+    terminalOutputsById,
     activeTerminalOutputs,
     fetchTools,
     openTool,
