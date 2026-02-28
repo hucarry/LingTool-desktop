@@ -245,7 +245,7 @@ public sealed class TerminalManager : IDisposable
 
         if (OperatingSystem.IsWindows())
         {
-            return "powershell.exe";
+            return "cmd.exe";
         }
 
         return "/bin/bash";
@@ -263,9 +263,7 @@ public sealed class TerminalManager : IDisposable
         var parts = new List<string>();
         if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
         {
-            var interpreter = !string.IsNullOrWhiteSpace(pythonPath)
-                ? pythonPath!
-                : (!string.IsNullOrWhiteSpace(tool.Python) ? tool.Python! : "python");
+            var interpreter = PythonInterpreterProbe.ResolvePreferred(pythonPath, tool.Python) ?? "python";
 
             parts.Add(interpreter);
             parts.Add(tool.Path);

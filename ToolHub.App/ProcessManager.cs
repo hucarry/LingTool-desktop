@@ -212,9 +212,7 @@ public sealed class ProcessManager : IDisposable
 
         if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
         {
-            startInfo.FileName = string.IsNullOrWhiteSpace(pythonOverride)
-                ? (string.IsNullOrWhiteSpace(tool.Python) ? "python" : tool.Python)
-                : pythonOverride;
+            startInfo.FileName = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python) ?? "python";
             startInfo.ArgumentList.Add(tool.Path);
 
             foreach (var arg in resolvedArgs)

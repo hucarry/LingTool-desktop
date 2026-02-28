@@ -341,7 +341,7 @@ public sealed class ToolRegistry
         if (tool.Type == "python" && !string.IsNullOrWhiteSpace(tool.Python))
         {
             tool.Python = PathUtils.ResolvePath(tool.Python, baseDirectory);
-            if (!File.Exists(tool.Python))
+            if (!PythonInterpreterProbe.IsUsable(tool.Python))
             {
                 // Missing configured interpreter should not make the tool unusable.
                 // Runtime will fall back to system python or user override.

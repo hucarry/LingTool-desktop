@@ -1,5 +1,3 @@
-C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-BkJch2Ba.css
-C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-DcwgB7cZ.js
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\index.html
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\vite.svg
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\ToolHub.App.exe
@@ -204,3 +202,5 @@ C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64\ToolHub.App.pdb
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64\ToolHub.App.genruntimeconfig.cache
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64\ref\ToolHub.App.dll
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-BIdaDZVr.css
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-ByZJQ72-.js

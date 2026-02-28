@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using ToolHub.App.Models;
+using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
@@ -154,28 +155,27 @@ public sealed class PythonPackageManager
 
     private string ResolvePythonExecutable(string? rawPath)
     {
-        if (string.IsNullOrWhiteSpace(rawPath))
+        string? preferred = null;
+        if (!string.IsNullOrWhiteSpace(rawPath))
         {
-            return "python";
+            var trimmed = rawPath.Trim();
+            preferred = Path.IsPathRooted(trimmed)
+                ? Path.GetFullPath(trimmed)
+                : Path.GetFullPath(Path.Combine(_appRoot, trimmed));
         }
 
-        var trimmed = rawPath.Trim();
-        if (Path.IsPathRooted(trimmed))
+        var resolved = PythonInterpreterProbe.ResolvePreferred(preferred, null);
+        if (!string.IsNullOrWhiteSpace(resolved))
         {
-            return Path.GetFullPath(trimmed);
+            return resolved;
         }
 
-        return Path.GetFullPath(Path.Combine(_appRoot, trimmed));
+        throw new FileNotFoundException("No usable Python interpreter was found.");
     }
 
     private static void ValidatePythonExecutable(string executable)
     {
-        if (string.Equals(executable, "python", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        if (!File.Exists(executable))
+        if (!PythonInterpreterProbe.IsUsable(executable))
         {
             throw new FileNotFoundException($"Python interpreter not found: {executable}");
         }

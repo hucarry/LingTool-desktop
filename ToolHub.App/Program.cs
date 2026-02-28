@@ -196,14 +196,19 @@ internal static class Program
                     }
 
                     var pythonOverride = ResolvePythonOverride(runRequest.Python, tool);
-                    if (
-                        string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(pythonOverride)
-                        && !File.Exists(pythonOverride)
-                    )
+                    if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
                     {
-                        sendMessage(new ErrorMessage($"Python interpreter not found: {pythonOverride}"));
-                        return;
+                        var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python);
+                        if (string.IsNullOrWhiteSpace(resolvedInterpreter))
+                        {
+                            sendMessage(new ErrorMessage(
+                                "未找到可用 Python 解释器",
+                                "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
+                            ));
+                            return;
+                        }
+
+                        pythonOverride = resolvedInterpreter;
                     }
 
                     processManager.StartRun(
@@ -236,14 +241,19 @@ internal static class Program
                     }
 
                     var pythonOverride = ResolvePythonOverride(request.Python, tool);
-                    if (
-                        string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(pythonOverride)
-                        && !File.Exists(pythonOverride)
-                    )
+                    if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
                     {
-                        sendMessage(new ErrorMessage($"Python interpreter not found: {pythonOverride}"));
-                        return;
+                        var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python);
+                        if (string.IsNullOrWhiteSpace(resolvedInterpreter))
+                        {
+                            sendMessage(new ErrorMessage(
+                                "未找到可用 Python 解释器",
+                                "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
+                            ));
+                            return;
+                        }
+
+                        pythonOverride = resolvedInterpreter;
                     }
 
                     _ = Task.Run(async () =>
