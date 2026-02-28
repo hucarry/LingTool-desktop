@@ -6,8 +6,8 @@ C:\Users\89352\Desktop\插件管理平台\.tmp_build\ToolHub.App.dll
 C:\Users\89352\Desktop\插件管理平台\.tmp_build\ToolHub.App.pdb
 C:\Users\89352\Desktop\插件管理平台\.tmp_build\wwwroot\assets\index-C1aRGyx-.js
 C:\Users\89352\Desktop\插件管理平台\.tmp_build\wwwroot\assets\index-DebCcyaU.css
-C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-C1aRGyx-.js
-C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-DebCcyaU.css
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-BisLKFsb.css
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-BK_-63sA.js
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\index.html
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\vite.svg
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Debug\net8.0\ToolHub.App.exe

@@ -79,11 +79,24 @@ public sealed class TerminalManager : IDisposable
             return false;
         }
 
+        if (context.StopRequested)
+        {
+            return false;
+        }
+
         try
         {
             var bytes = Encoding.UTF8.GetBytes(data);
-            await context.Connection.WriterStream.WriteAsync(bytes, 0, bytes.Length);
-            await context.Connection.WriterStream.FlushAsync();
+            await context.WriteLock.WaitAsync();
+            try
+            {
+                await context.Connection.WriterStream.WriteAsync(bytes, 0, bytes.Length);
+                await context.Connection.WriterStream.FlushAsync();
+            }
+            finally
+            {
+                context.WriteLock.Release();
+            }
             return true;
         }
         catch
@@ -148,6 +161,11 @@ public sealed class TerminalManager : IDisposable
                 // Ignore kill errors.
             }
 
+            context.Info.Status = TerminalStates.Stopped;
+            context.Info.EndTime = DateTimeOffset.UtcNow;
+            context.Info.ExitCode = context.Connection.ExitCode;
+            _sendMessage(new TerminalStatusMessage(context.Info));
+
             context.Dispose();
         }
     }
@@ -208,7 +226,7 @@ public sealed class TerminalManager : IDisposable
             return;
         }
 
-        context.Info.Status = TerminalStates.Exited;
+        context.Info.Status = context.StopRequested ? TerminalStates.Stopped : TerminalStates.Exited;
         context.Info.EndTime = DateTimeOffset.UtcNow;
         context.Info.ExitCode = context.Connection.ExitCode;
 
@@ -280,10 +298,9 @@ public sealed class TerminalManager : IDisposable
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            sb.Append("$ErrorActionPreference='Stop'; ");
             sb.Append("Set-Location -LiteralPath ");
             sb.Append(ToPowerShellLiteral(cwd!));
-            sb.Append("; ");
+            sb.Append(" -ErrorAction Stop; ");
         }
 
         sb.Append("& ");
@@ -396,11 +413,13 @@ public sealed class TerminalManager : IDisposable
 
         public TerminalInfo Info { get; }
         public IPtyConnection Connection { get; }
+        public SemaphoreSlim WriteLock { get; } = new(1, 1);
         public bool StopRequested { get; set; }
 
         public void Dispose()
         {
             Connection.Dispose();
+            WriteLock.Dispose();
         }
     }
 

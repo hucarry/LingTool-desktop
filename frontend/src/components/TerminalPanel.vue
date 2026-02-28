@@ -1,12 +1,9 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalInfo } from '../types'
-import { useToolHub } from '../composables/useToolHub'
-
-const { resizeTerminal } = useToolHub()
 
 const props = defineProps<{
   terminals: TerminalInfo[]
@@ -20,6 +17,7 @@ const emit = defineEmits<{
   (e: 'stopTerminal', terminalId: string): void
   (e: 'stopAllTerminals'): void
   (e: 'input', payload: { terminalId: string; data: string }): void
+  (e: 'resizeTerminal', payload: { terminalId: string; cols: number; rows: number }): void
   (e: 'clearOutput', terminalId: string): void
 }>()
 
@@ -96,8 +94,8 @@ function setupTerminal(): void {
   })
 
   term.onResize(({ cols, rows }) => {
-    if (props.activeTerminalId) {
-      resizeTerminal({
+    if (props.activeTerminalId && cols > 0 && rows > 0) {
+      emit('resizeTerminal', {
         terminalId: props.activeTerminalId,
         cols,
         rows,
@@ -138,18 +136,12 @@ function redrawAll(): void {
 
 function writeNewChunks(): void {
   if (!term) {
-    console.warn('[TerminalPanel] writeNewChunks: term 未初始化')
     return
   }
 
   if (props.outputs.length < renderedChunks.value) {
     renderedChunks.value = 0
     term.reset()
-  }
-
-  const newCount = props.outputs.length - renderedChunks.value
-  if (newCount > 0) {
-    console.log('[TerminalPanel] writeNewChunks: 写入', newCount, '个新块, 总共:', props.outputs.length)
   }
 
   for (let index = renderedChunks.value; index < props.outputs.length; index += 1) {
@@ -191,8 +183,11 @@ function clearOutput(): void {
   renderedChunks.value = 0
 }
 
-onMounted(() => {
+onMounted(async () => {
   setupTerminal()
+  await nextTick()
+  redrawAll()
+  fitTerminal()
   window.addEventListener('resize', fitTerminal)
 })
 

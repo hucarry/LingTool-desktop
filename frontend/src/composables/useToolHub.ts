@@ -30,7 +30,9 @@ const pythonOperationPackage = ref('')
 const pythonPackageStatus = ref('就绪')
 
 const terminals = ref<TerminalInfo[]>([])
-const activeTerminalId = ref('')
+const ACTIVE_TERMINAL_STORAGE_KEY = 'toolhub.activeTerminalId'
+
+const activeTerminalId = ref(loadPersistedActiveTerminalId())
 const terminalBuffers = reactive<Record<string, string[]>>({})
 const activeTerminalOutputs = computed(() => {
   if (!activeTerminalId.value) {
@@ -47,10 +49,90 @@ let terminalCreateInFlight = false
 let lastTerminalCreateAt = 0
 
 const TERMINAL_CREATE_COOLDOWN_MS = 900
+const TERMINAL_CREATE_UNLOCK_MS = 1200
+const TERMINAL_OUTPUT_BUFFER_LIMIT = 10000
+
+function loadPersistedActiveTerminalId(): string {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  try {
+    const value = window.localStorage.getItem(ACTIVE_TERMINAL_STORAGE_KEY)
+    return typeof value === 'string' ? value : ''
+  } catch {
+    return ''
+  }
+}
+
+function persistActiveTerminalId(terminalId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    if (terminalId) {
+      window.localStorage.setItem(ACTIVE_TERMINAL_STORAGE_KEY, terminalId)
+    } else {
+      window.localStorage.removeItem(ACTIVE_TERMINAL_STORAGE_KEY)
+    }
+  } catch {
+    // ignore storage failures (private mode / permission restrictions)
+  }
+}
+
+function setActiveTerminalId(terminalId: string): void {
+  activeTerminalId.value = terminalId
+  persistActiveTerminalId(terminalId)
+}
 
 function findFirstRunningTerminalId(list: TerminalInfo[]): string {
   const running = list.find((terminal) => terminal.status === 'running')
   return running?.terminalId ?? ''
+}
+
+function sortTerminals(terminalList: TerminalInfo[]): TerminalInfo[] {
+  return [...terminalList].sort((left, right) => {
+    return new Date(right.startTime).getTime() - new Date(left.startTime).getTime()
+  })
+}
+
+function normalizeTerminals(terminalList: TerminalInfo[]): TerminalInfo[] {
+  return sortTerminals(terminalList.filter((terminal) => terminal.status === 'running'))
+}
+
+function resetPythonOperationState(): void {
+  pythonOperationBusy.value = false
+  pythonOperationAction.value = ''
+  pythonOperationPackage.value = ''
+}
+
+function ensureActiveTerminal(): void {
+  const activeExists = terminals.value.some((terminal) => terminal.terminalId === activeTerminalId.value)
+  if (activeExists) {
+    return
+  }
+
+  setActiveTerminalId(findFirstRunningTerminalId(terminals.value))
+}
+
+function pruneTerminalBuffers(): void {
+  const liveIds = new Set(terminals.value.map((terminal) => terminal.terminalId))
+
+  Object.keys(terminalBuffers).forEach((terminalId) => {
+    if (!liveIds.has(terminalId)) {
+      delete terminalBuffers[terminalId]
+    }
+  })
+}
+
+function removeTerminal(terminalId: string): void {
+  terminals.value = terminals.value.filter((terminal) => terminal.terminalId !== terminalId)
+  delete terminalBuffers[terminalId]
+
+  if (activeTerminalId.value === terminalId) {
+    setActiveTerminalId(findFirstRunningTerminalId(terminals.value))
+  }
 }
 
 function fetchTools(): void {
@@ -168,7 +250,7 @@ function createTerminal(payload: { shell?: string; cwd?: string } = {}): void {
 
   setTimeout(() => {
     terminalCreateInFlight = false
-  }, 1200)
+  }, TERMINAL_CREATE_UNLOCK_MS)
 }
 
 function stopTerminal(terminalId: string): void {
@@ -181,7 +263,7 @@ function stopTerminal(terminalId: string): void {
 function stopAllTerminals(): void {
   const ids = terminals.value.map((terminal) => terminal.terminalId)
   ids.forEach((terminalId) => stopTerminal(terminalId))
-  activeTerminalId.value = ''
+  setActiveTerminalId('')
 }
 
 function sendTerminalInput(payload: { terminalId: string; data: string }): void {
@@ -197,6 +279,10 @@ function sendTerminalInput(payload: { terminalId: string; data: string }): void 
 }
 
 function resizeTerminal(payload: { terminalId: string; cols: number; rows: number }): void {
+  if (!payload.terminalId || payload.cols <= 0 || payload.rows <= 0) {
+    return
+  }
+
   bridge.send({
     type: 'terminalResize',
     terminalId: payload.terminalId,
@@ -210,7 +296,12 @@ function clearTerminalOutput(terminalId: string): void {
 }
 
 function selectTerminal(terminalId: string): void {
-  activeTerminalId.value = terminalId
+  const exists = terminals.value.some((terminal) => terminal.terminalId === terminalId)
+  if (!exists) {
+    return
+  }
+
+  setActiveTerminalId(terminalId)
 }
 
 function handleToolsMessage(message: ToolsMessage): void {
@@ -240,16 +331,12 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
       pythonPackageStatus.value = `${actionText}中：${message.packageName}`
       break
     case 'succeeded':
-      pythonOperationBusy.value = false
-      pythonOperationAction.value = ''
-      pythonOperationPackage.value = ''
+      resetPythonOperationState()
       pythonPackageStatus.value = `${actionText}成功：${message.packageName}`
       ElMessage.success(`${actionText}成功：${message.packageName}`)
       break
     case 'failed':
-      pythonOperationBusy.value = false
-      pythonOperationAction.value = ''
-      pythonOperationPackage.value = ''
+      resetPythonOperationState()
       pythonPackageStatus.value = `${actionText}失败：${message.packageName}${message.message ? ` (${message.message})` : ''}`
       ElMessage.error(`${actionText}失败：${message.packageName}`)
       break
@@ -259,12 +346,9 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
 }
 
 function handleTerminalsMessage(message: TerminalsMessage): void {
-  terminals.value = sortTerminals(message.terminals)
-
-  const activeExists = terminals.value.some((terminal) => terminal.terminalId === activeTerminalId.value)
-  if (!activeExists) {
-    activeTerminalId.value = findFirstRunningTerminalId(terminals.value) || ''
-  }
+  terminals.value = normalizeTerminals(message.terminals)
+  pruneTerminalBuffers()
+  ensureActiveTerminal()
 
   if (!terminalBootstrapped) {
     terminalBootstrapped = true
@@ -277,49 +361,31 @@ function handleTerminalsMessage(message: TerminalsMessage): void {
 function handleTerminalStarted(message: TerminalStartedMessage): void {
   terminalCreateInFlight = false
   upsertTerminal(message.terminal)
-  activeTerminalId.value = message.terminal.terminalId
+  setActiveTerminalId(message.terminal.terminalId)
   terminalBuffers[message.terminal.terminalId] ??= []
 }
 
 function handleTerminalStatus(message: TerminalStatusMessage): void {
   upsertTerminal(message.terminal)
-
-  if (
-    message.terminal.terminalId === activeTerminalId.value &&
-    message.terminal.status !== 'running'
-  ) {
-    const nextTerminalId = findFirstRunningTerminalId(terminals.value)
-    if (nextTerminalId) {
-      activeTerminalId.value = nextTerminalId
-    } else {
-      activeTerminalId.value = ''
-    }
-  }
+  ensureActiveTerminal()
 }
 
 function handleTerminalOutput(message: TerminalOutputMessage): void {
   const chunks = terminalBuffers[message.terminalId] ?? (terminalBuffers[message.terminalId] = [])
   chunks.push(message.data)
 
-  // 调试日志
-  console.log('[ToolHub] 终端输出:', message.terminalId, 'buffer长度:', chunks.length, 'activeId:', activeTerminalId.value)
-
-  if (chunks.length > 10000) {
-    chunks.splice(0, chunks.length - 10000)
+  if (chunks.length > TERMINAL_OUTPUT_BUFFER_LIMIT) {
+    chunks.splice(0, chunks.length - TERMINAL_OUTPUT_BUFFER_LIMIT)
   }
 
   if (!activeTerminalId.value) {
-    activeTerminalId.value = message.terminalId
+    setActiveTerminalId(message.terminalId)
   }
 }
 
 function upsertTerminal(nextTerminal: TerminalInfo): void {
   if (nextTerminal.status !== 'running') {
-    terminals.value = terminals.value.filter((terminal) => terminal.terminalId !== nextTerminal.terminalId)
-    delete terminalBuffers[nextTerminal.terminalId]
-    if (activeTerminalId.value === nextTerminal.terminalId) {
-      activeTerminalId.value = findFirstRunningTerminalId(terminals.value)
-    }
+    removeTerminal(nextTerminal.terminalId)
     return
   }
 
@@ -331,12 +397,7 @@ function upsertTerminal(nextTerminal: TerminalInfo): void {
   }
 
   terminals.value = sortTerminals(terminals.value)
-}
-
-function sortTerminals(terminalList: TerminalInfo[]): TerminalInfo[] {
-  return [...terminalList].sort((left, right) => {
-    return new Date(right.startTime).getTime() - new Date(left.startTime).getTime()
-  })
+  terminalBuffers[nextTerminal.terminalId] ??= []
 }
 
 function handleBackendMessage(message: BackMessage): void {
@@ -352,20 +413,17 @@ function handleBackendMessage(message: BackMessage): void {
     case 'error':
       loadingTools.value = false
       loadingPythonPackages.value = false
-      pythonOperationBusy.value = false
-      pythonOperationAction.value = ''
-      pythonOperationPackage.value = ''
+      resetPythonOperationState()
       if (message.message.includes('Terminal not found or not running')) {
         fetchTerminals()
-        activeTerminalId.value = findFirstRunningTerminalId(terminals.value)
         ElMessage.warning('Current terminal is unavailable. Please select or create a terminal.')
         break
       }
 
       if (message.message.includes('Failed to start terminal')) {
         terminalCreateInFlight = false
-        break
       }
+
       if (typeof message.details === 'string' && message.details.trim()) {
         ElMessage.error(`${message.message}: ${message.details}`)
       } else {
@@ -425,6 +483,7 @@ function disposeToolHub(): void {
   unsubscribe?.()
   unsubscribe = null
   initialized = false
+  terminalCreateInFlight = false
 }
 
 export function useToolHub() {

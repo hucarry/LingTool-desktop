@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Box, Cpu, SetUp, Setting } from '@element-plus/icons-vue'
@@ -220,6 +220,7 @@ onBeforeUnmount(() => {
               @stop-terminal="hub.stopTerminal"
               @stop-all-terminals="hub.stopAllTerminals"
               @input="hub.sendTerminalInput"
+              @resize-terminal="hub.resizeTerminal"
               @clear-output="hub.clearTerminalOutput"
             />
           </div>
