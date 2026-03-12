@@ -1,6 +1,7 @@
 # Build outputs
 /ToolHub.App/bin/
 /ToolHub.App/obj/
+/ToolHub.App/wwwroot/
 publish/
 
 # Temporary build folders
