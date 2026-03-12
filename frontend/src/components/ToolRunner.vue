@@ -182,7 +182,7 @@ function runTool(): void {
   z-index: 4200;
   display: flex;
   justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--overlay-backdrop);
   backdrop-filter: blur(2px);
 }
 
@@ -193,7 +193,7 @@ function runTool(): void {
   flex-direction: column;
   background: var(--vscode-sidebar-bg);
   border-left: 1px solid var(--vscode-border-color);
-  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--shadow-drawer);
 }
 
 .drawer-header {
@@ -241,9 +241,9 @@ function runTool(): void {
 }
 
 .runner-alert.danger {
-  border-color: color-mix(in srgb, var(--el-color-danger) 45%, var(--vscode-border-color));
-  background: color-mix(in srgb, var(--el-color-danger) 12%, transparent);
-  color: var(--el-color-danger);
+  border-color: color-mix(in srgb, var(--status-danger) 45%, var(--vscode-border-color));
+  background: color-mix(in srgb, var(--status-danger) 12%, transparent);
+  color: var(--status-danger);
 }
 
 .tool-desc-table {
@@ -319,7 +319,7 @@ function runTool(): void {
   justify-content: center;
   min-width: 56px;
   height: 56px;
-  border: 1px solid color-mix(in srgb, var(--vscode-text-muted) 24%, transparent);
+  border: 1px solid var(--border-muted);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;

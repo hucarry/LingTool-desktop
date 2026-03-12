@@ -820,7 +820,7 @@ onBeforeUnmount(() => {
 }
 
 .terminal-state.running {
-  background: var(--el-color-success);
+  background: var(--status-success);
 }
 
 .terminal-state.stopped,
@@ -829,7 +829,7 @@ onBeforeUnmount(() => {
 }
 
 .terminal-state.failed {
-  background: var(--el-color-danger);
+  background: var(--status-danger);
 }
 
 .terminal-empty {
@@ -875,7 +875,7 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-action.danger:hover:not(:disabled) {
-  color: var(--el-color-danger);
+  color: var(--status-danger);
 }
 
 .toolbar-action.is-accent {
@@ -886,7 +886,7 @@ onBeforeUnmount(() => {
 .split-toolbar {
   flex-shrink: 0;
   border-bottom: 1px solid var(--vscode-border-color);
-  background: color-mix(in srgb, var(--vscode-sidebar-bg) 76%, transparent);
+  background: var(--surface-soft);
   padding: 6px 8px;
   display: flex;
   align-items: center;
@@ -1045,11 +1045,11 @@ onBeforeUnmount(() => {
 }
 
 .pane-status.running {
-  color: var(--el-color-success);
+  color: var(--status-success);
 }
 
 .pane-status.failed {
-  color: var(--el-color-danger);
+  color: var(--status-danger);
 }
 
 .pane-close {
@@ -1093,7 +1093,7 @@ onBeforeUnmount(() => {
   padding: 18px 20px;
   border: 1px dashed var(--vscode-border-color);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--vscode-sidebar-bg) 72%, transparent);
+  background: var(--surface-empty);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1121,7 +1121,7 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   overflow: hidden;
   background: var(--vscode-sidebar-bg);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
+  box-shadow: var(--shadow-menu);
 }
 
 .menu-item {
@@ -1139,7 +1139,7 @@ onBeforeUnmount(() => {
 }
 
 .menu-item.danger:hover {
-  background: var(--el-color-danger);
+  background: var(--status-danger);
   color: #ffffff;
 }
 

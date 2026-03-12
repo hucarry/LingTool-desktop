@@ -234,7 +234,7 @@ function saveEdit(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--overlay-backdrop);
   backdrop-filter: blur(2px);
 }
 
@@ -246,7 +246,7 @@ function saveEdit(): void {
   border: 1px solid var(--vscode-border-color);
   border-radius: 10px;
   background: var(--vscode-sidebar-bg);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-dialog);
 }
 
 .dialog-header,

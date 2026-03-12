@@ -234,8 +234,8 @@ function isRowBusy(name: string): boolean {
 }
 
 .panel-button.danger:hover:not(:disabled) {
-  border-color: var(--el-color-danger);
-  color: var(--el-color-danger);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
 }
 
 .field-input,
@@ -275,11 +275,11 @@ function isRowBusy(name: string): boolean {
 .status-text {
   margin: 0;
   font-size: 12px;
-  color: #73c991;
+  color: var(--status-success);
 }
 
 .status-text.danger {
-  color: #f48771;
+  color: var(--status-danger);
 }
 
 .table-wrap {
@@ -340,14 +340,14 @@ function isRowBusy(name: string): boolean {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--vscode-editor-bg) 62%, transparent);
+  background: var(--surface-overlay);
   backdrop-filter: blur(2px);
 }
 
 .loading-spinner {
   width: 28px;
   height: 28px;
-  border: 2px solid color-mix(in srgb, var(--vscode-border-color) 70%, transparent);
+  border: 2px solid var(--border-soft);
   border-top-color: var(--vscode-accent-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

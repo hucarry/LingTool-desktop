@@ -1,25 +1,60 @@
 :root {
-  --vscode-workbench-bg: #1e1e1e;
-  --vscode-titlebar-bg: #3c3c3c;
-  --vscode-activitybar-bg: #333333;
-  --vscode-sidebar-bg: #252526;
-  --vscode-editor-bg: #1e1e1e;
-  --vscode-tabs-bg: #252526;
-  --vscode-panel-bg: #1e1e1e;
-  --vscode-statusbar-bg: #007acc;
-  --vscode-border-color: #3c3c3c;
-  --vscode-hover-bg: #2a2d2e;
-  --vscode-active-bg: #37373d;
-  --vscode-text-primary: #cccccc;
-  --vscode-text-muted: #9d9d9d;
-  --vscode-accent-color: #007acc;
+  --surface-workbench: #1e1e1e;
+  --surface-titlebar: #3c3c3c;
+  --surface-activitybar: #333333;
+  --surface-sidebar: #252526;
+  --surface-editor: #1e1e1e;
+  --surface-tabs: #252526;
+  --surface-panel: #1e1e1e;
+  --surface-statusbar: #007acc;
+  --surface-hover: #2a2d2e;
+  --surface-active: #37373d;
+  --surface-elevated: color-mix(in srgb, var(--surface-sidebar) 92%, var(--surface-editor));
+  --surface-soft: color-mix(in srgb, var(--surface-sidebar) 76%, transparent);
+  --surface-empty: color-mix(in srgb, var(--surface-sidebar) 72%, transparent);
+  --surface-overlay: color-mix(in srgb, var(--surface-editor) 62%, transparent);
+  --border-default: #3c3c3c;
+  --border-soft: color-mix(in srgb, var(--border-default) 70%, transparent);
+  --border-muted: color-mix(in srgb, var(--text-muted) 24%, transparent);
+  --text-primary: #cccccc;
+  --text-muted: #9d9d9d;
+  --text-on-accent: #ffffff;
+  --accent-color: #007acc;
+  --accent-soft: color-mix(in srgb, var(--accent-color) 18%, transparent);
+  --status-success: #73c991;
+  --status-warning: #cca700;
+  --status-danger: #f48771;
+  --status-success-soft: color-mix(in srgb, var(--status-success) 16%, transparent);
+  --status-danger-soft: color-mix(in srgb, var(--status-danger) 16%, transparent);
+  --overlay-backdrop: rgba(0, 0, 0, 0.28);
+  --shadow-flyout: 0 12px 28px rgba(0, 0, 0, 0.24);
+  --shadow-dialog: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-menu: 0 6px 20px rgba(0, 0, 0, 0.36);
+  --shadow-drawer: -18px 0 40px rgba(0, 0, 0, 0.24);
+  --scrollbar-thumb: #424242;
+  --scrollbar-thumb-hover: #4f4f4f;
+  --statusbar-hover-bg: rgba(255, 255, 255, 0.1);
   --vscode-font-ui: 'Segoe UI', 'Microsoft YaHei', sans-serif;
   --vscode-font-mono: Consolas, 'Courier New', monospace;
 
-  /* 兼容旧组件的 token 别名 */
-  --text-primary: var(--vscode-text-primary);
-  --text-secondary: var(--vscode-text-muted);
-  --glass-border: var(--vscode-border-color);
+  /* Legacy aliases for existing component styles */
+  --vscode-workbench-bg: var(--surface-workbench);
+  --vscode-titlebar-bg: var(--surface-titlebar);
+  --vscode-activitybar-bg: var(--surface-activitybar);
+  --vscode-sidebar-bg: var(--surface-sidebar);
+  --vscode-editor-bg: var(--surface-editor);
+  --vscode-tabs-bg: var(--surface-tabs);
+  --vscode-panel-bg: var(--surface-panel);
+  --vscode-statusbar-bg: var(--surface-statusbar);
+  --vscode-statusbar-color: var(--text-on-accent);
+  --vscode-border-color: var(--border-default);
+  --vscode-hover-bg: var(--surface-hover);
+  --vscode-active-bg: var(--surface-active);
+  --vscode-text-primary: var(--text-primary);
+  --vscode-text-muted: var(--text-muted);
+  --vscode-accent-color: var(--accent-color);
+  --text-secondary: var(--text-muted);
+  --glass-border: var(--border-default);
   --radius-lg: 4px;
   --radius-md: 3px;
   --radius-sm: 2px;
@@ -33,24 +68,28 @@
 }
 
 :root.light-theme {
-  --vscode-workbench-bg: #f5f7fb;
-  --vscode-titlebar-bg: #e7ebf3;
-  --vscode-activitybar-bg: #e2e8f2;
-  --vscode-sidebar-bg: #eef2f8;
-  --vscode-editor-bg: #ffffff;
-  --vscode-tabs-bg: #f3f6fb;
-  --vscode-panel-bg: #ffffff;
-  --vscode-statusbar-bg: #0e639c;
-  --vscode-border-color: #d5dce8;
-  --vscode-hover-bg: #dde6f4;
-  --vscode-active-bg: #d6dfef;
-  --vscode-text-primary: #1f2937;
-  --vscode-text-muted: #5f6b7a;
-  --vscode-accent-color: #0e639c;
-  --text-primary: var(--vscode-text-primary);
-  --text-secondary: var(--vscode-text-muted);
-  --glass-border: var(--vscode-border-color);
-  --font-mono: var(--vscode-font-mono);
+  --surface-workbench: #f5f7fb;
+  --surface-titlebar: #e7ebf3;
+  --surface-activitybar: #e2e8f2;
+  --surface-sidebar: #eef2f8;
+  --surface-editor: #ffffff;
+  --surface-tabs: #f3f6fb;
+  --surface-panel: #ffffff;
+  --surface-statusbar: #0e639c;
+  --surface-hover: #dde6f4;
+  --surface-active: #d6dfef;
+  --border-default: #d5dce8;
+  --text-primary: #1f2937;
+  --text-muted: #5f6b7a;
+  --text-on-accent: #ffffff;
+  --accent-color: #0e639c;
+  --status-success: #1f8f5f;
+  --status-warning: #9a6b00;
+  --status-danger: #c24137;
+  --scrollbar-thumb: #b4bcc9;
+  --scrollbar-thumb-hover: #9ea8b8;
+  --statusbar-hover-bg: rgba(255, 255, 255, 0.14);
+
   color-scheme: light;
 }
 
@@ -97,7 +136,7 @@ p {
   box-shadow: none;
 }
 
-/* 滚动条样式 */
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -108,10 +147,10 @@ p {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #424242;
+  background: var(--scrollbar-thumb);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4f4f4f;
+  background: var(--scrollbar-thumb-hover);
 }

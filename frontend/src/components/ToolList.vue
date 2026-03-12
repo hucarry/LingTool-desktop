@@ -278,8 +278,8 @@ function deleteSelected(): void {
 }
 
 .header-button.danger:hover:not(:disabled) {
-  border-color: var(--el-color-danger);
-  color: var(--el-color-danger);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
 }
 
 .card-button.primary {
@@ -396,13 +396,13 @@ function deleteSelected(): void {
 }
 
 .tool-status-chip.is-valid {
-  background: color-mix(in srgb, var(--el-color-success) 16%, transparent);
-  color: var(--el-color-success);
+  background: var(--status-success-soft);
+  color: var(--status-success);
 }
 
 .tool-status-chip.is-invalid {
-  background: color-mix(in srgb, var(--el-color-danger) 16%, transparent);
-  color: var(--el-color-danger);
+  background: var(--status-danger-soft);
+  color: var(--status-danger);
 }
 
 .card-body {
@@ -442,7 +442,7 @@ function deleteSelected(): void {
 }
 
 .tool-tag {
-  background: color-mix(in srgb, var(--vscode-accent-color) 18%, transparent);
+  background: var(--accent-soft);
   color: var(--vscode-accent-color);
 }
 
@@ -465,7 +465,7 @@ function deleteSelected(): void {
   justify-content: center;
   border: 1px dashed var(--vscode-border-color);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--vscode-sidebar-bg) 75%, transparent);
+  background: var(--surface-empty);
 }
 
 .empty-state-title {
@@ -479,7 +479,7 @@ function deleteSelected(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--vscode-editor-bg) 62%, transparent);
+  background: var(--surface-overlay);
   border-radius: 8px;
   backdrop-filter: blur(2px);
 }
@@ -487,7 +487,7 @@ function deleteSelected(): void {
 .loading-spinner {
   width: 28px;
   height: 28px;
-  border: 2px solid color-mix(in srgb, var(--vscode-border-color) 70%, transparent);
+  border: 2px solid var(--border-soft);
   border-top-color: var(--vscode-accent-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

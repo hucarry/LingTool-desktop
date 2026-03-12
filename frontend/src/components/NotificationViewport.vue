@@ -51,20 +51,20 @@ function closeNotification(id: number): void {
   border: 1px solid var(--vscode-border-color);
   border-left-width: 3px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--vscode-sidebar-bg) 92%, var(--vscode-editor-bg));
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-flyout);
 }
 
 .notify-card.is-success {
-  border-left-color: var(--el-color-success);
+  border-left-color: var(--status-success);
 }
 
 .notify-card.is-warning {
-  border-left-color: var(--el-color-warning);
+  border-left-color: var(--status-warning);
 }
 
 .notify-card.is-error {
-  border-left-color: var(--el-color-danger);
+  border-left-color: var(--status-danger);
 }
 
 .notify-card.is-info {
