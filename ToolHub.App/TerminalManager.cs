@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text;
 using Pty.Net;
 using ToolHub.App.Models;
@@ -156,7 +156,9 @@ public sealed class TerminalManager : IDisposable
 
             context.Info.Status = TerminalStates.Stopped;
             context.Info.EndTime = DateTimeOffset.UtcNow;
+
             context.Info.ExitCode = TryReadExitCode(context);
+
             _sendMessage(new TerminalStatusMessage(context.Info));
 
             context.Dispose();

@@ -6,11 +6,15 @@ namespace ToolHub.App;
 
 public sealed class ToolRegistry
 {
+    /// <summary>非强制刷新时的最小间隔，避免高频文件系统访问。</summary>
+    private static readonly TimeSpan MinReloadInterval = TimeSpan.FromSeconds(1);
+
     private readonly string _toolsFilePath;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly object _syncRoot = new();
 
     private DateTime _lastLoadedUtc = DateTime.MinValue;
+    private DateTime _lastCheckedUtc = DateTime.MinValue;
     private List<ToolItem> _tools = new();
 
     public ToolRegistry(string toolsFilePath, JsonSerializerOptions jsonOptions)
@@ -168,10 +172,19 @@ public sealed class ToolRegistry
     {
         lock (_syncRoot)
         {
+            // 非强制刷新时，如果距上次检查不足最小间隔则跳过
+            var now = DateTime.UtcNow;
+            if (!force && (now - _lastCheckedUtc) < MinReloadInterval)
+            {
+                return;
+            }
+
+            _lastCheckedUtc = now;
+
             if (!File.Exists(_toolsFilePath))
             {
                 _tools = new List<ToolItem>();
-                _lastLoadedUtc = DateTime.UtcNow;
+                _lastLoadedUtc = now;
                 return;
             }
 
@@ -188,7 +201,7 @@ public sealed class ToolRegistry
                 .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
                 .ToList();
 
-            _lastLoadedUtc = DateTime.UtcNow;
+            _lastLoadedUtc = now;
         }
     }
 
