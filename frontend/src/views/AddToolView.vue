@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { Button as DButton } from 'vue-devui/button'
+import { Form as DForm, FormItem as DFormItem } from 'vue-devui/form'
+import { Input as DInput } from 'vue-devui/input'
+import { Select as DSelect } from 'vue-devui/select'
+import 'vue-devui/button/style.css'
+import 'vue-devui/form/style.css'
+import 'vue-devui/input/style.css'
+import 'vue-devui/select/style.css'
 
 import { useToolHub } from '../composables/useToolHub'
 import { useI18n } from '../composables/useI18n'
@@ -7,7 +15,7 @@ import { useNotify } from '../composables/useNotify'
 import type { AddToolPayload, ToolType } from '../types'
 
 const hub = useToolHub()
-const { locale } = useI18n()
+const { t } = useI18n()
 const notify = useNotify()
 
 const toolTypeOptions = [
@@ -41,64 +49,6 @@ const form = reactive<AddToolFormState>({
 
 const isPythonTool = computed(() => form.type === 'python')
 const submitting = computed(() => hub.addingTool.value)
-
-const text = computed(() => {
-  if (locale.value === 'zh-CN') {
-    return {
-      title: '新增工具',
-      subtitle: '将新的 EXE 或 Python 文件写入 tools.json，并在工具页立即可运行。',
-      toolType: '工具类型',
-      toolId: '工具 ID',
-      toolName: '工具名称',
-      toolPath: '工具路径',
-      pythonPath: 'Python 解释器',
-      cwd: '工作目录',
-      argsTemplate: '参数模板',
-      tags: '标签（逗号分隔）',
-      description: '描述',
-      browse: '浏览...',
-      submit: '保存工具',
-      clear: '清空',
-      pythonHelp: '可留空，留空时使用系统 python。',
-      exeHint: '示例: C:/Windows/System32/cmd.exe',
-      pyHint: '示例: Tools/testdemo.py',
-      idHint: '仅允许字母、数字、下划线、短横线和点',
-      tagsHint: '例如: 数据, 自动化, 系统',
-      validationId: '工具 ID 不能为空',
-      validationIdFormat: '工具 ID 格式不合法',
-      validationName: '工具名称不能为空',
-      validationPath: '工具路径不能为空',
-      resetDone: '已清空表单',
-    }
-  }
-
-  return {
-    title: 'Add Tool',
-    subtitle: 'Write a new EXE or Python tool into tools.json so it can run immediately.',
-    toolType: 'Tool Type',
-    toolId: 'Tool ID',
-    toolName: 'Tool Name',
-    toolPath: 'Tool Path',
-    pythonPath: 'Python Interpreter',
-    cwd: 'Working Directory',
-    argsTemplate: 'Args Template',
-    tags: 'Tags (comma separated)',
-    description: 'Description',
-    browse: 'Browse...',
-    submit: 'Save Tool',
-    clear: 'Clear',
-    pythonHelp: 'Optional. Leave empty to use system python.',
-    exeHint: 'Example: C:/Windows/System32/cmd.exe',
-    pyHint: 'Example: Tools/testdemo.py',
-    idHint: 'Allowed: letters, numbers, underscore, dash, dot',
-    tagsHint: 'Example: data, automation, system',
-    validationId: 'Tool ID is required',
-    validationIdFormat: 'Tool ID format is invalid',
-    validationName: 'Tool name is required',
-    validationPath: 'Tool path is required',
-    resetDone: 'Form cleared',
-  }
-})
 
 watch(
   () => hub.addToolPathSelection.value,
@@ -206,22 +156,22 @@ function submit(): void {
   const path = form.path.trim()
 
   if (!id) {
-    notify.warning(text.value.validationId)
+    notify.warning(t('addTool.validationId'))
     return
   }
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(text.value.validationIdFormat)
+    notify.warning(t('addTool.validationIdFormat'))
     return
   }
 
   if (!name) {
-    notify.warning(text.value.validationName)
+    notify.warning(t('addTool.validationName'))
     return
   }
 
   if (!path) {
-    notify.warning(text.value.validationPath)
+    notify.warning(t('addTool.validationPath'))
     return
   }
 
@@ -242,20 +192,20 @@ function submit(): void {
 
 function clearForm(): void {
   resetForm()
-  notify.info(text.value.resetDone)
+  notify.info(t('addTool.resetDone'))
 }
 </script>
 
 <template>
   <section class="add-tool-view">
     <header class="view-header">
-      <h2>{{ text.title }}</h2>
-      <p>{{ text.subtitle }}</p>
+      <h2>{{ t('addTool.title') }}</h2>
+      <p>{{ t('addTool.subtitle') }}</p>
     </header>
 
     <d-form label-position="top" class="add-tool-form">
       <div class="form-grid">
-        <d-form-item :label="text.toolType">
+        <d-form-item :label="t('addTool.toolType')">
           <d-select
             v-model="form.type"
             :options="toolTypeOptions"
@@ -263,53 +213,53 @@ function clearForm(): void {
           />
         </d-form-item>
 
-        <d-form-item :label="text.toolId">
-          <d-input v-model="form.id" :placeholder="text.idHint" clearable />
+        <d-form-item :label="t('addTool.toolId')">
+          <d-input v-model="form.id" :placeholder="t('addTool.idHint')" clearable />
         </d-form-item>
 
-        <d-form-item :label="text.toolName">
+        <d-form-item :label="t('addTool.toolName')">
           <d-input v-model="form.name" clearable />
         </d-form-item>
 
-        <d-form-item :label="text.toolPath" class="path-item">
+        <d-form-item :label="t('addTool.toolPath')" class="path-item">
           <div class="path-input-row">
             <d-input
               v-model="form.path"
-              :placeholder="isPythonTool ? text.pyHint : text.exeHint"
+              :placeholder="isPythonTool ? t('addTool.pyHint') : t('addTool.exeHint')"
               clearable
             />
-            <d-button @click="browseToolPath">{{ text.browse }}</d-button>
+            <d-button @click="browseToolPath">{{ t('tools.browse') }}</d-button>
           </div>
         </d-form-item>
 
-        <d-form-item v-if="isPythonTool" :label="text.pythonPath" class="path-item">
+        <d-form-item v-if="isPythonTool" :label="t('addTool.pythonPath')" class="path-item">
           <div class="path-input-row">
             <d-input v-model="form.python" clearable />
-            <d-button @click="browsePythonPath">{{ text.browse }}</d-button>
+            <d-button @click="browsePythonPath">{{ t('tools.browse') }}</d-button>
           </div>
-          <p class="tip-text">{{ text.pythonHelp }}</p>
+          <p class="tip-text">{{ t('addTool.pythonHelp') }}</p>
         </d-form-item>
 
-        <d-form-item :label="text.cwd">
+        <d-form-item :label="t('addTool.cwd')">
           <d-input v-model="form.cwd" clearable />
         </d-form-item>
 
-        <d-form-item :label="text.argsTemplate">
+        <d-form-item :label="t('addTool.argsTemplate')">
           <d-input v-model="form.argsTemplate" clearable />
         </d-form-item>
 
-        <d-form-item :label="text.tags">
-          <d-input v-model="form.tagsText" :placeholder="text.tagsHint" clearable />
+        <d-form-item :label="t('addTool.tags')">
+          <d-input v-model="form.tagsText" :placeholder="t('addTool.tagsHint')" clearable />
         </d-form-item>
 
-        <d-form-item :label="text.description" class="description-item">
+        <d-form-item :label="t('addTool.description')" class="description-item">
           <d-input v-model="form.description" type="textarea" :rows="3" />
         </d-form-item>
       </div>
 
       <div class="actions">
-        <d-button @click="clearForm">{{ text.clear }}</d-button>
-        <d-button type="primary" :loading="submitting" @click="submit">{{ text.submit }}</d-button>
+        <d-button @click="clearForm">{{ t('addTool.clear') }}</d-button>
+        <d-button type="primary" :loading="submitting" @click="submit">{{ t('addTool.submit') }}</d-button>
       </div>
     </d-form>
   </section>

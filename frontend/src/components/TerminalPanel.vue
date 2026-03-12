@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import TerminalViewport from './TerminalViewport.vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { TerminalInfo } from '../types'
 import { useI18n } from '../composables/useI18n'
 
+const TerminalViewport = defineAsyncComponent(() => import('./TerminalViewport.vue'))
+
 const props = defineProps<{
+  visible: boolean
   terminals: TerminalInfo[]
   activeTerminalId: string
   outputsByTerminal: Record<string, string[]>
@@ -344,6 +346,15 @@ watch(
   },
 )
 
+watch(
+  () => props.visible,
+  (visible) => {
+    if (!visible) {
+      closeContextMenu()
+    }
+  },
+)
+
 onMounted(() => {
   window.addEventListener('mousedown', onGlobalPointerDown)
   window.addEventListener('keydown', onGlobalKeyDown)
@@ -429,6 +440,7 @@ onBeforeUnmount(() => {
           </header>
           <div class="pane-body">
             <TerminalViewport
+              v-if="visible"
               :terminal-id="primaryTerminalId"
               :outputs="primaryOutputs"
               @focus="focusTerminal"
@@ -452,7 +464,7 @@ onBeforeUnmount(() => {
 
           <div class="pane-body">
             <TerminalViewport
-              v-if="resolvedSecondaryTerminalId"
+              v-if="visible && resolvedSecondaryTerminalId"
               :terminal-id="resolvedSecondaryTerminalId"
               :outputs="secondaryOutputs"
               @focus="focusTerminal"

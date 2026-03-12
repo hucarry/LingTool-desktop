@@ -1,4 +1,9 @@
+<script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { Button as DButton } from 'vue-devui/button'
+import { Switch as DSwitch } from 'vue-devui/switch'
+import 'vue-devui/button/style.css'
+import 'vue-devui/switch/style.css'
 import type { LogEntry, RunInfo } from '../types'
 import { useI18n } from '../composables/useI18n'
 import { useNotify } from '../composables/useNotify'
@@ -14,37 +19,7 @@ const emit = defineEmits<{
 
 const autoScroll = ref(true)
 const containerRef = ref<HTMLElement>()
-const { locale } = useI18n()
-
-const text = computed(() => {
-  if (locale.value === 'zh-CN') {
-    return {
-      title: '日志输出',
-      noRunSelected: '请选择一条运行记录',
-      autoScrollOn: '自动滚动',
-      autoScrollOff: '手动',
-      copy: '复制',
-      clear: '清空',
-      noLogsCopy: '暂无日志可复制',
-      copied: '日志已复制',
-      copyFailed: '复制失败，请检查剪贴板权限',
-      empty: '当前没有日志',
-    }
-  }
-
-  return {
-    title: 'Log Output',
-    noRunSelected: 'Please select a run',
-    autoScrollOn: 'Auto Scroll',
-    autoScrollOff: 'Manual',
-    copy: 'Copy',
-    clear: 'Clear',
-    noLogsCopy: 'No logs to copy',
-    copied: 'Logs copied to clipboard',
-    copyFailed: 'Copy failed, check clipboard permissions',
-    empty: 'No logs available',
-  }
-})
+const { t } = useI18n()
 
 const mergedText = computed(() =>
   props.logs
@@ -71,15 +46,15 @@ const notify = useNotify()
 
 async function copyLogs(): Promise<void> {
   if (!mergedText.value) {
-    notify.info(text.value.noLogsCopy)
+    notify.info(t('log.noLogsCopy'))
     return
   }
 
   try {
     await navigator.clipboard.writeText(mergedText.value)
-    notify.success(text.value.copied)
+    notify.success(t('log.copied'))
   } catch {
-    notify.error(text.value.copyFailed)
+    notify.error(t('log.copyFailed'))
   }
 }
 
@@ -96,21 +71,21 @@ function clearLogs(): void {
   <section class="log-panel">
     <header class="log-head">
       <div class="run-meta">
-        <h3>{{ text.title }}</h3>
+        <h3>{{ t('log.title') }}</h3>
         <p v-if="run">
           {{ run.toolName }} | {{ run.status }}
           <span v-if="run.pid">(PID: {{ run.pid }})</span>
         </p>
-        <p v-else>{{ text.noRunSelected }}</p>
+        <p v-else>{{ t('log.noRunSelected') }}</p>
       </div>
 
       <div class="log-actions">
         <d-switch v-model="autoScroll">
-          <template #checked>{{ text.autoScrollOn }}</template>
-          <template #unchecked>{{ text.autoScrollOff }}</template>
+          <template #checked>{{ t('log.autoScrollOn') }}</template>
+          <template #unchecked>{{ t('log.autoScrollOff') }}</template>
         </d-switch>
-        <d-button size="sm" @click="copyLogs">{{ text.copy }}</d-button>
-        <d-button size="sm" @click="clearLogs" :disabled="!run">{{ text.clear }}</d-button>
+        <d-button size="sm" @click="copyLogs">{{ t('log.copy') }}</d-button>
+        <d-button size="sm" @click="clearLogs" :disabled="!run">{{ t('log.clear') }}</d-button>
       </div>
     </header>
 
@@ -128,7 +103,7 @@ function clearLogs(): void {
       </template>
       <div v-else class="empty-state">
         <i class="icon-refresh" style="font-size: 48px; color: var(--vscode-text-muted); opacity: 0.5;"></i>
-        <p>{{ text.empty }}</p>
+        <p>{{ t('log.empty') }}</p>
       </div>
     </div>
   </section>

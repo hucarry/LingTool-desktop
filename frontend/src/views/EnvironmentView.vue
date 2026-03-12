@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+
 import PythonPackagePanel from '../components/PythonPackagePanel.vue'
 import { useToolHub } from '../composables/useToolHub'
 
@@ -10,6 +12,12 @@ const pythonOperationBusy = hub.pythonOperationBusy
 const pythonOperationPackage = hub.pythonOperationPackage
 const pythonOperationAction = hub.pythonOperationAction
 const pythonPackageStatus = hub.pythonPackageStatus
+
+onMounted(() => {
+  if (!hub.loadingPythonPackages.value && hub.pythonPackages.value.length === 0) {
+    hub.refreshPythonPackages()
+  }
+})
 </script>
 
 <template>

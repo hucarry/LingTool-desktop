@@ -1,5 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { Button as DButton } from 'vue-devui/button'
+import { Input as DInput } from 'vue-devui/input'
+import { LoadingDirective as vLoading } from 'vue-devui/loading'
+import { Modal as DModal } from 'vue-devui/modal'
+import { Search as DSearch } from 'vue-devui/search'
+import { Table as DDataTable, Column as DColumn } from 'vue-devui/table'
+import 'vue-devui/button/style.css'
+import 'vue-devui/input/style.css'
+import 'vue-devui/loading/style.css'
+import 'vue-devui/modal/style.css'
+import 'vue-devui/search/style.css'
+import 'vue-devui/table/style.css'
 import type { PythonPackageItem } from '../types'
 import { useI18n } from '../composables/useI18n'
 

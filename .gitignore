@@ -1,13 +1,22 @@
-# 编译输出目录
-bin/
-obj/
-
-# 发布输出目录
+# Build outputs
+/ToolHub.App/bin/
+/ToolHub.App/obj/
 publish/
 
-# 临时构建目录
+# Temporary build folders
 .tmp_build/
 .tmp_photino/
 
-# Python 虚拟环境
+# Local environments
 .venv/
+node_modules/
+dist/
+dist-ssr/
+
+# IDE and local tooling
+.idea/
+.vscode/
+.tools/
+
+# OS artifacts
+.DS_Store

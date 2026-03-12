@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { Alert as DAlert } from 'vue-devui/alert'
+import { Button as DButton } from 'vue-devui/button'
+import { Drawer as DDrawer } from 'vue-devui/drawer'
+import { Input as DInput } from 'vue-devui/input'
+import 'vue-devui/alert/style.css'
+import 'vue-devui/button/style.css'
+import 'vue-devui/drawer/style.css'
+import 'vue-devui/input/style.css'
 import type { ToolItem } from '../types'
 import { useI18n } from '../composables/useI18n'
 
@@ -17,14 +25,12 @@ const emit = defineEmits<{
   (e: 'run', payload: { toolId: string; args: Record<string, string>; python?: string }): void
 }>()
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 const formState = reactive<Record<string, string>>({})
 
 const pythonFallbackText = computed(() => {
   if (props.defaultPythonPath?.trim()) {
-    return locale.value === 'zh-CN'
-      ? '优先级：手动覆盖 -> 工具默认 -> 应用默认 -> 系统 Python'
-      : 'Priority: manual override -> tool default -> app default -> system Python'
+    return t('runner.pythonFallbackWithAppDefault')
   }
 
   return t('runner.pythonFallback')
@@ -98,7 +104,7 @@ function runTool(): void {
     @close="closeDrawer"
   >
     <template v-if="tool">
-      <d-alert v-if="!tool.valid" type="error" :showIcon="true">
+      <d-alert v-if="!tool.valid" type="danger" :showIcon="true">
         {{ tool.validationMessage || t('runner.invalidConfig') }}
       </d-alert>
 

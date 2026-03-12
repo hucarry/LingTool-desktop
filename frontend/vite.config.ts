@@ -9,13 +9,30 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Vue 核心运行时
-          'vue-vendor': ['vue', 'vue-router'],
-          // DevUI 组件库
-          'devui': ['vue-devui'],
-          // xterm 终端
-          'xterm': ['@xterm/xterm', '@xterm/addon-fit'],
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/')
+
+          if (normalizedId.includes('/node_modules/vue/')
+            || normalizedId.includes('/node_modules/vue-router/')
+            || normalizedId.includes('/node_modules/pinia/')) {
+            return 'vue-vendor'
+          }
+
+          if (normalizedId.includes('/node_modules/@xterm/')) {
+            return 'xterm'
+          }
+
+          if (normalizedId.includes('/node_modules/vue-devui/notification/')) {
+            return 'devui-notification'
+          }
+
+          if (normalizedId.includes('/node_modules/clipboard/')) {
+            return 'clipboard'
+          }
+
+          if (normalizedId.includes('/node_modules/lodash/')) {
+            return 'lodash'
+          }
         },
       },
     },

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+
 import ToolList from '../components/ToolList.vue'
 import { useToolHub } from '../composables/useToolHub'
 import type { AddToolPayload, ToolItem } from '../types'
@@ -6,6 +8,12 @@ import type { AddToolPayload, ToolItem } from '../types'
 const hub = useToolHub()
 const tools = hub.tools
 const loadingTools = hub.loadingTools
+
+onMounted(() => {
+  if (!hub.loadingTools.value && hub.tools.value.length === 0) {
+    hub.fetchTools()
+  }
+})
 
 function runToolDirect(tool: ToolItem): void {
   hub.handleRun({

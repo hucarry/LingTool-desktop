@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Tooltip as DTooltip } from 'vue-devui/tooltip'
+import 'vue-devui/tooltip/style.css'
 import { useRoute, useRouter } from 'vue-router'
-import ToolRunner from './components/ToolRunner.vue'
 import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
-import { useI18n, type Locale } from './composables/useI18n'
+import { useI18n } from './composables/useI18n'
 import { useSettings } from './composables/useSettings'
+
+const ToolRunner = defineAsyncComponent(() => import('./components/ToolRunner.vue'))
 
 interface MenuItem {
   path: '/python' | '/tools' | '/tools/new' | '/settings'
   iconId: string
-  titleKey?: string
-  title?: Record<Locale, string>
+  titleKey: string
 }
 
 const hub = useToolHub()
 const route = useRoute()
 const router = useRouter()
-const { locale, t, formatSessionCount } = useI18n()
+const { t, formatSessionCount } = useI18n()
 const { defaultPythonPath } = useSettings()
 
 const runnerVisible = hub.runnerVisible
@@ -52,23 +54,13 @@ const editorStackRef = ref<HTMLElement>()
 const menuItems: MenuItem[] = [
   { path: '/python', iconId: 'icon-code', titleKey: 'app.menu.python' },
   { path: '/tools', iconId: 'icon-folder', titleKey: 'app.menu.tools' },
-  {
-    path: '/tools/new',
-    iconId: 'icon-add',
-    title: {
-      'zh-CN': '新增工具',
-      'en-US': 'Add Tool',
-    },
-  },
+  { path: '/tools/new', iconId: 'icon-add', titleKey: 'app.menu.addTool' },
 ]
 
 const settingsMenuItem: MenuItem = {
   path: '/settings',
   iconId: 'icon-setting',
-  title: {
-    'zh-CN': '设置',
-    'en-US': 'Settings',
-  },
+  titleKey: 'app.settings',
 }
 
 const fallbackMenuItem: MenuItem = menuItems[0]!
@@ -115,11 +107,7 @@ const terminalSessionCaption = computed(() => {
 const showSidebar = computed(() => sidebarVisible.value)
 
 function menuTitle(item: MenuItem): string {
-  if (item.titleKey) {
-    return t(item.titleKey)
-  }
-
-  return item.title?.[locale.value] ?? item.path
+  return t(item.titleKey)
 }
 
 function navigate(path: MenuItem['path']): void {
@@ -416,9 +404,10 @@ onBeforeUnmount(() => {
 
           <div v-show="terminalExpanded" class="panel-body">
             <TerminalPanel
+              :visible="terminalExpanded"
               :terminals="hub.terminals.value"
               :active-terminal-id="hub.activeTerminalId.value"
-              :outputs-by-terminal="hub.terminalOutputsById"
+              :outputs-by-terminal="hub.terminalOutputsById.value"
               @select-terminal="hub.selectTerminal"
               @create-terminal="hub.createTerminal"
               @stop-terminal="hub.stopTerminal"

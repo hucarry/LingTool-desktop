@@ -1,5 +1,33 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { Badge as DBadge } from 'vue-devui/badge'
+import { Button as DButton } from 'vue-devui/button'
+import { Card as DCard } from 'vue-devui/card'
+import { Checkbox as DCheckbox } from 'vue-devui/checkbox'
+import { Form as DForm, FormItem as DFormItem } from 'vue-devui/form'
+import { Row as DRow, Col as DCol } from 'vue-devui/grid'
+import { Input as DInput } from 'vue-devui/input'
+import { LoadingDirective as vLoading } from 'vue-devui/loading'
+import { Modal as DModal } from 'vue-devui/modal'
+import { Result as DResult } from 'vue-devui/result'
+import { Search as DSearch } from 'vue-devui/search'
+import { Select as DSelect } from 'vue-devui/select'
+import { Tag as DTag } from 'vue-devui/tag'
+import { Tooltip as DTooltip } from 'vue-devui/tooltip'
+import 'vue-devui/badge/style.css'
+import 'vue-devui/button/style.css'
+import 'vue-devui/card/style.css'
+import 'vue-devui/checkbox/style.css'
+import 'vue-devui/form/style.css'
+import 'vue-devui/grid/style.css'
+import 'vue-devui/input/style.css'
+import 'vue-devui/loading/style.css'
+import 'vue-devui/modal/style.css'
+import 'vue-devui/result/style.css'
+import 'vue-devui/search/style.css'
+import 'vue-devui/select/style.css'
+import 'vue-devui/tag/style.css'
+import 'vue-devui/tooltip/style.css'
 
 import type { AddToolPayload, ToolItem } from '../types'
 import { useI18n } from '../composables/useI18n'
@@ -40,25 +68,9 @@ const editForm = reactive({
   description: '',
 })
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 const notify = useNotify()
 const deleteConfirmVisible = ref(false)
-
-const validationText = computed(() => {
-  if (locale.value === 'zh-CN') {
-    return {
-      invalidId: '工具 ID 格式不合法',
-      missingName: '工具名称不能为空',
-      missingPath: '工具路径不能为空',
-    }
-  }
-
-  return {
-    invalidId: 'Tool ID format is invalid',
-    missingName: 'Tool name is required',
-    missingPath: 'Tool path is required',
-  }
-})
 
 
 const filteredTools = computed(() => {
@@ -199,17 +211,17 @@ function saveEdit(): void {
   const path = editForm.path.trim()
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(validationText.value.invalidId)
+    notify.warning(t('tools.validationIdFormat'))
     return
   }
 
   if (!name) {
-    notify.warning(validationText.value.missingName)
+    notify.warning(t('tools.validationName'))
     return
   }
 
   if (!path) {
-    notify.warning(validationText.value.missingPath)
+    notify.warning(t('tools.validationPath'))
     return
   }
 
@@ -318,7 +330,7 @@ function saveEdit(): void {
           </d-col>
 
           <d-col :span="24" v-if="filteredTools.length === 0 && !loading">
-            <d-empty :description="t('tools.noMatch')" />
+            <d-result icon="info" :desc="t('tools.noMatch')" />
           </d-col>
         </d-row>
       </d-scrollbar>

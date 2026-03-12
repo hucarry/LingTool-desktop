@@ -1,56 +1,27 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { Button as DButton } from 'vue-devui/button'
+import { Input as DInput } from 'vue-devui/input'
+import 'vue-devui/button/style.css'
+import 'vue-devui/input/style.css'
 import { useI18n } from '../composables/useI18n'
 import { useSettings } from '../composables/useSettings'
 
-const { locale } = useI18n()
+const { t } = useI18n()
 const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = useSettings()
-
-const text = computed(() => {
-  if (locale.value === 'zh-CN') {
-    return {
-      title: '设置',
-      description: '配置主题和全局默认 Python 解释器。默认解释器会作为工具运行和 Python 包管理的默认值。',
-      themeTitle: '主题',
-      themeDesc: '切换工作台整体外观。',
-      themeDark: '深色',
-      themeLight: '浅色',
-      pythonTitle: '默认 Python',
-      pythonDesc: '未设置时会回退到工具配置或系统 Python。',
-      browse: '浏览...',
-      clear: '清除',
-      placeholder: '未设置时回退到工具配置或系统 Python',
-    }
-  }
-
-  return {
-    title: 'Settings',
-    description: 'Configure the theme and the global default Python interpreter used by tools and the package manager.',
-    themeTitle: 'Theme',
-    themeDesc: 'Switch the overall workbench appearance.',
-    themeDark: 'Dark',
-    themeLight: 'Light',
-    pythonTitle: 'Default Python',
-    pythonDesc: 'Falls back to tool config or system Python when empty.',
-    browse: 'Browse...',
-    clear: 'Clear',
-    placeholder: 'Falls back to tool config or system Python when empty',
-  }
-})
 </script>
 
 <template>
   <section class="settings-view">
     <div class="settings-shell">
       <header class="settings-header">
-        <h2>{{ text.title }}</h2>
-        <p>{{ text.description }}</p>
+        <h2>{{ t('settings.title') }}</h2>
+        <p>{{ t('settings.description') }}</p>
       </header>
 
       <section class="settings-card">
         <div class="settings-copy">
-          <h3>{{ text.themeTitle }}</h3>
-          <p>{{ text.themeDesc }}</p>
+          <h3>{{ t('settings.themeTitle') }}</h3>
+          <p>{{ t('settings.themeDesc') }}</p>
         </div>
 
         <div class="theme-segmented">
@@ -59,32 +30,32 @@ const text = computed(() => {
             :class="{ active: theme === 'dark' }"
             @click="theme = 'dark'"
           >
-            {{ text.themeDark }}
+            {{ t('settings.themeDark') }}
           </button>
           <button
             class="seg-btn"
             :class="{ active: theme === 'light' }"
             @click="theme = 'light'"
           >
-            {{ text.themeLight }}
+            {{ t('settings.themeLight') }}
           </button>
         </div>
       </section>
 
       <section class="settings-card">
         <div class="settings-copy">
-          <h3>{{ text.pythonTitle }}</h3>
-          <p>{{ text.pythonDesc }}</p>
+          <h3>{{ t('settings.pythonTitle') }}</h3>
+          <p>{{ t('settings.pythonDesc') }}</p>
         </div>
 
         <div class="python-row">
           <d-input
             :model-value="defaultPythonPath"
             readonly
-            :placeholder="text.placeholder"
+            :placeholder="t('settings.placeholder')"
           />
-          <d-button @click="pickDefaultPython">{{ text.browse }}</d-button>
-          <d-button @click="clearDefaultPythonPath">{{ text.clear }}</d-button>
+          <d-button @click="pickDefaultPython">{{ t('python.browse') }}</d-button>
+          <d-button @click="clearDefaultPythonPath">{{ t('settings.clear') }}</d-button>
         </div>
       </section>
     </div>
