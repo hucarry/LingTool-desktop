@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Photino.NET;
 using ToolHub.App.Models;
@@ -86,7 +86,7 @@ internal static class Program
             })
             .RegisterWebMessageReceivedHandler((sender, rawMessage) =>
             {
-                _ = HandleMessageAsync(
+                HandleMessage(
                     rawMessage,
                     registry,
                     processManager,
@@ -108,7 +108,7 @@ internal static class Program
         ShutdownManagers();
     }
 
-    private static async Task HandleMessageAsync(
+    private static void HandleMessage(
         string rawMessage,
         ToolRegistry registry,
         ProcessManager processManager,
@@ -132,7 +132,7 @@ internal static class Program
                 JsonOptions
             );
 
-            await MessageRouter.RouteAsync(context, rawMessage);
+            MessageRouter.Route(context, rawMessage);
         }
         catch (Exception ex)
         {

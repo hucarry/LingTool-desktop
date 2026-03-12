@@ -17,14 +17,14 @@ public record MessageContext(
 
 public static class MessageRouter
 {
-    private delegate Task MessageHandler(MessageContext context, string rawMessage);
+    private delegate void MessageHandler(MessageContext context, string rawMessage);
 
     private static readonly Dictionary<string, MessageHandler> Handlers = new()
     {
         [BridgeMessageTypes.GetTools] = (ctx, _) =>
         {
             ctx.SendMessage(new ToolsMessage(ctx.Registry.GetTools()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.AddTool] = (ctx, raw) =>
@@ -33,13 +33,13 @@ public static class MessageRouter
             if (request?.Tool is null)
             {
                 ctx.SendMessage(new ErrorMessage("addTool request is missing tool payload."));
-                return Task.CompletedTask;
+                return;
             }
 
             var addedTool = ctx.Registry.AddTool(request.Tool);
             ctx.SendMessage(new ToolAddedMessage(addedTool.Id));
             ctx.SendMessage(new ToolsMessage(ctx.Registry.GetTools()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.UpdateTool] = (ctx, raw) =>
@@ -48,13 +48,13 @@ public static class MessageRouter
             if (request?.Tool is null)
             {
                 ctx.SendMessage(new ErrorMessage("updateTool request is missing tool payload."));
-                return Task.CompletedTask;
+                return;
             }
 
             var updatedTool = ctx.Registry.UpdateTool(request.Tool);
             ctx.SendMessage(new ToolUpdatedMessage(updatedTool.Id));
             ctx.SendMessage(new ToolsMessage(ctx.Registry.GetTools()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.DeleteTools] = (ctx, raw) =>
@@ -64,13 +64,13 @@ public static class MessageRouter
             var deletedCount = ctx.Registry.DeleteTools(ids);
             ctx.SendMessage(new ToolsDeletedMessage(deletedCount));
             ctx.SendMessage(new ToolsMessage(ctx.Registry.GetTools()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.GetRuns] = (ctx, _) =>
         {
             ctx.SendMessage(new RunsMessage(ctx.ProcessManager.GetRuns()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.RunTool] = (ctx, raw) =>
@@ -79,20 +79,20 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.ToolId))
             {
                 ctx.SendMessage(new ErrorMessage("runTool request is missing toolId."));
-                return Task.CompletedTask;
+                return;
             }
 
             var tool = ctx.Registry.GetToolById(request.ToolId);
             if (tool is null)
             {
                 ctx.SendMessage(new ErrorMessage($"Tool not found: {request.ToolId}"));
-                return Task.CompletedTask;
+                return;
             }
 
             if (!tool.Valid)
             {
                 ctx.SendMessage(new ErrorMessage($"Tool is invalid: {tool.Name}", tool.ValidationMessage));
-                return Task.CompletedTask;
+                return;
             }
 
             var pythonOverride = Program.ResolvePythonOverride(request.Python, tool);
@@ -105,7 +105,7 @@ public static class MessageRouter
                         "未找到可用 Python 解释器",
                         "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
                     ));
-                    return Task.CompletedTask;
+                    return;
                 }
 
                 pythonOverride = resolvedInterpreter;
@@ -116,7 +116,7 @@ public static class MessageRouter
                 request.Args ?? new Dictionary<string, string?>(),
                 pythonOverride
             );
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.RunToolInTerminal] = (ctx, raw) =>
@@ -125,20 +125,20 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.ToolId))
             {
                 ctx.SendMessage(new ErrorMessage("runToolInTerminal request is missing toolId."));
-                return Task.CompletedTask;
+                return;
             }
 
             var tool = ctx.Registry.GetToolById(request.ToolId);
             if (tool is null)
             {
                 ctx.SendMessage(new ErrorMessage($"Tool not found: {request.ToolId}"));
-                return Task.CompletedTask;
+                return;
             }
 
             if (!tool.Valid)
             {
                 ctx.SendMessage(new ErrorMessage($"Tool is invalid: {tool.Name}", tool.ValidationMessage));
-                return Task.CompletedTask;
+                return;
             }
 
             var pythonOverride = Program.ResolvePythonOverride(request.Python, tool);
@@ -151,7 +151,7 @@ public static class MessageRouter
                         "未找到可用 Python 解释器",
                         "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
                     ));
-                    return Task.CompletedTask;
+                    return;
                 }
 
                 pythonOverride = resolvedInterpreter;
@@ -173,7 +173,7 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to run tool in terminal.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.StopRun] = (ctx, raw) =>
@@ -182,7 +182,7 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.RunId))
             {
                 ctx.SendMessage(new ErrorMessage("stopRun request is missing runId."));
-                return Task.CompletedTask;
+                return;
             }
 
             _ = Task.Run(async () =>
@@ -200,7 +200,7 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to stop run.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.BrowsePython] = (ctx, raw) =>
@@ -208,7 +208,7 @@ public static class MessageRouter
             var request = JsonSerializer.Deserialize<BrowsePythonRequest>(raw, ctx.JsonOptions);
             var selectedPath = ctx.BrowsePython(request?.DefaultPath);
             ctx.SendMessage(new PythonSelectedMessage(selectedPath, request?.Purpose));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.BrowseFile] = (ctx, raw) =>
@@ -216,7 +216,7 @@ public static class MessageRouter
             var request = JsonSerializer.Deserialize<BrowseFileRequest>(raw, ctx.JsonOptions);
             var selectedPath = ctx.BrowseFile(request?.DefaultPath, request?.Filter);
             ctx.SendMessage(new FileSelectedMessage(selectedPath, request?.Purpose));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.GetPythonPackages] = (ctx, raw) =>
@@ -234,7 +234,7 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to read installed Python packages.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.InstallPythonPackage] = (ctx, raw) =>
@@ -243,7 +243,7 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.PackageName))
             {
                 ctx.SendMessage(new ErrorMessage("installPythonPackage request is missing packageName."));
-                return Task.CompletedTask;
+                return;
             }
 
             _ = Task.Run(async () =>
@@ -288,7 +288,7 @@ public static class MessageRouter
                     ));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.UninstallPythonPackage] = (ctx, raw) =>
@@ -297,7 +297,7 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.PackageName))
             {
                 ctx.SendMessage(new ErrorMessage("uninstallPythonPackage request is missing packageName."));
-                return Task.CompletedTask;
+                return;
             }
 
             _ = Task.Run(async () =>
@@ -342,14 +342,14 @@ public static class MessageRouter
                     ));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.GetTerminals] = (ctx, _) =>
         {
             var terminals = ctx.TerminalManager.GetTerminals();
             ctx.SendMessage(new TerminalsMessage(terminals.ToList()));
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.StartTerminal] = (ctx, raw) =>
@@ -366,7 +366,7 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to start terminal.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.TerminalInput] = (ctx, raw) =>
@@ -375,7 +375,7 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
             {
                 ctx.SendMessage(new ErrorMessage("terminalInput request is missing terminalId."));
-                return Task.CompletedTask;
+                return;
             }
 
             _ = Task.Run(async () =>
@@ -393,7 +393,7 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to write terminal input.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.TerminalResize] = (ctx, raw) =>
@@ -402,11 +402,11 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
             {
                 ctx.SendMessage(new ErrorMessage("terminalResize request is missing terminalId."));
-                return Task.CompletedTask;
+                return;
             }
 
             ctx.TerminalManager.ResizeTerminal(request.TerminalId, request.Cols, request.Rows);
-            return Task.CompletedTask;
+            return;
         },
 
         [BridgeMessageTypes.StopTerminal] = (ctx, raw) =>
@@ -415,7 +415,7 @@ public static class MessageRouter
             if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
             {
                 ctx.SendMessage(new ErrorMessage("stopTerminal request is missing terminalId."));
-                return Task.CompletedTask;
+                return;
             }
 
             _ = Task.Run(async () =>
@@ -429,11 +429,11 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to stop terminal.", ex.Message));
                 }
             });
-            return Task.CompletedTask;
+            return;
         }
     };
 
-    public static async Task RouteAsync(MessageContext context, string rawMessage)
+    public static void Route(MessageContext context, string rawMessage)
     {
         var baseMessage = JsonSerializer.Deserialize<IncomingMessage>(rawMessage, context.JsonOptions);
         if (baseMessage?.Type is null)
@@ -444,7 +444,7 @@ public static class MessageRouter
 
         if (Handlers.TryGetValue(baseMessage.Type, out var handler))
         {
-            await handler(context, rawMessage);
+            handler(context, rawMessage);
         }
         else
         {
