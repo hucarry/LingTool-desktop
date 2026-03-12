@@ -248,7 +248,7 @@ function saveEdit(): void {
       </div>
     </header>
 
-    <d-input v-model="keyword" clearable :placeholder="t('tools.search')" />
+    <d-search v-model="keyword" :placeholder="t('tools.search')" :is-keyup-search="true" :delay="200" icon-position="left" />
 
     <div class="list-scroll">
       <d-scrollbar height="100%">
@@ -258,56 +258,60 @@ function saveEdit(): void {
             :key="tool.id"
             :span="6"
           >
-            <article
+            <d-card
               class="tool-card"
-              role="button"
-              tabindex="0"
+              shadow="hover"
               @click="openTool(tool)"
-              @keydown.enter.prevent="openTool(tool)"
-              @keydown.space.prevent="openTool(tool)"
             >
-              <div class="card-header">
-              <div class="card-title-group">
-                <d-checkbox
-                  :model-value="selectedSet.has(tool.id)"
-                  @click.stop
-                  @change="(value: string | number | boolean) => toggleSelect(tool.id, Boolean(value))"
-                />
-                <h3>{{ tool.name }}</h3>
-              </div>
-              <div class="card-badges">
-                <span class="tool-type">{{ tool.type }}</span>
-                <span class="tool-status" :class="{ invalid: !tool.valid }">
-                  {{ tool.valid ? t('tools.ready') : t('tools.invalidPath') }}
-                </span>
-              </div>
-            </div>
+              <template #title>
+                <div class="card-header">
+                  <div class="card-title-group">
+                    <d-checkbox
+                      :model-value="selectedSet.has(tool.id)"
+                      @click.stop
+                      @change="(value: string | number | boolean) => toggleSelect(tool.id, Boolean(value))"
+                    />
+                    <h3>{{ tool.name }}</h3>
+                  </div>
+                  <div class="card-badges">
+                    <d-tag size="sm">{{ tool.type }}</d-tag>
+                    <d-badge
+                      :status="tool.valid ? 'success' : 'danger'"
+                      :count="tool.valid ? t('tools.ready') : t('tools.invalidPath')"
+                    />
+                  </div>
+                </div>
+              </template>
 
-            <div class="card-body">
-              <p class="tool-id">{{ tool.id }}</p>
-              <p class="tool-path" :title="tool.path">{{ tool.path }}</p>
-              
-              <div class="tool-tags" v-if="tool.tags && tool.tags.length">
-                <span v-for="tag in tool.tags" :key="tag" class="tag">{{ tag }}</span>
-              </div>
-            </div>
-
-              <div class="card-footer" @click.stop>
-                <div class="action-buttons">
-                  <d-button size="sm" :loading="updating && editForm.id === tool.id" @click.stop="openEdit(tool)">
-                    {{ t('tools.edit') }}
-                  </d-button>
-                  <d-button
-                    color="primary"
-                    size="sm"
-                    :disabled="!tool.valid"
-                    @click.stop="runTool(tool)"
-                  >
-                    {{ t('tools.run') }}
-                  </d-button>
+              <div class="card-body">
+                <p class="tool-id">{{ tool.id }}</p>
+                <d-tooltip :content="tool.path" position="top">
+                  <p class="tool-path">{{ tool.path }}</p>
+                </d-tooltip>
+                
+                <div class="tool-tags" v-if="tool.tags && tool.tags.length">
+                  <d-tag v-for="tag in tool.tags" :key="tag" size="sm" color="#7693f5">{{ tag }}</d-tag>
                 </div>
               </div>
-            </article>
+
+              <template #actions>
+                <div class="card-footer" @click.stop>
+                  <div class="action-buttons">
+                    <d-button size="sm" :loading="updating && editForm.id === tool.id" @click.stop="openEdit(tool)">
+                      {{ t('tools.edit') }}
+                    </d-button>
+                    <d-button
+                      color="primary"
+                      size="sm"
+                      :disabled="!tool.valid"
+                      @click.stop="runTool(tool)"
+                    >
+                      {{ t('tools.run') }}
+                    </d-button>
+                  </div>
+                </div>
+              </template>
+            </d-card>
           </d-col>
 
           <d-col :span="24" v-if="filteredTools.length === 0 && !loading">
@@ -426,31 +430,28 @@ function saveEdit(): void {
   min-width: 0;
 }
 
+/* ---- 卡片 d-card 样式覆盖 ---- */
 .tool-card {
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-sidebar-bg);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  width: 100%;
-  min-width: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   margin-bottom: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.tool-card:hover {
+.tool-card :deep(.devui-card) {
+  background: var(--vscode-sidebar-bg);
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+}
+
+.tool-card:hover :deep(.devui-card) {
   border-color: var(--vscode-accent-color);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .card-header {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--vscode-border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .card-title-group {
@@ -477,21 +478,15 @@ function saveEdit(): void {
 }
 
 .card-body {
-  padding: 12px 14px;
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .card-footer {
-  padding: 10px 14px;
-  border-top: 1px solid var(--vscode-border-color);
-  background: var(--vscode-editor-bg);
   display: flex;
   justify-content: flex-end;
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  width: 100%;
 }
 
 .tool-id {
@@ -511,27 +506,7 @@ function saveEdit(): void {
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-}
-
-.tool-type,
-.tool-status {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--vscode-border-color);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  color: var(--vscode-text-muted);
-}
-
-.tool-status {
-  border-color: #50d4ab;
-  color: #50d4ab;
-}
-
-.tool-status.invalid {
-  border-color: #f66f6a;
-  color: #f66f6a;
+  cursor: pointer;
 }
 
 .action-buttons {
@@ -545,19 +520,6 @@ function saveEdit(): void {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: auto;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  color: var(--vscode-text-muted);
-  background: var(--vscode-editor-bg);
-  border: 1px solid var(--vscode-border-color);
-  flex: 0 0 auto;
 }
 
 .path-row {

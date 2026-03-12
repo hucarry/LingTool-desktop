@@ -331,23 +331,24 @@ onBeforeUnmount(() => {
     <div ref="workbenchMainRef" class="workbench-main">
       <nav class="activity-bar" :aria-label="t('app.activityBar')">
         <div class="activity-bar-head"></div>
-        <button
-          v-for="item in menuItems"
-          :key="item.path"
-          class="activity-item"
-          :class="{ active: activeMenu === item.path }"
-          type="button"
-          :title="menuTitle(item)"
-          @click="handlePrimaryNavigation(item)"
-        >
-          <i :class="item.iconId" style="font-size: 20px;"></i>
-        </button>
+        <d-tooltip v-for="item in menuItems" :key="item.path" :content="menuTitle(item)" position="right">
+          <button
+            class="activity-item"
+            :class="{ active: activeMenu === item.path }"
+            type="button"
+            @click="handlePrimaryNavigation(item)"
+          >
+            <i :class="item.iconId" style="font-size: 20px;"></i>
+          </button>
+        </d-tooltip>
 
         <div class="activity-spacer" />
 
-        <button class="activity-item utility-item" type="button" :title="t('app.settings')" :class="{ active: activeMenu === '/settings' }" @click="openSettings">
-          <i class="icon-setting" style="font-size: 18px;"></i>
-        </button>
+        <d-tooltip :content="t('app.settings')" position="right">
+          <button class="activity-item utility-item" type="button" :class="{ active: activeMenu === '/settings' }" @click="openSettings">
+            <i class="icon-setting" style="font-size: 18px;"></i>
+          </button>
+        </d-tooltip>
       </nav>
 
       <aside v-if="showSidebar" class="side-bar" :aria-label="t('app.explorer')" :style="{ width: `${sidebarWidth}px` }">
