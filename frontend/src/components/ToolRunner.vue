@@ -457,12 +457,12 @@ function runTool(): void {
 
 .field-input {
   width: 100%;
-  height: 36px;
+  height: var(--control-height);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-editor-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
 }
 
 .command-preview {
@@ -526,12 +526,12 @@ function runTool(): void {
 }
 
 .action-button {
-  height: 34px;
+  height: var(--control-height);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
   cursor: pointer;
 }
 

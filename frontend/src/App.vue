@@ -19,7 +19,7 @@ const hub = useToolHub()
 const route = useRoute()
 const router = useRouter()
 const { t, formatSessionCount } = useI18n()
-const { defaultPythonPath } = useSettings()
+const { defaultPythonPath, theme } = useSettings()
 
 const runnerVisible = hub.runnerVisible
 const pythonOverride = hub.pythonOverride
@@ -106,6 +106,29 @@ const terminalSessionCaption = computed(() => {
 })
 
 const showSidebar = computed(() => sidebarVisible.value)
+const themeLabel = computed(() => t(theme.value === 'light' ? 'settings.themeLight' : 'settings.themeDark'))
+const defaultPythonLabel = computed(() => {
+  const raw = defaultPythonPath.value.trim()
+  if (!raw) {
+    return t('app.python.systemDefault')
+  }
+
+  return raw.split(/[\\/]/).pop() || raw
+})
+const currentViewSummary = computed(() => {
+  if (activeMenu.value === '/python') {
+    return t('app.status.packages', { count: hub.pythonPackages.value.length })
+  }
+
+  if (activeMenu.value === '/settings') {
+    return t('app.status.settings')
+  }
+
+  return t('app.status.tools', {
+    total: hub.tools.value.length,
+    invalid: hub.tools.value.filter((tool) => !tool.valid).length,
+  })
+})
 
 function menuTitle(item: MenuItem): string {
   return t(item.titleKey)
@@ -435,6 +458,12 @@ onBeforeUnmount(() => {
             <span class="editor-tab-glyph">{{ activeMenuItem.glyph }}</span>
             <span>{{ menuTitle(activeMenuItem) }}</span>
           </div>
+          <div class="editor-tab-meta">
+            <span class="meta-pill">{{ themeLabel }}</span>
+            <span class="meta-pill" :title="defaultPythonPath || t('app.python.systemDefault')">
+              {{ t('settings.pythonTitle') }}: {{ defaultPythonLabel }}
+            </span>
+          </div>
         </header>
 
         <main class="editor-content">
@@ -480,8 +509,13 @@ onBeforeUnmount(() => {
       <div class="status-left">
         <span class="status-item">{{ t('app.brand') }}</span>
         <span class="status-item">{{ menuTitle(activeMenuItem) }}</span>
+        <span class="status-item">{{ currentViewSummary }}</span>
       </div>
       <div class="status-right">
+        <span class="status-item">{{ t('settings.themeTitle') }}: {{ themeLabel }}</span>
+        <span class="status-item" :title="defaultPythonPath || t('app.python.systemDefault')">
+          {{ t('settings.pythonTitle') }}: {{ defaultPythonLabel }}
+        </span>
         <span class="status-item">{{ activeTerminalStatus }}</span>
       </div>
     </footer>
@@ -679,6 +713,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   display: flex;
   align-items: stretch;
+  justify-content: space-between;
   border-bottom: 1px solid var(--vscode-border-color);
   background: var(--vscode-tabs-bg);
 }
@@ -711,6 +746,26 @@ onBeforeUnmount(() => {
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--vscode-text-muted);
+}
+
+.editor-tab-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .editor-content {
@@ -834,6 +889,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   height: 100%;
+  min-width: 0;
 }
 
 .status-item {
@@ -842,9 +898,30 @@ onBeforeUnmount(() => {
   height: 100%;
   padding: 0 8px;
   cursor: default;
+  white-space: nowrap;
 }
 
 .status-item:hover {
   background: var(--statusbar-hover-bg);
+}
+
+@media (max-width: 960px) {
+  .editor-tab-meta {
+    display: none;
+  }
+
+  .status-bar {
+    padding: 0 4px;
+  }
+
+  .status-left,
+  .status-right {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .status-item {
+    padding: 0 6px;
+  }
 }
 </style>

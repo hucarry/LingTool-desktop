@@ -401,16 +401,16 @@ function clearForm(): void {
 .form-field textarea {
   width: 100%;
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
   font: inherit;
 }
 
 .form-field input,
 .form-field select {
-  height: 36px;
+  height: var(--control-height);
 }
 
 .form-field textarea {
@@ -433,12 +433,12 @@ function clearForm(): void {
 
 .field-button,
 .action-button {
-  height: 36px;
+  height: var(--control-height);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 14px;
+  padding: 0 var(--control-padding-inline-wide);
   cursor: pointer;
 }
 

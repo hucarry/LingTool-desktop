@@ -369,7 +369,7 @@ function deleteSelected(): void {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--panel-gap);
   padding: 12px;
 }
 
@@ -420,12 +420,12 @@ function deleteSelected(): void {
 
 .header-button,
 .card-button {
-  height: 30px;
+  height: var(--control-height-compact);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 4px;
+  border-radius: var(--control-radius-compact);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
   cursor: pointer;
 }
 
@@ -473,12 +473,12 @@ function deleteSelected(): void {
 
 .search-box input {
   width: 100%;
-  height: 34px;
+  height: var(--control-height);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px 0 34px;
+  padding: 0 var(--control-padding-inline) 0 34px;
 }
 
 .search-icon {
@@ -548,12 +548,12 @@ function deleteSelected(): void {
 }
 
 .selection-button {
-  height: 30px;
+  height: var(--control-height-compact);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 4px;
+  border-radius: var(--control-radius-compact);
   background: var(--vscode-editor-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
   cursor: pointer;
 }
 

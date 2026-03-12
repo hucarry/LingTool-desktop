@@ -42,6 +42,14 @@ const isDangerStatus = computed(() => {
   return text.includes('fail') || text.includes('failed') || text.includes('失败')
 })
 
+const statusTone = computed(() => {
+  if (props.processing) {
+    return 'running'
+  }
+
+  return isDangerStatus.value ? 'danger' : 'ready'
+})
+
 function installPackage(): void {
   const name = packageToInstall.value.trim()
   if (!name) {
@@ -109,9 +117,9 @@ function isRowBusy(name: string): boolean {
       </button>
     </div>
 
-    <p class="status-text" :class="{ danger: isDangerStatus }">
-      {{ statusText || t('python.ready') }}
-    </p>
+    <div class="status-banner" :class="statusTone">
+      <p class="status-text">{{ statusText || t('python.ready') }}</p>
+    </div>
 
     <div class="toolbar-row search-row">
       <label class="search-box">
@@ -153,7 +161,13 @@ function isRowBusy(name: string): boolean {
       </table>
 
       <div v-else class="empty-state">
-        <p class="empty-state-title">{{ t('python.noPackageData') }}</p>
+        <div class="empty-state-content">
+          <p class="empty-state-title">{{ t('python.noPackageData') }}</p>
+          <div class="empty-state-actions">
+            <button class="panel-button" type="button" @click="emit('refreshPackages')">{{ t('python.refresh') }}</button>
+            <button class="panel-button" type="button" @click="emit('useSystemPython')">{{ t('python.systemPython') }}</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -165,7 +179,7 @@ function isRowBusy(name: string): boolean {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--panel-gap);
   padding: 12px;
   background: var(--vscode-editor-bg);
 }
@@ -208,12 +222,12 @@ function isRowBusy(name: string): boolean {
 }
 
 .panel-button {
-  height: 32px;
+  height: var(--control-height-compact);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 4px;
+  border-radius: var(--control-radius-compact);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
   cursor: pointer;
 }
 
@@ -241,12 +255,12 @@ function isRowBusy(name: string): boolean {
 .field-input,
 .search-box input {
   width: 100%;
-  height: 34px;
+  height: var(--control-height);
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   background: var(--vscode-sidebar-bg);
   color: var(--vscode-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--control-padding-inline);
 }
 
 .search-box {
@@ -272,14 +286,33 @@ function isRowBusy(name: string): boolean {
   color: var(--vscode-text-muted);
 }
 
+.status-banner {
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.status-banner.ready {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--vscode-border-color));
+  background: var(--status-success-soft);
+}
+
+.status-banner.running {
+  border-color: color-mix(in srgb, var(--vscode-accent-color) 35%, var(--vscode-border-color));
+  background: var(--accent-soft);
+}
+
+.status-banner.danger {
+  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--vscode-border-color));
+  background: var(--status-danger-soft);
+}
+
 .status-text {
   margin: 0;
   font-size: 12px;
-  color: var(--status-success);
-}
-
-.status-text.danger {
-  color: var(--status-danger);
+  color: var(--vscode-text-primary);
+  line-height: 1.45;
 }
 
 .table-wrap {
@@ -329,9 +362,26 @@ function isRowBusy(name: string): boolean {
   justify-content: center;
 }
 
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 0 16px;
+}
+
 .empty-state-title {
   color: var(--vscode-text-muted);
   font-size: 13px;
+}
+
+.empty-state-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .loading-overlay {
