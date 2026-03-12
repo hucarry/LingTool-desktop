@@ -143,22 +143,34 @@ function submit(): void {
   const path = form.path.trim()
 
   if (!id) {
-    notify.warning(t('addTool.validationId'))
+    notify.warning(t('addTool.validationId'), {
+      groupKey: 'addTool.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(t('addTool.validationIdFormat'))
+    notify.warning(t('addTool.validationIdFormat'), {
+      groupKey: 'addTool.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
   if (!name) {
-    notify.warning(t('addTool.validationName'))
+    notify.warning(t('addTool.validationName'), {
+      groupKey: 'addTool.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
   if (!path) {
-    notify.warning(t('addTool.validationPath'))
+    notify.warning(t('addTool.validationPath'), {
+      groupKey: 'addTool.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
@@ -179,7 +191,10 @@ function submit(): void {
 
 function clearForm(): void {
   resetForm()
-  notify.info(t('addTool.resetDone'))
+  notify.info(t('addTool.resetDone'), {
+    groupKey: 'addTool.reset',
+    mergeMode: 'replace',
+  })
 }
 </script>
 

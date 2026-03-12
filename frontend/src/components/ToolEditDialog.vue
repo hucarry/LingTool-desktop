@@ -111,17 +111,26 @@ function saveEdit(): void {
   const path = editForm.path.trim()
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(t('tools.validationIdFormat'))
+    notify.warning(t('tools.validationIdFormat'), {
+      groupKey: 'tools.edit.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
   if (!name) {
-    notify.warning(t('tools.validationName'))
+    notify.warning(t('tools.validationName'), {
+      groupKey: 'tools.edit.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 
   if (!path) {
-    notify.warning(t('tools.validationPath'))
+    notify.warning(t('tools.validationPath'), {
+      groupKey: 'tools.edit.validation',
+      mergeMode: 'replace',
+    })
     return
   }
 

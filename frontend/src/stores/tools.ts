@@ -115,20 +115,26 @@ export const useToolsStore = defineStore('tools', () => {
     addingTool.value = false
     lastAddedToolId.value = message.toolId
 
-    notify.success(t('tools.added', { toolId: message.toolId }))
+    notify.success(t('tools.added', { toolId: message.toolId }), {
+      groupKey: 'tools.added',
+    })
   }
 
   function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
     updatingTool.value = false
     lastUpdatedToolId.value = message.toolId
 
-    notify.success(t('tools.updated', { toolId: message.toolId }))
+    notify.success(t('tools.updated', { toolId: message.toolId }), {
+      groupKey: 'tools.updated',
+    })
   }
 
   function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
     deletingTools.value = false
 
-    notify.success(t('tools.deleted', { count: message.deletedCount }))
+    notify.success(t('tools.deleted', { count: message.deletedCount }), {
+      groupKey: 'tools.deleted',
+    })
   }
 
   function handlePythonSelected(path?: string): void {

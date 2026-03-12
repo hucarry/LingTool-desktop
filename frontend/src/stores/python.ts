@@ -98,6 +98,9 @@ export const usePythonStore = defineStore('python', () => {
             action: actionText,
             packageName: message.packageName,
           }),
+          {
+            groupKey: `python.${message.action}.succeeded`,
+          },
         )
         break
       case 'failed':
@@ -113,6 +116,9 @@ export const usePythonStore = defineStore('python', () => {
             packageName: message.packageName,
             details: '',
           }),
+          {
+            groupKey: `python.${message.action}.failed`,
+          },
         )
         break
       default:

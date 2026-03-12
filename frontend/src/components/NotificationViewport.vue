@@ -20,6 +20,7 @@ function closeNotification(id: number): void {
         <span class="notify-mark">{{ item.type.slice(0, 1).toUpperCase() }}</span>
         <div class="notify-body">
           <p class="notify-text">{{ item.content }}</p>
+          <span v-if="item.count > 1" class="notify-count">x{{ item.count }}</span>
         </div>
         <button class="notify-close" type="button" @click="closeNotification(item.id)">x</button>
       </article>
@@ -92,6 +93,17 @@ function closeNotification(id: number): void {
   font-size: 13px;
   line-height: 1.45;
   word-break: break-word;
+}
+
+.notify-count {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--vscode-text-muted);
 }
 
 .notify-close {

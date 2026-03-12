@@ -1,11 +1,22 @@
 import { readonly, ref } from 'vue'
 
 export type NotifyType = 'success' | 'warning' | 'error' | 'info'
+type NotifyMergeMode = 'count' | 'replace'
 
 export interface NotifyItem {
   id: number
   type: NotifyType
   content: string
+  count: number
+  groupKey: string
+  updatedAt: number
+}
+
+export interface NotifyOptions {
+  duration?: number
+  groupKey?: string
+  mergeMode?: NotifyMergeMode
+  mergeWindowMs?: number
 }
 
 const DEFAULT_DURATION: Record<NotifyType, number> = {
@@ -16,6 +27,7 @@ const DEFAULT_DURATION: Record<NotifyType, number> = {
 }
 
 const MAX_NOTIFICATIONS = 4
+const DEFAULT_MERGE_WINDOW_MS = 2600
 
 const notifications = ref<NotifyItem[]>([])
 const timers = new Map<number, ReturnType<typeof setTimeout>>()
@@ -48,9 +60,59 @@ function trimNotifications(): void {
   }
 }
 
-function openNotification(type: NotifyType, content: string, duration = DEFAULT_DURATION[type]): void {
+function scheduleRemoval(id: number, duration: number): void {
+  clearTimer(id)
+
+  if (duration <= 0 || typeof window === 'undefined') {
+    return
+  }
+
+  const timer = window.setTimeout(() => {
+    removeNotification(id)
+  }, duration)
+
+  timers.set(id, timer)
+}
+
+function createDefaultGroupKey(type: NotifyType, content: string): string {
+  return `${type}:${content}`
+}
+
+function findGroupedNotification(
+  type: NotifyType,
+  groupKey: string,
+  mergeWindowMs: number,
+  now: number,
+): NotifyItem | undefined {
+  return notifications.value.find((item) => {
+    return item.type === type
+      && item.groupKey === groupKey
+      && now - item.updatedAt <= mergeWindowMs
+  })
+}
+
+function openNotification(type: NotifyType, content: string, options: NotifyOptions = {}): void {
   const normalized = content.trim()
   if (!normalized) {
+    return
+  }
+
+  const duration = options.duration ?? DEFAULT_DURATION[type]
+  const mergeWindowMs = options.mergeWindowMs ?? DEFAULT_MERGE_WINDOW_MS
+  const mergeMode = options.mergeMode ?? 'count'
+  const groupKey = options.groupKey?.trim() || createDefaultGroupKey(type, normalized)
+  const now = Date.now()
+  const groupedItem = findGroupedNotification(type, groupKey, mergeWindowMs, now)
+
+  if (groupedItem) {
+    groupedItem.content = normalized
+    groupedItem.updatedAt = now
+    groupedItem.count = mergeMode === 'count'
+      ? groupedItem.count + 1
+      : 1
+
+    notifications.value = [...notifications.value]
+    scheduleRemoval(groupedItem.id, duration)
     return
   }
 
@@ -61,35 +123,31 @@ function openNotification(type: NotifyType, content: string, duration = DEFAULT_
       id,
       type,
       content: normalized,
+      count: 1,
+      groupKey,
+      updatedAt: now,
     },
   ]
 
   trimNotifications()
-
-  if (duration > 0 && typeof window !== 'undefined') {
-    const timer = window.setTimeout(() => {
-      removeNotification(id)
-    }, duration)
-
-    timers.set(id, timer)
-  }
+  scheduleRemoval(id, duration)
 }
 
 export function useNotify() {
-  function success(msg: string) {
-    openNotification('success', msg)
+  function success(msg: string, options?: NotifyOptions) {
+    openNotification('success', msg, options)
   }
 
-  function warning(msg: string) {
-    openNotification('warning', msg)
+  function warning(msg: string, options?: NotifyOptions) {
+    openNotification('warning', msg, options)
   }
 
-  function error(msg: string) {
-    openNotification('error', msg)
+  function error(msg: string, options?: NotifyOptions) {
+    openNotification('error', msg, options)
   }
 
-  function info(msg: string) {
-    openNotification('info', msg)
+  function info(msg: string, options?: NotifyOptions) {
+    openNotification('info', msg, options)
   }
 
   return { success, warning, error, info }
