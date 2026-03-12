@@ -2,6 +2,7 @@ import { computed, reactive, ref, watch } from 'vue'
 
 import { bridge } from '../services/bridge'
 import { useI18n } from './useI18n'
+import { useNotify } from './useNotify'
 import { useSettings } from './useSettings'
 import type {
   AddToolPayload,
@@ -47,6 +48,7 @@ const pythonOperationAction = ref<'install' | 'uninstall' | ''>('')
 const pythonOperationPackage = ref('')
 
 const { locale, t } = useI18n()
+const notify = useNotify()
 const pythonPackageStatus = ref(t('python.ready'))
 
 const terminals = ref<TerminalInfo[]>([])
@@ -473,7 +475,8 @@ function handleToolAddedMessage(message: ToolAddedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `工具已新增：${message.toolId}`
     : `Tool added: ${message.toolId}`
-  alert(successMessage)
+  const notify = useNotify()
+  notify.success(successMessage)
 }
 
 function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
@@ -483,7 +486,7 @@ function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `工具已更新：${message.toolId}`
     : `Tool updated: ${message.toolId}`
-  alert(successMessage)
+  notify.success(successMessage)
 }
 
 function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
@@ -491,7 +494,7 @@ function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `已删除 ${message.deletedCount} 个工具`
     : `${message.deletedCount} tool(s) deleted`
-  alert(successMessage)
+  notify.success(successMessage)
 }
 
 function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
@@ -519,7 +522,7 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
         action: actionText,
         packageName: message.packageName,
       })
-      alert(
+      notify.success(
         t('python.status.succeeded', {
           action: actionText,
           packageName: message.packageName,
@@ -533,7 +536,7 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
         packageName: message.packageName,
         details: message.message ? ` (${message.message})` : '',
       })
-      alert(
+      notify.error(
         t('python.status.failed', {
           action: actionText,
           packageName: message.packageName,
@@ -621,7 +624,7 @@ function handleBackendMessage(message: BackMessage): void {
 
       if (message.message.includes('Terminal not found or not running')) {
         fetchTerminals()
-        alert(t('terminal.currentUnavailable'))
+        notify.warning(t('terminal.currentUnavailable'))
         break
       }
 
@@ -630,9 +633,9 @@ function handleBackendMessage(message: BackMessage): void {
       }
 
       if (typeof message.details === 'string' && message.details.trim()) {
-        alert(`${message.message}: ${message.details}`)
+        notify.error(`${message.message}: ${message.details}`)
       } else {
-        alert(message.message)
+        notify.error(message.message)
       }
       break
     case 'pythonSelected':
@@ -648,7 +651,7 @@ function handleBackendMessage(message: BackMessage): void {
         if (typeof message.path === 'string' && message.path.trim()) {
           setDefaultPythonPath(message.path)
 
-          alert(
+          notify.success(
             locale.value === 'zh-CN'
               ? '已更新默认 Python 解释器'
               : 'Default Python interpreter updated',

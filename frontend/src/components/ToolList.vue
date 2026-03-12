@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 
 import type { AddToolPayload, ToolItem } from '../types'
 import { useI18n } from '../composables/useI18n'
+import { useNotify } from '../composables/useNotify'
 
 const props = defineProps<{
   tools: ToolItem[]
@@ -40,6 +41,8 @@ const editForm = reactive({
 })
 
 const { locale, t } = useI18n()
+const notify = useNotify()
+const deleteConfirmVisible = ref(false)
 
 const validationText = computed(() => {
   if (locale.value === 'zh-CN') {
@@ -164,17 +167,17 @@ async function deleteSelected(): Promise<void> {
     return
   }
 
-  try {
-    const res = window.confirm(t('tools.confirmDeleteMessage'))
-    if (!res) {
-      return
-    }
-  } catch {
-    return
-  }
+  deleteConfirmVisible.value = true
+}
 
+function confirmDelete(): void {
+  deleteConfirmVisible.value = false
   emit('deleteTools', [...selectedIds.value])
   selectedIds.value = []
+}
+
+function cancelDelete(): void {
+  deleteConfirmVisible.value = false
 }
 
 function browseEditToolPath(): void {
@@ -196,17 +199,17 @@ function saveEdit(): void {
   const path = editForm.path.trim()
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    alert(validationText.value.invalidId)
+    notify.warning(validationText.value.invalidId)
     return
   }
 
   if (!name) {
-    alert(validationText.value.missingName)
+    notify.warning(validationText.value.missingName)
     return
   }
 
   if (!path) {
-    alert(validationText.value.missingPath)
+    notify.warning(validationText.value.missingPath)
     return
   }
 
@@ -332,7 +335,7 @@ function saveEdit(): void {
         </d-form-item>
 
         <d-form-item :label="t('tools.type')">
-          <d-segmented v-model="editForm.type" :options="[{ label: 'python', value: 'python' }, { label: 'exe', value: 'exe' }]" />
+          <d-select v-model="editForm.type" :options="[{ label: 'python', value: 'python' }, { label: 'exe', value: 'exe' }]" :allow-clear="false" />
         </d-form-item>
 
         <d-form-item :label="t('tools.path')">
@@ -370,6 +373,17 @@ function saveEdit(): void {
         <div class="dialog-footer">
           <d-button @click="editVisible = false">{{ t('tools.cancel') }}</d-button>
           <d-button type="primary" :loading="updating" @click="saveEdit">{{ t('tools.save') }}</d-button>
+        </div>
+      </template>
+    </d-modal>
+
+    <!-- 删除确认弹窗 -->
+    <d-modal v-model="deleteConfirmVisible" :title="t('tools.deleteSelected')">
+      <p>{{ t('tools.confirmDeleteMessage') }}</p>
+      <template #footer>
+        <div class="dialog-footer">
+          <d-button @click="cancelDelete">{{ t('tools.cancel') }}</d-button>
+          <d-button color="danger" @click="confirmDelete">{{ t('tools.deleteSelected') }}</d-button>
         </div>
       </template>
     </d-modal>

@@ -3,10 +3,17 @@ import { computed, reactive, watch } from 'vue'
 
 import { useToolHub } from '../composables/useToolHub'
 import { useI18n } from '../composables/useI18n'
+import { useNotify } from '../composables/useNotify'
 import type { AddToolPayload, ToolType } from '../types'
 
 const hub = useToolHub()
 const { locale } = useI18n()
+const notify = useNotify()
+
+const toolTypeOptions = [
+  { label: 'Python', value: 'python' },
+  { label: 'EXE', value: 'exe' },
+]
 
 interface AddToolFormState {
   id: string
@@ -199,22 +206,22 @@ function submit(): void {
   const path = form.path.trim()
 
   if (!id) {
-    alert(text.value.validationId)
+    notify.warning(text.value.validationId)
     return
   }
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    alert(text.value.validationIdFormat)
+    notify.warning(text.value.validationIdFormat)
     return
   }
 
   if (!name) {
-    alert(text.value.validationName)
+    notify.warning(text.value.validationName)
     return
   }
 
   if (!path) {
-    alert(text.value.validationPath)
+    notify.warning(text.value.validationPath)
     return
   }
 
@@ -235,7 +242,7 @@ function submit(): void {
 
 function clearForm(): void {
   resetForm()
-  alert(text.value.resetDone)
+  notify.info(text.value.resetDone)
 }
 </script>
 
@@ -249,12 +256,10 @@ function clearForm(): void {
     <d-form label-position="top" class="add-tool-form">
       <div class="form-grid">
         <d-form-item :label="text.toolType">
-          <el-segmented
+          <d-select
             v-model="form.type"
-            :options="[
-              { label: 'python', value: 'python' },
-              { label: 'exe', value: 'exe' },
-            ]"
+            :options="toolTypeOptions"
+            :allow-clear="false"
           />
         </d-form-item>
 

@@ -23,6 +23,8 @@ const emit = defineEmits<{
 
 const packageKeyword = ref('')
 const packageToInstall = ref('')
+const uninstallConfirmVisible = ref(false)
+const uninstallTargetName = ref('')
 const { t } = useI18n()
 
 const filteredPackages = computed(() => {
@@ -60,10 +62,19 @@ function uninstallPackage(name: string): void {
 }
 
 function confirmUninstall(name: string): void {
-  const confirmText = t('python.uninstallConfirm', { name })
-  if (window.confirm(confirmText)) {
-    uninstallPackage(name)
-  }
+  uninstallTargetName.value = name
+  uninstallConfirmVisible.value = true
+}
+
+function doUninstall(): void {
+  uninstallConfirmVisible.value = false
+  uninstallPackage(uninstallTargetName.value)
+  uninstallTargetName.value = ''
+}
+
+function cancelUninstall(): void {
+  uninstallConfirmVisible.value = false
+  uninstallTargetName.value = ''
 }
 
 function isRowBusy(name: string): boolean {
@@ -112,7 +123,7 @@ function isRowBusy(name: string): boolean {
     </p>
 
     <div class="toolbar-row search-row">
-      <d-input v-model="packageKeyword" clearable :placeholder="t('python.searchInstalled')" />
+      <d-search v-model="packageKeyword" :placeholder="t('python.searchInstalled')" :is-keyup-search="true" :delay="200" icon-position="left" />
       <span class="count">{{ filteredPackages.length }} / {{ packages.length }}</span>
     </div>
 
@@ -135,6 +146,17 @@ function isRowBusy(name: string): boolean {
         </d-column>
       </d-data-table>
     </div>
+
+    <!-- 卸载确认弹窗 -->
+    <d-modal v-model="uninstallConfirmVisible" :title="t('python.uninstall')">
+      <p>{{ t('python.uninstallConfirm', { name: uninstallTargetName }) }}</p>
+      <template #footer>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <d-button @click="cancelUninstall">{{ t('tools.cancel') }}</d-button>
+          <d-button color="danger" @click="doUninstall">{{ t('python.uninstall') }}</d-button>
+        </div>
+      </template>
+    </d-modal>
   </section>
 </template>
 

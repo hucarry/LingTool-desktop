@@ -1,6 +1,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { LogEntry, RunInfo } from '../types'
 import { useI18n } from '../composables/useI18n'
+import { useNotify } from '../composables/useNotify'
 
 const props = defineProps<{
   run: RunInfo | null
@@ -66,17 +67,19 @@ watch(
   },
 )
 
+const notify = useNotify()
+
 async function copyLogs(): Promise<void> {
   if (!mergedText.value) {
-    alert(text.value.noLogsCopy)
+    notify.info(text.value.noLogsCopy)
     return
   }
 
   try {
     await navigator.clipboard.writeText(mergedText.value)
-    alert(text.value.copied)
+    notify.success(text.value.copied)
   } catch {
-    alert(text.value.copyFailed)
+    notify.error(text.value.copyFailed)
   }
 }
 
