@@ -158,7 +158,7 @@ function saveEdit(): void {
       <section class="dialog-shell">
         <header class="dialog-header">
           <h3>{{ t('tools.editDialog') }}</h3>
-          <button class="icon-button" type="button" @click="closeDialog">×</button>
+          <button class="icon-button" type="button" aria-label="Close" @click="closeDialog">x</button>
         </header>
 
         <div class="dialog-body">

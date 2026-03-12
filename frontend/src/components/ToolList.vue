@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'openTool', tool: ToolItem): void
   (e: 'runTool', tool: ToolItem): void
+  (e: 'createTool'): void
   (e: 'refresh'): void
   (e: 'updateTool', payload: AddToolPayload): void
   (e: 'deleteTools', toolIds: string[]): void
@@ -47,6 +48,16 @@ const filteredTools = computed(() => {
 
 const selectedCount = computed(() => selectedIds.value.length)
 const selectedSet = computed(() => new Set(selectedIds.value))
+const hasSelection = computed(() => selectedCount.value > 0)
+const hasActiveSearch = computed(() => keyword.value.trim().length > 0)
+const invalidFilteredCount = computed(() => filteredTools.value.filter((tool) => !tool.valid).length)
+const allFilteredSelected = computed(() => {
+  if (filteredTools.value.length === 0) {
+    return false
+  }
+
+  return filteredTools.value.every((tool) => selectedSet.value.has(tool.id))
+})
 const editingTool = computed(() => {
   if (!editingToolId.value) {
     return null
@@ -85,6 +96,28 @@ function toggleSelect(toolId: string, checked: boolean): void {
   }
 
   selectedIds.value = Array.from(next)
+}
+
+function toggleSelectAllFiltered(checked: boolean): void {
+  if (!checked) {
+    const filteredIds = new Set(filteredTools.value.map((tool) => tool.id))
+    selectedIds.value = selectedIds.value.filter((id) => !filteredIds.has(id))
+    return
+  }
+
+  const next = new Set(selectedIds.value)
+  filteredTools.value.forEach((tool) => {
+    next.add(tool.id)
+  })
+  selectedIds.value = Array.from(next)
+}
+
+function clearSelection(): void {
+  selectedIds.value = []
+}
+
+function clearSearch(): void {
+  keyword.value = ''
 }
 
 function openEdit(tool: ToolItem): void {
@@ -128,7 +161,17 @@ function deleteSelected(): void {
       </div>
 
       <div class="header-actions">
+        <label class="select-all-toggle">
+          <input
+            type="checkbox"
+            :checked="allFilteredSelected"
+            :disabled="filteredTools.length === 0"
+            @change="(event) => toggleSelectAllFiltered((event.target as HTMLInputElement).checked)"
+          />
+          <span>{{ t('tools.selectAll') }}</span>
+        </label>
         <span class="selected-count">{{ t('tools.selected') }}: {{ selectedCount }}</span>
+        <button class="header-button primary" type="button" @click="emit('createTool')">{{ t('app.menu.addTool') }}</button>
         <button class="header-button" type="button" @click="emit('refresh')">{{ t('python.refresh') }}</button>
         <button class="header-button" type="button" :disabled="selectedCount !== 1" @click="openEditSelected">
           {{ t('tools.editSelected') }}
@@ -143,6 +186,27 @@ function deleteSelected(): void {
       <span class="search-icon" aria-hidden="true">/</span>
       <input v-model="keyword" type="search" :placeholder="t('tools.search')" />
     </label>
+
+    <div class="tool-stats">
+      <span class="stat-chip">{{ t('tools.filteredCount', { count: filteredTools.length }) }}</span>
+      <span class="stat-chip">{{ t('tools.invalidCount', { count: invalidFilteredCount }) }}</span>
+      <button v-if="hasActiveSearch" class="stat-chip action" type="button" @click="clearSearch">
+        {{ t('tools.clearSearch') }}
+      </button>
+    </div>
+
+    <div v-if="hasSelection" class="selection-bar">
+      <span class="selection-summary">{{ t('tools.selectionSummary', { count: selectedCount }) }}</span>
+      <div class="selection-actions">
+        <button class="selection-button" type="button" :disabled="selectedCount !== 1" @click="openEditSelected">
+          {{ t('tools.editSelected') }}
+        </button>
+        <button class="selection-button danger" type="button" :disabled="deleting" @click="deleteSelected">
+          {{ t('tools.deleteSelected') }}
+        </button>
+        <button class="selection-button" type="button" @click="clearSelection">{{ t('tools.clearSelection') }}</button>
+      </div>
+    </div>
 
     <div class="list-scroll">
       <div class="tool-rows">
@@ -169,6 +233,11 @@ function deleteSelected(): void {
           <div class="card-body">
             <p class="tool-id">{{ tool.id }}</p>
             <p class="tool-path" :title="tool.path">{{ tool.path }}</p>
+            <div class="tool-meta">
+              <span v-if="tool.cwd" class="tool-meta-item">{{ t('tools.cwdShort') }}: {{ tool.cwd }}</span>
+              <span v-if="tool.description" class="tool-meta-item">{{ t('tools.descriptionShort') }}</span>
+            </div>
+            <p v-if="tool.description" class="tool-description">{{ tool.description }}</p>
 
             <div v-if="tool.tags && tool.tags.length" class="tool-tags">
               <span v-for="tag in tool.tags" :key="tag" class="tool-tag">{{ tag }}</span>
@@ -188,7 +257,17 @@ function deleteSelected(): void {
         </article>
 
         <div v-if="filteredTools.length === 0 && !loading" class="empty-state">
-          <p class="empty-state-title">{{ t('tools.noMatch') }}</p>
+          <div class="empty-state-content">
+            <p class="empty-state-title">{{ hasActiveSearch ? t('tools.noMatch') : t('tools.emptyTitle') }}</p>
+            <p class="empty-state-text">{{ hasActiveSearch ? t('tools.emptySearchHint') : t('tools.emptyHint') }}</p>
+            <div class="empty-state-actions">
+              <button v-if="hasActiveSearch" class="header-button" type="button" @click="clearSearch">
+                {{ t('tools.clearSearch') }}
+              </button>
+              <button class="header-button" type="button" @click="emit('refresh')">{{ t('python.refresh') }}</button>
+              <button class="header-button primary" type="button" @click="emit('createTool')">{{ t('app.menu.addTool') }}</button>
+            </div>
+          </div>
         </div>
 
         <div v-if="loading" class="loading-overlay">
@@ -246,6 +325,18 @@ function deleteSelected(): void {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.select-all-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--vscode-text-muted);
+}
+
+.select-all-toggle input {
+  accent-color: var(--vscode-accent-color);
 }
 
 .selected-count {
@@ -310,6 +401,83 @@ function deleteSelected(): void {
   color: var(--vscode-text-muted);
   font-size: 12px;
   pointer-events: none;
+}
+
+.tool-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--vscode-text-muted);
+  font-size: 12px;
+}
+
+.stat-chip.action {
+  cursor: pointer;
+}
+
+.stat-chip.action:hover {
+  border-color: var(--vscode-accent-color);
+  color: var(--vscode-text-primary);
+}
+
+.selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.selection-summary {
+  font-size: 12px;
+  color: var(--vscode-text-primary);
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selection-button {
+  height: 30px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 4px;
+  background: var(--vscode-editor-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.selection-button:hover:not(:disabled) {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-hover-bg);
+}
+
+.selection-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selection-button.danger:hover:not(:disabled) {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
 }
 
 .list-scroll {
@@ -433,6 +601,37 @@ function deleteSelected(): void {
   overflow: hidden;
 }
 
+.tool-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tool-meta-item {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tool-description {
+  color: var(--vscode-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .tool-tags {
   display: flex;
   align-items: center;
@@ -468,9 +667,34 @@ function deleteSelected(): void {
   background: var(--surface-empty);
 }
 
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  max-width: 420px;
+  padding: 0 16px;
+}
+
 .empty-state-title {
+  color: var(--vscode-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-state-text {
   color: var(--vscode-text-muted);
   font-size: 13px;
+  line-height: 1.5;
+}
+
+.empty-state-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .loading-overlay {
@@ -506,6 +730,10 @@ function deleteSelected(): void {
 
   .header-actions {
     justify-content: flex-start;
+  }
+
+  .selection-bar {
+    align-items: flex-start;
   }
 }
 </style>

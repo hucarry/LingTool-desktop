@@ -103,6 +103,7 @@ const terminalTabs = computed(() => {
     return {
       ...terminal,
       label: `${shellName} ${order}`,
+      isCommandTarget: terminal.terminalId === commandTerminalId.value,
     }
   })
 })
@@ -213,6 +214,24 @@ const splitStatusText = computed(() => {
   return t('terminal.waitingSplit')
 })
 
+const commandTargetLabel = computed(() => {
+  if (!commandTerminalId.value) {
+    return t('terminal.noSessions')
+  }
+
+  return getLabel(commandTerminalId.value)
+})
+
+const commandTerminal = computed(() => {
+  if (!commandTerminalId.value) {
+    return null
+  }
+
+  return terminalMap.value.get(commandTerminalId.value) ?? null
+})
+
+const hasTerminalSessions = computed(() => terminalIdList.value.length > 0)
+
 function getLabel(terminalId: string): string {
   return terminalLabelMap.value.get(terminalId) ?? terminalId
 }
@@ -300,6 +319,19 @@ function createTerminalFromToolbar(): void {
   })
 }
 
+function useCurrentShell(): void {
+  shellInput.value = commandTerminal.value?.shell ?? ''
+}
+
+function useCurrentCwd(): void {
+  cwdInput.value = commandTerminal.value?.cwd ?? ''
+}
+
+function clearProfileInputs(): void {
+  shellInput.value = ''
+  cwdInput.value = ''
+}
+
 function focusTerminal(terminalId: string): void {
   focusedTerminalId.value = terminalId
   emit('selectTerminal', terminalId)
@@ -313,6 +345,10 @@ function selectTab(terminalId: string): void {
 function stopTerminalById(terminalId: string): void {
   if (!terminalId) {
     return
+  }
+
+  if (focusedTerminalId.value === terminalId) {
+    focusedTerminalId.value = findAlternativeTerminalId(terminalId)
   }
 
   emit('stopTerminal', terminalId)
@@ -385,6 +421,7 @@ function splitWithTerminal(targetTerminalId: string): void {
   const selected = findAlternativeTerminalId(primaryTerminalId.value, targetTerminalId)
   if (selected) {
     secondaryTerminalId.value = selected
+    focusedTerminalId.value = selected
     pendingSplitCreation.value = false
     closeContextMenu()
     return
@@ -457,6 +494,7 @@ watch(
       const candidate = findAlternativeTerminalId(primaryTerminalId.value, secondaryTerminalId.value)
       if (candidate) {
         secondaryTerminalId.value = candidate
+        focusedTerminalId.value = candidate
         pendingSplitCreation.value = false
       }
       return
@@ -543,7 +581,10 @@ onBeforeUnmount(() => {
           v-for="terminal in terminalTabs"
           :key="terminal.terminalId"
           class="terminal-instance"
-          :class="{ active: terminal.terminalId === activeTerminalId }"
+          :class="{
+            active: terminal.terminalId === activeTerminalId,
+            target: terminal.isCommandTarget,
+          }"
           role="button"
           tabindex="0"
           @click="selectTab(terminal.terminalId)"
@@ -553,6 +594,7 @@ onBeforeUnmount(() => {
         >
           <span class="terminal-state" :class="terminal.status" />
           <span class="terminal-label">{{ terminal.label }}</span>
+          <span v-if="terminal.isCommandTarget" class="terminal-target-badge">IN</span>
           <button
             class="terminal-close"
             type="button"
@@ -568,6 +610,7 @@ onBeforeUnmount(() => {
 
       <div class="toolbar-actions">
         <span class="toolbar-summary">{{ sessionSummary }}</span>
+        <span v-if="hasTerminalSessions" class="toolbar-target">IN: {{ commandTargetLabel }}</span>
         <button class="toolbar-action" type="button" @click="showToolbar = !showToolbar">
           {{ showToolbar ? t('terminal.hideProfile') : t('terminal.newProfile') }}
         </button>
@@ -594,6 +637,25 @@ onBeforeUnmount(() => {
     <div v-if="splitEnabled" class="split-toolbar">
       <span class="split-status">{{ splitStatusText }}</span>
 
+      <div v-if="resolvedSecondaryTerminalId" class="split-targets">
+        <button
+          class="split-target-chip"
+          :class="{ active: commandTerminalId === primaryTerminalId }"
+          type="button"
+          @click="focusTerminal(primaryTerminalId)"
+        >
+          {{ getLabel(primaryTerminalId) }}
+        </button>
+        <button
+          class="split-target-chip"
+          :class="{ active: commandTerminalId === resolvedSecondaryTerminalId }"
+          type="button"
+          @click="focusTerminal(resolvedSecondaryTerminalId)"
+        >
+          {{ getLabel(resolvedSecondaryTerminalId) }}
+        </button>
+      </div>
+
       <label v-if="splitCandidates.length > 0" class="split-selector">
         <span>{{ t('terminal.split') }}</span>
         <select :value="resolvedSecondaryTerminalId || secondaryTerminalId" @change="changeSecondaryTerminal">
@@ -618,6 +680,12 @@ onBeforeUnmount(() => {
       <button class="profile-create" type="button" @click="createTerminalFromToolbar">
         {{ t('terminal.create') }}
       </button>
+
+      <div v-if="hasTerminalSessions" class="profile-shortcuts">
+        <button class="profile-shortcut" type="button" @click="useCurrentShell">Shell <- current</button>
+        <button class="profile-shortcut" type="button" @click="useCurrentCwd">CWD <- current</button>
+        <button class="profile-shortcut" type="button" @click="clearProfileInputs">Clear</button>
+      </div>
     </div>
 
     <div class="terminal-layout" :class="{ 'is-split': splitActive }">
@@ -630,6 +698,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="pane-meta-group">
               <span class="pane-meta">{{ t('terminal.primary') }}</span>
+              <span v-if="commandTerminalId === primaryTerminalId" class="pane-target-tag">INPUT</span>
               <span class="pane-status" :class="primaryTerminal?.status">{{ getTerminalStatusLabel(primaryTerminal) }}</span>
             </div>
           </header>
@@ -664,6 +733,7 @@ onBeforeUnmount(() => {
               <span class="pane-path" :title="secondaryTerminal?.cwd || ''">{{ secondaryTerminal?.cwd ? getCompactPath(secondaryTerminal.cwd) : '' }}</span>
             </div>
             <div class="pane-meta-group">
+              <span v-if="commandTerminalId === resolvedSecondaryTerminalId" class="pane-target-tag">INPUT</span>
               <span class="pane-status" :class="secondaryTerminal?.status">{{ getTerminalStatusLabel(secondaryTerminal) }}</span>
               <button class="pane-close" type="button" @click="closeSplit">{{ t('terminal.closeSplit') }}</button>
             </div>
@@ -694,6 +764,14 @@ onBeforeUnmount(() => {
         <div class="terminal-empty-card">
           <span class="terminal-empty-title">{{ t('terminal.panel') }}</span>
           <span class="terminal-empty-desc">{{ t('terminal.noSessions') }}</span>
+          <div class="terminal-empty-actions">
+            <button class="empty-action primary" type="button" @click="createTerminalFromToolbar">
+              {{ t('terminal.create') }}
+            </button>
+            <button class="empty-action" type="button" @click="showToolbar = true">
+              {{ t('terminal.newProfile') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -780,10 +858,30 @@ onBeforeUnmount(() => {
   color: var(--vscode-text-primary);
 }
 
+.terminal-instance.target {
+  outline: 1px solid color-mix(in srgb, var(--vscode-accent-color) 55%, transparent);
+  outline-offset: -1px;
+}
+
 .terminal-label {
   max-width: 170px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.terminal-target-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--vscode-accent-color);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .terminal-close {
@@ -852,6 +950,19 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.toolbar-target {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  color: var(--vscode-text-primary);
+  font-size: 11px;
+  background: var(--surface-soft);
+  white-space: nowrap;
+}
+
 .toolbar-action {
   border: 1px solid transparent;
   background: transparent;
@@ -897,6 +1008,29 @@ onBeforeUnmount(() => {
 .split-status {
   color: var(--vscode-text-muted);
   font-size: 11px;
+}
+
+.split-targets {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.split-target-chip {
+  height: 24px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vscode-text-muted);
+  padding: 0 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.split-target-chip.active {
+  border-color: var(--vscode-accent-color);
+  color: var(--vscode-text-primary);
+  background: var(--accent-soft);
 }
 
 .split-selector {
@@ -963,6 +1097,30 @@ onBeforeUnmount(() => {
 
 .profile-create:hover {
   filter: brightness(1.08);
+}
+
+.profile-shortcuts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-shortcut {
+  height: 28px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vscode-text-muted);
+  padding: 0 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.profile-shortcut:hover {
+  border-color: var(--vscode-accent-color);
+  color: var(--vscode-text-primary);
+  background: var(--vscode-hover-bg);
 }
 
 .terminal-layout {
@@ -1037,6 +1195,20 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
+.pane-target-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--vscode-accent-color);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .pane-status {
   font-size: 10px;
   text-transform: uppercase;
@@ -1109,6 +1281,30 @@ onBeforeUnmount(() => {
 .terminal-empty-desc {
   font-size: 11px;
   color: var(--vscode-text-muted);
+}
+
+.terminal-empty-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.empty-action {
+  height: 30px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.empty-action.primary {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-accent-color);
+  color: var(--text-on-accent);
 }
 
 .terminal-context-menu {

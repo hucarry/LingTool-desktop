@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 import ToolList from '../components/ToolList.vue'
 import { useToolHub } from '../composables/useToolHub'
@@ -8,6 +9,7 @@ import type { AddToolPayload, ToolItem } from '../types'
 const hub = useToolHub()
 const tools = hub.tools
 const loadingTools = hub.loadingTools
+const router = useRouter()
 
 onMounted(() => {
   if (!hub.loadingTools.value && hub.tools.value.length === 0) {
@@ -30,6 +32,10 @@ function updateTool(payload: AddToolPayload): void {
 function deleteTools(toolIds: string[]): void {
   hub.deleteTools(toolIds)
 }
+
+function openAddTool(): void {
+  router.push('/tools/new')
+}
 </script>
 
 <template>
@@ -41,6 +47,7 @@ function deleteTools(toolIds: string[]): void {
       :deleting="hub.deletingTools.value"
       :edit-tool-path-selection="hub.editToolPathSelection.value"
       :edit-tool-python-selection="hub.editToolPythonSelection.value"
+      @create-tool="openAddTool"
       @refresh="hub.fetchTools"
       @open-tool="hub.openTool"
       @run-tool="runToolDirect"
