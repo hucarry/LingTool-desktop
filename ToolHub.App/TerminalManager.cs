@@ -151,12 +151,12 @@ public sealed class TerminalManager : IDisposable
     {
         if (_terminals.TryRemove(terminalId, out var context))
         {
-            context.StopRequested = true;
+            context.RequestStop();
             ForceStopTerminalProcess(context);
 
             context.Info.Status = TerminalStates.Stopped;
             context.Info.EndTime = DateTimeOffset.UtcNow;
-            context.Info.ExitCode = context.Connection.ExitCode;
+            context.Info.ExitCode = TryReadExitCode(context);
             _sendMessage(new TerminalStatusMessage(context.Info));
 
             context.Dispose();
@@ -188,7 +188,10 @@ public sealed class TerminalManager : IDisposable
         {
             while (!context.StopRequested)
             {
-                int count = await context.Connection.ReaderStream.ReadAsync(buffer, 0, buffer.Length);
+                int count = await context.Connection.ReaderStream.ReadAsync(
+                    buffer.AsMemory(0, buffer.Length),
+                    context.ReadCancellation.Token
+                );
                 if (count <= 0)
                 {
                     break;
@@ -197,6 +200,14 @@ public sealed class TerminalManager : IDisposable
                 var text = Encoding.UTF8.GetString(buffer, 0, count);
                 _sendMessage(new TerminalOutputMessage(context.Info.TerminalId, text, LogChannels.Stdout, DateTimeOffset.UtcNow));
             }
+        }
+        catch (OperationCanceledException) when (context.StopRequested || context.ReadCancellation.IsCancellationRequested)
+        {
+            // Expected during terminal shutdown.
+        }
+        catch (ObjectDisposedException) when (context.StopRequested)
+        {
+            // Expected during terminal shutdown.
         }
         catch (Exception ex)
         {
@@ -221,7 +232,7 @@ public sealed class TerminalManager : IDisposable
 
         context.Info.Status = context.StopRequested ? TerminalStates.Stopped : TerminalStates.Exited;
         context.Info.EndTime = DateTimeOffset.UtcNow;
-        context.Info.ExitCode = context.Connection.ExitCode;
+        context.Info.ExitCode = TryReadExitCode(context);
 
         _sendMessage(new TerminalStatusMessage(context.Info));
         context.Dispose();
@@ -420,6 +431,18 @@ public sealed class TerminalManager : IDisposable
         }
     }
 
+    private static int? TryReadExitCode(TerminalContext context)
+    {
+        try
+        {
+            return context.Connection.ExitCode;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private sealed class TerminalContext : IDisposable
     {
         public TerminalContext(TerminalInfo info, IPtyConnection connection)
@@ -430,12 +453,40 @@ public sealed class TerminalManager : IDisposable
 
         public TerminalInfo Info { get; }
         public IPtyConnection Connection { get; }
+        public CancellationTokenSource ReadCancellation { get; } = new();
         public SemaphoreSlim WriteLock { get; } = new(1, 1);
-        public bool StopRequested { get; set; }
+
+        private int _stopRequested;
+
+        public bool StopRequested => Volatile.Read(ref _stopRequested) == 1;
+
+        public void RequestStop()
+        {
+            Volatile.Write(ref _stopRequested, 1);
+
+            try
+            {
+                ReadCancellation.Cancel();
+            }
+            catch
+            {
+                // Ignore repeated cancellation.
+            }
+        }
 
         public void Dispose()
         {
+            try
+            {
+                ReadCancellation.Cancel();
+            }
+            catch
+            {
+                // Ignore repeated cancellation.
+            }
+
             Connection.Dispose();
+            ReadCancellation.Dispose();
             WriteLock.Dispose();
         }
     }

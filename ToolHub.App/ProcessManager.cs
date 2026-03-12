@@ -94,7 +94,7 @@ public sealed class ProcessManager : IDisposable
             return false;
         }
 
-        context.StopRequested = true;
+        context.RequestStop();
         await ProcessKiller.KillProcessTreeAsync(context.Process);
         return true;
     }
@@ -122,7 +122,7 @@ public sealed class ProcessManager : IDisposable
             {
                 if (IsProcessRunning(context.Process))
                 {
-                    context.StopRequested = true;
+                    context.RequestStop();
                     ProcessKiller.KillProcessTreeAsync(context.Process).GetAwaiter().GetResult();
                 }
             }
@@ -345,6 +345,13 @@ public sealed class ProcessManager : IDisposable
 
         public object SyncRoot { get; } = new();
 
-        public bool StopRequested { get; set; }
+        private int _stopRequested;
+
+        public bool StopRequested => Volatile.Read(ref _stopRequested) == 1;
+
+        public void RequestStop()
+        {
+            Volatile.Write(ref _stopRequested, 1);
+        }
     }
 }

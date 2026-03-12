@@ -7,6 +7,9 @@ namespace ToolHub.App;
 
 public sealed class PythonPackageManager
 {
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MutationTimeout = TimeSpan.FromMinutes(5);
+
     private readonly string _appRoot;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -30,7 +33,7 @@ public sealed class PythonPackageManager
         startInfo.ArgumentList.Add("--format=json");
         startInfo.ArgumentList.Add("--disable-pip-version-check");
 
-        var run = await RunProcessCaptureAsync(startInfo, cancellationToken);
+        var run = await RunProcessCaptureAsync(startInfo, QueryTimeout, cancellationToken);
         if (run.ExitCode != 0)
         {
             throw new InvalidOperationException(
@@ -75,7 +78,7 @@ public sealed class PythonPackageManager
         startInfo.ArgumentList.Add(packageName.Trim());
         startInfo.ArgumentList.Add("--disable-pip-version-check");
 
-        var run = await RunProcessCaptureAsync(startInfo, cancellationToken);
+        var run = await RunProcessCaptureAsync(startInfo, MutationTimeout, cancellationToken);
         var success = run.ExitCode == 0;
         var message = success
             ? "安装完成。"
@@ -106,7 +109,7 @@ public sealed class PythonPackageManager
         startInfo.ArgumentList.Add(packageName.Trim());
         startInfo.ArgumentList.Add("--disable-pip-version-check");
 
-        var run = await RunProcessCaptureAsync(startInfo, cancellationToken);
+        var run = await RunProcessCaptureAsync(startInfo, MutationTimeout, cancellationToken);
         var success = run.ExitCode == 0;
         var message = success
             ? "卸载完成。"
@@ -133,6 +136,7 @@ public sealed class PythonPackageManager
 
     private async Task<ProcessRunResult> RunProcessCaptureAsync(
         ProcessStartInfo startInfo,
+        TimeSpan timeout,
         CancellationToken cancellationToken
     )
     {
@@ -143,14 +147,31 @@ public sealed class PythonPackageManager
 
         process.Start();
 
-        var readStdOutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var readStdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeout);
 
-        await process.WaitForExitAsync(cancellationToken);
-        var stdOut = await readStdOutTask;
-        var stdErr = await readStdErrTask;
+        try
+        {
+            var token = timeoutCts.Token;
+            var readStdOutTask = process.StandardOutput.ReadToEndAsync(token);
+            var readStdErrTask = process.StandardError.ReadToEndAsync(token);
 
-        return new ProcessRunResult(process.ExitCode, stdOut, stdErr);
+            await process.WaitForExitAsync(token);
+            var stdOut = await readStdOutTask;
+            var stdErr = await readStdErrTask;
+
+            return new ProcessRunResult(process.ExitCode, stdOut, stdErr);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            TryTerminateProcess(process);
+            throw new TimeoutException($"Python package command timed out after {timeout.TotalSeconds:0} seconds.");
+        }
+        catch
+        {
+            TryTerminateProcess(process);
+            throw;
+        }
     }
 
     private string ResolvePythonExecutable(string? rawPath)
@@ -190,6 +211,21 @@ public sealed class PythonPackageManager
         return string.IsNullOrWhiteSpace(message)
             ? "未知错误。"
             : message.Trim();
+    }
+
+    private static void TryTerminateProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup failures after cancellation or timeout.
+        }
     }
 
     private sealed class PipListItem

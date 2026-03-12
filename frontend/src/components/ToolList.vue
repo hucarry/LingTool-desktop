@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { AddToolPayload, ToolItem } from '../types'
 import { useI18n } from '../composables/useI18n'
 
@@ -39,7 +39,23 @@ const editForm = reactive({
   description: '',
 })
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
+
+const validationText = computed(() => {
+  if (locale.value === 'zh-CN') {
+    return {
+      invalidId: '工具 ID 格式不合法',
+      missingName: '工具名称不能为空',
+      missingPath: '工具路径不能为空',
+    }
+  }
+
+  return {
+    invalidId: 'Tool ID format is invalid',
+    missingName: 'Tool name is required',
+    missingPath: 'Tool path is required',
+  }
+})
 
 
 const filteredTools = computed(() => {
@@ -176,11 +192,30 @@ function browseEditToolPython(): void {
 }
 
 function saveEdit(): void {
+  const id = editForm.id.trim()
+  const name = editForm.name.trim()
+  const path = editForm.path.trim()
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
+    ElMessage.error(validationText.value.invalidId)
+    return
+  }
+
+  if (!name) {
+    ElMessage.error(validationText.value.missingName)
+    return
+  }
+
+  if (!path) {
+    ElMessage.error(validationText.value.missingPath)
+    return
+  }
+
   const payload: AddToolPayload = {
-    id: editForm.id.trim(),
-    name: editForm.name.trim(),
+    id,
+    name,
     type: editForm.type,
-    path: editForm.path.trim(),
+    path,
     python: editForm.type === 'python' ? (editForm.python.trim() || undefined) : undefined,
     cwd: editForm.cwd.trim() || undefined,
     argsTemplate: editForm.argsTemplate.trim(),
@@ -389,7 +424,7 @@ function saveEdit(): void {
 
 .tool-row {
   border: 1px solid var(--vscode-border-color);
-  background: #252526;
+  background: var(--vscode-sidebar-bg);
   border-radius: 3px;
   padding: 10px;
   display: grid;
@@ -433,7 +468,7 @@ function saveEdit(): void {
   margin-top: 8px;
   padding: 4px 6px;
   border: 1px solid var(--vscode-border-color);
-  background: #1e1e1e;
+  background: var(--vscode-editor-bg);
   color: var(--vscode-text-muted);
   border-radius: 2px;
   font-family: var(--vscode-font-mono);
@@ -462,13 +497,13 @@ function saveEdit(): void {
 }
 
 .tool-status {
-  border-color: #2ea043;
-  color: #73c991;
+  border-color: var(--el-color-success);
+  color: var(--el-color-success);
 }
 
 .tool-status.invalid {
-  border-color: #f14c4c;
-  color: #f48771;
+  border-color: var(--el-color-danger);
+  color: var(--el-color-danger);
 }
 
 .row-actions {
@@ -504,8 +539,8 @@ function saveEdit(): void {
   border-radius: 999px;
   font-size: 11px;
   color: var(--vscode-text-muted);
-  background: #333333;
-  border: 1px solid #4a4a4a;
+  background: var(--vscode-editor-bg);
+  border: 1px solid var(--vscode-border-color);
   flex: 0 0 auto;
 }
 

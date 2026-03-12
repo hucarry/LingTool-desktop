@@ -86,7 +86,7 @@ internal static class Program
             })
             .RegisterWebMessageReceivedHandler((sender, rawMessage) =>
             {
-                HandleMessage(
+                _ = HandleMessageAsync(
                     rawMessage,
                     registry,
                     processManager,
@@ -108,7 +108,7 @@ internal static class Program
         ShutdownManagers();
     }
 
-    private static void HandleMessage(
+    private static async Task HandleMessageAsync(
         string rawMessage,
         ToolRegistry registry,
         ProcessManager processManager,
@@ -132,7 +132,7 @@ internal static class Program
                 JsonOptions
             );
 
-            MessageRouter.RouteAsync(context, rawMessage).GetAwaiter().GetResult();
+            await MessageRouter.RouteAsync(context, rawMessage);
         }
         catch (Exception ex)
         {

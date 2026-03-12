@@ -55,10 +55,6 @@ class Bridge {
   private dispatch(raw: string): void {
     try {
       const parsed = JSON.parse(raw) as BackMessage
-      // 调试日志：打印终端相关消息
-      if (parsed.type?.startsWith('terminal')) {
-        console.log('[Bridge] 收到终端消息:', parsed.type, parsed)
-      }
       this.listeners.forEach((listener) => listener(parsed))
     } catch (error) {
       console.error('[Bridge] 解析消息失败:', error, raw)
