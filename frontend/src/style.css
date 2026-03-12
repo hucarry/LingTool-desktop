@@ -16,7 +16,7 @@
   --vscode-font-ui: 'Segoe UI', 'Microsoft YaHei', sans-serif;
   --vscode-font-mono: Consolas, 'Courier New', monospace;
 
-  /* Compatibility tokens for existing components */
+  /* 兼容旧组件的 token 别名 */
   --text-primary: var(--vscode-text-primary);
   --text-secondary: var(--vscode-text-muted);
   --glass-border: var(--vscode-border-color);
@@ -30,22 +30,6 @@
   --font-mono: var(--vscode-font-mono);
 
   color-scheme: dark;
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
 }
 
 :root.light-theme {
@@ -68,21 +52,6 @@
   --glass-border: var(--vscode-border-color);
   --font-mono: var(--vscode-font-mono);
   color-scheme: light;
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
 }
 
 * {
@@ -128,6 +97,7 @@ p {
   box-shadow: none;
 }
 
+/* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -145,93 +115,3 @@ p {
 ::-webkit-scrollbar-thumb:hover {
   background: #4f4f4f;
 }
-
-.el-button {
-  border-radius: 2px;
-}
-
-.el-button:not(.is-text):not(.is-link) {
-  background: var(--vscode-titlebar-bg);
-  border-color: var(--vscode-border-color);
-  color: var(--vscode-text-primary);
-}
-
-.el-button:not(.is-text):not(.is-link):hover {
-  background: var(--vscode-hover-bg);
-  border-color: var(--vscode-hover-bg);
-}
-
-.el-button--primary {
-  
-  
-  
-  
-  
-  
-  
-}
-
-.el-input__wrapper,
-.el-textarea__inner,
-.el-select .el-input__wrapper {
-  background: var(--vscode-workbench-bg) !important;
-  box-shadow: 0 0 0 1px var(--vscode-border-color) inset !important;
-}
-
-.el-input__inner,
-.el-textarea__inner {
-  color: var(--vscode-text-primary);
-}
-
-.el-input__wrapper.is-focus,
-.el-select .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px var(--vscode-accent-color) inset !important;
-}
-
-.el-select-dropdown,
-.el-popper.is-light,
-.el-popconfirm {
-  background: var(--vscode-sidebar-bg) !important;
-  border-color: var(--vscode-border-color) !important;
-  color: var(--vscode-text-primary) !important;
-}
-
-.el-table {
-  
-  
-  
-  
-  
-  
-}
-
-.el-table th.el-table__cell,
-.el-table td.el-table__cell {
-  background: transparent;
-}
-
-.el-drawer {
-  background: var(--vscode-sidebar-bg) !important;
-  color: var(--vscode-text-primary);
-}
-
-.el-drawer__header {
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--vscode-border-color);
-}
-
-.el-descriptions__table {
-  
-}
-
-.el-tag {
-  border-color: var(--vscode-border-color);
-  background: var(--vscode-activitybar-bg);
-  color: var(--vscode-text-primary);
-}
-
-.el-empty__description p {
-  color: var(--vscode-text-muted);
-}
-
-
