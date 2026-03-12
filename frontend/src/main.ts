@@ -6,4 +6,7 @@ import './style.css'
 import App from './App.vue'
 import { router } from './router'
 
-createApp(App).use(DevUI).use(router).mount('#app')
+const app = createApp(App)
+app.use(DevUI)
+app.use(router)
+app.mount('#app')

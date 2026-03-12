@@ -1,8 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import EnvironmentView from '../views/EnvironmentView.vue'
-import ToolsView from '../views/ToolsView.vue'
-import AddToolView from '../views/AddToolView.vue'
-import SettingsView from '../views/SettingsView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -15,22 +11,22 @@ export const router = createRouter({
       path: '/python',
       alias: '/workspace',
       name: 'pythonPackages',
-      component: EnvironmentView,
+      component: () => import('../views/EnvironmentView.vue'),
     },
     {
       path: '/tools',
       name: 'tools',
-      component: ToolsView,
+      component: () => import('../views/ToolsView.vue'),
     },
     {
       path: '/tools/new',
       name: 'addTool',
-      component: AddToolView,
+      component: () => import('../views/AddToolView.vue'),
     },
     {
       path: '/settings',
       name: 'settings',
-      component: SettingsView,
+      component: () => import('../views/SettingsView.vue'),
     },
   ],
 })
