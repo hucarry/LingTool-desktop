@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --vscode-workbench-bg: #1e1e1e;
   --vscode-titlebar-bg: #3c3c3c;
   --vscode-activitybar-bg: #333333;
@@ -151,31 +151,31 @@ p {
 }
 
 .el-button:not(.is-text):not(.is-link) {
-  background: #3c3c3c;
-  border-color: #3c3c3c;
+  background: var(--vscode-titlebar-bg);
+  border-color: var(--vscode-border-color);
   color: var(--vscode-text-primary);
 }
 
 .el-button:not(.is-text):not(.is-link):hover {
-  background: #4b4b4b;
-  border-color: #4b4b4b;
+  background: var(--vscode-hover-bg);
+  border-color: var(--vscode-hover-bg);
 }
 
 .el-button--primary {
-  --el-button-bg-color: #0e639c;
-  --el-button-border-color: #0e639c;
-  --el-button-hover-bg-color: #1177bb;
-  --el-button-hover-border-color: #1177bb;
-  --el-button-active-bg-color: #0c5f95;
-  --el-button-active-border-color: #0c5f95;
+  --el-button-bg-color: var(--vscode-accent-color);
+  --el-button-border-color: var(--vscode-accent-color);
+  --el-button-hover-bg-color: var(--vscode-active-bg);
+  --el-button-hover-border-color: var(--vscode-active-bg);
+  --el-button-active-bg-color: var(--vscode-hover-bg);
+  --el-button-active-border-color: var(--vscode-hover-bg);
   --el-button-text-color: #ffffff;
 }
 
 .el-input__wrapper,
 .el-textarea__inner,
 .el-select .el-input__wrapper {
-  background: #3c3c3c !important;
-  box-shadow: 0 0 0 1px #3c3c3c inset !important;
+  background: var(--vscode-workbench-bg) !important;
+  box-shadow: 0 0 0 1px var(--vscode-border-color) inset !important;
 }
 
 .el-input__inner,
@@ -191,17 +191,17 @@ p {
 .el-select-dropdown,
 .el-popper.is-light,
 .el-popconfirm {
-  background: #252526 !important;
+  background: var(--vscode-sidebar-bg) !important;
   border-color: var(--vscode-border-color) !important;
   color: var(--vscode-text-primary) !important;
 }
 
 .el-table {
-  --el-table-bg-color: #1e1e1e;
-  --el-table-tr-bg-color: #1e1e1e;
-  --el-table-header-bg-color: #252526;
+  --el-table-bg-color: var(--vscode-editor-bg);
+  --el-table-tr-bg-color: var(--vscode-editor-bg);
+  --el-table-header-bg-color: var(--vscode-sidebar-bg);
   --el-table-text-color: var(--vscode-text-primary);
-  --el-table-header-text-color: #d4d4d4;
+  --el-table-header-text-color: var(--vscode-text-muted);
   --el-table-border-color: var(--vscode-border-color);
 }
 
@@ -211,7 +211,7 @@ p {
 }
 
 .el-drawer {
-  background: #252526 !important;
+  background: var(--vscode-sidebar-bg) !important;
   color: var(--vscode-text-primary);
 }
 
@@ -225,11 +225,12 @@ p {
 }
 
 .el-tag {
-  border-color: #4b4b4b;
-  background: #333333;
-  color: #d4d4d4;
+  border-color: var(--vscode-border-color);
+  background: var(--vscode-activitybar-bg);
+  color: var(--vscode-text-primary);
 }
 
 .el-empty__description p {
   color: var(--vscode-text-muted);
 }
+

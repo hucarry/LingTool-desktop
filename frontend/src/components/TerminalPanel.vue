@@ -577,7 +577,7 @@ onBeforeUnmount(() => {
 }
 
 .terminal-close:hover {
-  background: #5a5d5e;
+  background: var(--vscode-hover-bg);
   opacity: 1;
 }
 
@@ -585,21 +585,21 @@ onBeforeUnmount(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #808080;
+  background: var(--vscode-text-muted);
   flex-shrink: 0;
 }
 
 .terminal-state.running {
-  background: #0dbc79;
+  background: var(--el-color-success);
 }
 
 .terminal-state.stopped,
 .terminal-state.exited {
-  background: #c5c5c5;
+  background: var(--vscode-text-muted);
 }
 
 .terminal-state.failed {
-  background: #f14c4c;
+  background: var(--el-color-danger);
 }
 
 .terminal-empty {
@@ -637,13 +637,13 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-action.danger:hover:not(:disabled) {
-  color: #f48771;
+  color: var(--el-color-danger);
 }
 
 .advanced-toolbar {
   flex-shrink: 0;
   border-bottom: 1px solid var(--vscode-border-color);
-  background: #1a1a1a;
+  background: var(--vscode-sidebar-bg);
   padding: 8px;
   display: grid;
   grid-template-columns: minmax(160px, 220px) 1fr auto;
@@ -665,7 +665,7 @@ onBeforeUnmount(() => {
 .profile-field input {
   height: 28px;
   border: 1px solid var(--vscode-border-color);
-  background: #3c3c3c;
+  background: var(--vscode-tabs-bg);
   color: var(--vscode-text-primary);
   border-radius: 2px;
   padding: 0 8px;
@@ -680,8 +680,8 @@ onBeforeUnmount(() => {
 
 .profile-create {
   height: 28px;
-  border: 1px solid var(--vscode-border-color);
-  background: #0e639c;
+  border: 1px solid var(--vscode-accent-color);
+  background: var(--vscode-accent-color);
   color: #ffffff;
   border-radius: 2px;
   padding: 0 10px;
@@ -690,7 +690,7 @@ onBeforeUnmount(() => {
 }
 
 .profile-create:hover {
-  background: #1177bb;
+  opacity: 0.9;
 }
 
 .terminal-layout {
@@ -698,7 +698,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr;
-  background: #1e1e1e;
+  background: var(--vscode-editor-bg);
 }
 
 .terminal-layout.is-split {
@@ -711,12 +711,12 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
+  background: var(--vscode-editor-bg);
   border: 1px solid transparent;
 }
 
 .terminal-pane.focused {
-  border-color: #0e639c;
+  border-color: var(--vscode-accent-color);
 }
 
 .pane-header {
@@ -727,7 +727,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 0 8px;
   border-bottom: 1px solid var(--vscode-border-color);
-  background: #181818;
+  background: var(--vscode-sidebar-bg);
 }
 
 .pane-title {
@@ -777,7 +777,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--vscode-border-color);
   border-radius: 4px;
   overflow: hidden;
-  background: #252526;
+  background: var(--vscode-sidebar-bg);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
 }
 
@@ -792,11 +792,12 @@ onBeforeUnmount(() => {
 }
 
 .menu-item:hover {
-  background: #094771;
+  background: var(--vscode-active-bg);
 }
 
 .menu-item.danger:hover {
-  background: #5f2120;
+  background: var(--el-color-danger);
+  color: #ffffff;
 }
 
 @media (max-width: 980px) {

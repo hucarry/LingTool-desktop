@@ -91,5 +91,5 @@ D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\obj\Debug\net8.0\
 D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\obj\Debug\net8.0\ToolHub.App.pdb
 D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\obj\Debug\net8.0\ToolHub.App.genruntimeconfig.cache
 D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\obj\Debug\net8.0\ref\ToolHub.App.dll
-D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-CcdS0kuT.js
-D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-DuW601RT.css
+D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-m4rPzpWQ.css
+D:\Programming Code\05_OtherNet\插件管理平台\ToolHub.App\bin\Debug\net8.0\wwwroot\assets\index-qt_sN3DG.js

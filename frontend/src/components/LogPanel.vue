@@ -1,7 +1,7 @@
-<script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { LogEntry, RunInfo } from '../types'
+import { useI18n } from '../composables/useI18n'
 
 const props = defineProps<{
   run: RunInfo | null
@@ -14,6 +14,37 @@ const emit = defineEmits<{
 
 const autoScroll = ref(true)
 const containerRef = ref<HTMLElement>()
+const { locale } = useI18n()
+
+const text = computed(() => {
+  if (locale.value === 'zh-CN') {
+    return {
+      title: '日志输出',
+      noRunSelected: '请选择一条运行记录',
+      autoScrollOn: '自动滚动',
+      autoScrollOff: '手动',
+      copy: '复制',
+      clear: '清空',
+      noLogsCopy: '暂无日志可复制',
+      copied: '日志已复制',
+      copyFailed: '复制失败，请检查剪贴板权限',
+      empty: '当前没有日志',
+    }
+  }
+
+  return {
+    title: 'Log Output',
+    noRunSelected: 'Please select a run',
+    autoScrollOn: 'Auto Scroll',
+    autoScrollOff: 'Manual',
+    copy: 'Copy',
+    clear: 'Clear',
+    noLogsCopy: 'No logs to copy',
+    copied: 'Logs copied to clipboard',
+    copyFailed: 'Copy failed, check clipboard permissions',
+    empty: 'No logs available',
+  }
+})
 
 const mergedText = computed(() =>
   props.logs
@@ -38,15 +69,15 @@ watch(
 
 async function copyLogs(): Promise<void> {
   if (!mergedText.value) {
-    ElMessage.warning('暂无日志可复制')
+    ElMessage.warning(text.value.noLogsCopy)
     return
   }
 
   try {
     await navigator.clipboard.writeText(mergedText.value)
-    ElMessage.success('日志已复制')
+    ElMessage.success(text.value.copied)
   } catch {
-    ElMessage.error('复制失败，请检查剪贴板权限')
+    ElMessage.error(text.value.copyFailed)
   }
 }
 
@@ -63,18 +94,18 @@ function clearLogs(): void {
   <section class="log-panel">
     <header class="log-head">
       <div class="run-meta">
-        <h3>日志输出</h3>
+        <h3>{{ text.title }}</h3>
         <p v-if="run">
           {{ run.toolName }} | {{ run.status }}
           <span v-if="run.pid">(PID: {{ run.pid }})</span>
         </p>
-        <p v-else>请选择一条运行记录</p>
+        <p v-else>{{ text.noRunSelected }}</p>
       </div>
 
       <div class="log-actions">
-        <el-switch v-model="autoScroll" inline-prompt active-text="自动滚动" inactive-text="手动" />
-        <el-button size="small" @click="copyLogs">复制</el-button>
-        <el-button size="small" @click="clearLogs" :disabled="!run">清空</el-button>
+        <el-switch v-model="autoScroll" inline-prompt :active-text="text.autoScrollOn" :inactive-text="text.autoScrollOff" />
+        <el-button size="small" @click="copyLogs">{{ text.copy }}</el-button>
+        <el-button size="small" @click="clearLogs" :disabled="!run">{{ text.clear }}</el-button>
       </div>
     </header>
 
@@ -90,7 +121,7 @@ function clearLogs(): void {
           <span class="line">{{ log.line }}</span>
         </p>
       </template>
-      <el-empty v-else description="当前没有日志" :image-size="72" />
+      <el-empty v-else :description="text.empty" :image-size="72" />
     </div>
   </section>
 </template>
@@ -98,39 +129,36 @@ function clearLogs(): void {
 <style scoped>
 .log-panel {
   border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  background: var(--vscode-editor-bg);
 }
 
 .log-head {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--vscode-border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--vscode-sidebar-bg);
 }
 
 .run-meta h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--vscode-text-primary);
 }
 
 .run-meta p {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text-secondary);
-  font-family: 'Fira Code', monospace;
+  color: var(--vscode-text-muted);
+  font-family: var(--vscode-font-mono);
 }
 
 .log-actions {
@@ -143,9 +171,9 @@ function clearLogs(): void {
   flex: 1;
   overflow: auto;
   padding: 16px 20px;
-  background: #0f172a; /* Slate 900 for modern terminal look */
+  background: var(--vscode-editor-bg);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  font-family: 'Fira Code', Consolas, Monaco, monospace;
+  font-family: var(--vscode-font-mono);
 }
 
 .log-line {
@@ -161,22 +189,23 @@ function clearLogs(): void {
 }
 
 .time {
-  color: #64748b; /* Slate 500 */
+  color: var(--vscode-text-muted);
   margin-right: 8px;
   user-select: none;
 }
 
 .channel {
-  color: #94a3b8; /* Slate 400 */
+  color: var(--vscode-text-muted);
   margin-right: 8px;
   user-select: none;
+  opacity: 0.8;
 }
 
 .stdout .line {
-  color: #f8fafc; /* Slate 50 */
+  color: var(--vscode-text-primary);
 }
 
 .stderr .line {
-  color: #fca5a5; /* Red 300 */
+  color: var(--el-color-danger);
 }
 </style>

@@ -175,7 +175,7 @@ function runTool(): void {
 
 code {
   font-family: var(--vscode-font-mono);
-  background: #1e1e1e;
+  background: var(--vscode-editor-bg);
   border: 1px solid var(--vscode-border-color);
   padding: 3px 7px;
   border-radius: 2px;
@@ -214,6 +214,6 @@ code {
 }
 
 :deep(.el-descriptions__cell) {
-  background: #252526;
+  background: var(--vscode-editor-bg);
 }
 </style>
