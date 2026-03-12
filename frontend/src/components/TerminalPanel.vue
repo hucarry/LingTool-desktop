@@ -36,7 +36,7 @@ const splitEnabled = ref(false)
 const secondaryTerminalId = ref('')
 const focusedTerminalId = ref('')
 const pendingSplitCreation = ref(false)
-const { t } = useI18n()
+const { t, formatSessionCount } = useI18n()
 
 const contextMenu = reactive<ContextMenuState>({
   visible: false,
@@ -62,6 +62,14 @@ const terminalLabelMap = computed(() => {
   const map = new Map<string, string>()
   terminalTabs.value.forEach((terminal) => {
     map.set(terminal.terminalId, terminal.label)
+  })
+  return map
+})
+
+const terminalMap = computed(() => {
+  const map = new Map<string, TerminalInfo>()
+  props.terminals.forEach((terminal) => {
+    map.set(terminal.terminalId, terminal)
   })
   return map
 })
@@ -92,6 +100,8 @@ const resolvedSecondaryTerminalId = computed(() => {
 
 const splitActive = computed(() => splitEnabled.value && !!resolvedSecondaryTerminalId.value)
 
+const sessionSummary = computed(() => formatSessionCount(props.terminals.length))
+
 const commandTerminalId = computed(() => {
   if (focusedTerminalId.value && terminalIdList.value.includes(focusedTerminalId.value)) {
     return focusedTerminalId.value
@@ -116,8 +126,62 @@ const secondaryOutputs = computed(() => {
   return props.outputsByTerminal[resolvedSecondaryTerminalId.value] ?? []
 })
 
+const primaryTerminal = computed(() => {
+  if (!primaryTerminalId.value) {
+    return null
+  }
+
+  return terminalMap.value.get(primaryTerminalId.value) ?? null
+})
+
+const secondaryTerminal = computed(() => {
+  if (!resolvedSecondaryTerminalId.value) {
+    return null
+  }
+
+  return terminalMap.value.get(resolvedSecondaryTerminalId.value) ?? null
+})
+
+const splitCandidates = computed(() => {
+  return terminalTabs.value.filter((terminal) => terminal.terminalId !== primaryTerminalId.value)
+})
+
+const splitStatusText = computed(() => {
+  if (!splitEnabled.value) {
+    return ''
+  }
+
+  if (pendingSplitCreation.value) {
+    return t('terminal.creatingSplit')
+  }
+
+  if (resolvedSecondaryTerminalId.value) {
+    return `${t('terminal.split')}: ${getLabel(resolvedSecondaryTerminalId.value)}`
+  }
+
+  return t('terminal.waitingSplit')
+})
+
 function getLabel(terminalId: string): string {
   return terminalLabelMap.value.get(terminalId) ?? terminalId
+}
+
+function getTerminalStatusLabel(terminal: TerminalInfo | null): string {
+  if (!terminal) {
+    return ''
+  }
+
+  return t(`terminal.status.${terminal.status}`)
+}
+
+function getCompactPath(path: string): string {
+  const normalized = path.replace(/\\/g, '/')
+  const segments = normalized.split('/').filter(Boolean)
+  if (segments.length <= 2) {
+    return normalized
+  }
+
+  return segments.slice(-2).join('/')
 }
 
 function findAlternativeTerminalId(primaryId: string, preferredId = ''): string {
@@ -280,6 +344,17 @@ function closeSplit(): void {
   pendingSplitCreation.value = false
 }
 
+function changeSecondaryTerminal(event: Event): void {
+  const target = event.target as HTMLSelectElement | null
+  const nextTerminalId = target?.value ?? ''
+  if (!nextTerminalId) {
+    return
+  }
+
+  secondaryTerminalId.value = nextTerminalId
+  focusedTerminalId.value = nextTerminalId
+}
+
 function copyTerminalId(terminalId: string): void {
   if (!terminalId || typeof navigator === 'undefined' || !navigator.clipboard) {
     closeContextMenu()
@@ -384,6 +459,8 @@ onBeforeUnmount(() => {
           role="button"
           tabindex="0"
           @click="selectTab(terminal.terminalId)"
+          @keydown.enter.prevent="selectTab(terminal.terminalId)"
+          @keydown.space.prevent="selectTab(terminal.terminalId)"
           @contextmenu="openTabContextMenu($event, terminal.terminalId)"
         >
           <span class="terminal-state" :class="terminal.status" />
@@ -402,13 +479,22 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="toolbar-actions">
+        <span class="toolbar-summary">{{ sessionSummary }}</span>
         <button class="toolbar-action" type="button" @click="showToolbar = !showToolbar">
           {{ showToolbar ? t('terminal.hideProfile') : t('terminal.newProfile') }}
         </button>
         <button class="toolbar-action" type="button" :disabled="!primaryTerminalId" @click="toggleSplit">
           {{ splitEnabled ? t('terminal.unsplit') : t('terminal.split') }}
         </button>
-        <button class="toolbar-action" type="button" @click="createTerminalFromToolbar">+</button>
+        <button
+          class="toolbar-action is-accent"
+          type="button"
+          :title="t('terminal.create')"
+          :aria-label="t('terminal.create')"
+          @click="createTerminalFromToolbar"
+        >
+          +
+        </button>
         <button class="toolbar-action" type="button" :disabled="!commandTerminalId" @click="clearOutput">{{ t('terminal.clear') }}</button>
         <button class="toolbar-action danger" type="button" :disabled="!commandTerminalId" @click="stopActiveTerminal">{{ t('terminal.kill') }}</button>
         <button v-if="terminals.length > 1" class="toolbar-action danger" type="button" @click="stopAllTerminals">
@@ -416,6 +502,19 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
+
+    <div v-if="splitEnabled" class="split-toolbar">
+      <span class="split-status">{{ splitStatusText }}</span>
+
+      <label v-if="splitCandidates.length > 0" class="split-selector">
+        <span>{{ t('terminal.split') }}</span>
+        <select :value="resolvedSecondaryTerminalId || secondaryTerminalId" @change="changeSecondaryTerminal">
+          <option v-for="terminal in splitCandidates" :key="terminal.terminalId" :value="terminal.terminalId">
+            {{ terminal.label }}
+          </option>
+        </select>
+      </label>
+    </div>
 
     <div v-show="showToolbar" class="advanced-toolbar">
       <label class="profile-field">
@@ -428,15 +527,23 @@ onBeforeUnmount(() => {
         <input v-model="cwdInput" type="text" placeholder="C:\\project" />
       </label>
 
-      <button class="profile-create" type="button" @click="createTerminalFromToolbar">{{ t('terminal.create') }}</button>
+      <button class="profile-create" type="button" @click="createTerminalFromToolbar">
+        {{ t('terminal.create') }}
+      </button>
     </div>
 
     <div class="terminal-layout" :class="{ 'is-split': splitActive }">
       <template v-if="primaryTerminalId">
         <article class="terminal-pane" :class="{ focused: commandTerminalId === primaryTerminalId }">
           <header class="pane-header">
-            <span class="pane-title">{{ getLabel(primaryTerminalId) }}</span>
-            <span class="pane-meta">{{ t('terminal.primary') }}</span>
+            <div class="pane-heading">
+              <span class="pane-title">{{ getLabel(primaryTerminalId) }}</span>
+              <span class="pane-path" :title="primaryTerminal?.cwd || ''">{{ primaryTerminal?.cwd ? getCompactPath(primaryTerminal.cwd) : '' }}</span>
+            </div>
+            <div class="pane-meta-group">
+              <span class="pane-meta">{{ t('terminal.primary') }}</span>
+              <span class="pane-status" :class="primaryTerminal?.status">{{ getTerminalStatusLabel(primaryTerminal) }}</span>
+            </div>
           </header>
           <div class="pane-body">
             <TerminalViewport
@@ -447,6 +554,12 @@ onBeforeUnmount(() => {
               @input="emit('input', $event)"
               @resize="emit('resizeTerminal', $event)"
             />
+            <div v-else class="terminal-state-result">
+              <div class="terminal-empty-card">
+                <span class="terminal-empty-title">{{ t('terminal.panel') }}</span>
+                <span class="terminal-empty-desc">{{ t('terminal.noSessions') }}</span>
+              </div>
+            </div>
           </div>
         </article>
 
@@ -456,10 +569,16 @@ onBeforeUnmount(() => {
           :class="{ focused: commandTerminalId === resolvedSecondaryTerminalId }"
         >
           <header class="pane-header">
-            <span class="pane-title">
-              {{ resolvedSecondaryTerminalId ? getLabel(resolvedSecondaryTerminalId) : t('terminal.creatingSplit') }}
-            </span>
-            <button class="pane-close" type="button" @click="closeSplit">{{ t('terminal.closeSplit') }}</button>
+            <div class="pane-heading">
+              <span class="pane-title">
+                {{ resolvedSecondaryTerminalId ? getLabel(resolvedSecondaryTerminalId) : t('terminal.creatingSplit') }}
+              </span>
+              <span class="pane-path" :title="secondaryTerminal?.cwd || ''">{{ secondaryTerminal?.cwd ? getCompactPath(secondaryTerminal.cwd) : '' }}</span>
+            </div>
+            <div class="pane-meta-group">
+              <span class="pane-status" :class="secondaryTerminal?.status">{{ getTerminalStatusLabel(secondaryTerminal) }}</span>
+              <button class="pane-close" type="button" @click="closeSplit">{{ t('terminal.closeSplit') }}</button>
+            </div>
           </header>
 
           <div class="pane-body">
@@ -471,12 +590,24 @@ onBeforeUnmount(() => {
               @input="emit('input', $event)"
               @resize="emit('resizeTerminal', $event)"
             />
-            <div v-else class="split-placeholder">{{ t('terminal.waitingSplit') }}</div>
+            <div v-else class="terminal-state-result">
+              <div class="terminal-empty-card">
+                <span class="terminal-empty-title">{{ t('terminal.split') }}</span>
+                <span class="terminal-empty-desc">
+                  {{ resolvedSecondaryTerminalId ? t('terminal.noSessions') : t('terminal.waitingSplit') }}
+                </span>
+              </div>
+            </div>
           </div>
         </article>
       </template>
 
-      <div v-else class="terminal-placeholder">{{ t('terminal.noSessions') }}</div>
+      <div v-else class="terminal-placeholder">
+        <div class="terminal-empty-card">
+          <span class="terminal-empty-title">{{ t('terminal.panel') }}</span>
+          <span class="terminal-empty-desc">{{ t('terminal.noSessions') }}</span>
+        </div>
+      </div>
     </div>
 
     <teleport to="body">
@@ -506,7 +637,6 @@ onBeforeUnmount(() => {
 }
 
 .terminal-toolbar {
-  height: 32px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--vscode-border-color);
   display: flex;
@@ -514,7 +644,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 10px;
   padding: 0 8px;
-  overflow: hidden;
+  min-height: 32px;
 }
 
 .terminal-tab-strip {
@@ -624,6 +754,14 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.toolbar-summary {
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .toolbar-action {
@@ -652,6 +790,45 @@ onBeforeUnmount(() => {
   color: var(--el-color-danger);
 }
 
+.toolbar-action.is-accent {
+  color: var(--vscode-text-primary);
+  border-color: var(--vscode-border-color);
+}
+
+.split-toolbar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--vscode-border-color);
+  background: color-mix(in srgb, var(--vscode-sidebar-bg) 76%, transparent);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.split-status {
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+}
+
+.split-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+}
+
+.split-selector select {
+  min-width: 180px;
+  height: 28px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 4px;
+  background: var(--vscode-editor-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 8px;
+}
+
 .advanced-toolbar {
   flex-shrink: 0;
   border-bottom: 1px solid var(--vscode-border-color);
@@ -675,34 +852,29 @@ onBeforeUnmount(() => {
 }
 
 .profile-field input {
-  height: 28px;
+  width: 100%;
+  height: 32px;
   border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-tabs-bg);
+  border-radius: 4px;
+  background: var(--vscode-editor-bg);
   color: var(--vscode-text-primary);
-  border-radius: 2px;
-  padding: 0 8px;
-  font-size: 12px;
+  padding: 0 10px;
   font-family: var(--vscode-font-mono);
 }
 
-.profile-field input:focus {
-  outline: 1px solid var(--vscode-accent-color);
-  border-color: var(--vscode-accent-color);
-}
-
 .profile-create {
-  height: 28px;
+  align-self: end;
+  height: 32px;
   border: 1px solid var(--vscode-accent-color);
+  border-radius: 4px;
   background: var(--vscode-accent-color);
   color: #ffffff;
-  border-radius: 2px;
-  padding: 0 10px;
+  padding: 0 14px;
   cursor: pointer;
-  font-size: 12px;
 }
 
 .profile-create:hover {
-  opacity: 0.9;
+  filter: brightness(1.08);
 }
 
 .terminal-layout {
@@ -732,14 +904,22 @@ onBeforeUnmount(() => {
 }
 
 .pane-header {
-  height: 24px;
+  min-height: 24px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 0 8px;
   border-bottom: 1px solid var(--vscode-border-color);
   background: var(--vscode-sidebar-bg);
+}
+
+.pane-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pane-title {
@@ -747,9 +927,41 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
+.pane-path {
+  color: var(--vscode-text-muted);
+  font-size: 11px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--vscode-font-mono);
+}
+
+.pane-meta-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .pane-meta {
   color: var(--vscode-text-muted);
   font-size: 11px;
+}
+
+.pane-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vscode-text-muted);
+}
+
+.pane-status.running {
+  color: var(--el-color-success);
+}
+
+.pane-status.failed {
+  color: var(--el-color-danger);
 }
 
 .pane-close {
@@ -778,6 +990,37 @@ onBeforeUnmount(() => {
   color: var(--vscode-text-muted);
   font-size: 12px;
   letter-spacing: 0.3px;
+}
+
+.terminal-state-result {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-empty-card {
+  min-width: 220px;
+  max-width: 320px;
+  padding: 18px 20px;
+  border: 1px dashed var(--vscode-border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-sidebar-bg) 72%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.terminal-empty-title {
+  font-size: 12px;
+  color: var(--vscode-text-primary);
+  letter-spacing: 0.3px;
+}
+
+.terminal-empty-desc {
+  font-size: 11px;
+  color: var(--vscode-text-muted);
 }
 
 .terminal-context-menu {
@@ -813,8 +1056,29 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 980px) {
+  .terminal-toolbar,
+  .split-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .advanced-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .split-selector {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .split-selector select {
+    min-width: 0;
+    flex: 1;
   }
 
   .terminal-layout.is-split {

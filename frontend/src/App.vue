@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Tooltip as DTooltip } from 'vue-devui/tooltip'
-import 'vue-devui/tooltip/style.css'
 import { useRoute, useRouter } from 'vue-router'
-import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
 import { useI18n } from './composables/useI18n'
 import { useSettings } from './composables/useSettings'
+import NotificationViewport from './components/NotificationViewport.vue'
 
+const TerminalPanel = defineAsyncComponent(() => import('./components/TerminalPanel.vue'))
 const ToolRunner = defineAsyncComponent(() => import('./components/ToolRunner.vue'))
 
 interface MenuItem {
   path: '/python' | '/tools' | '/tools/new' | '/settings'
-  iconId: string
+  glyph: string
   titleKey: string
 }
 
@@ -52,14 +51,14 @@ const workbenchMainRef = ref<HTMLElement>()
 const editorStackRef = ref<HTMLElement>()
 
 const menuItems: MenuItem[] = [
-  { path: '/python', iconId: 'icon-code', titleKey: 'app.menu.python' },
-  { path: '/tools', iconId: 'icon-folder', titleKey: 'app.menu.tools' },
-  { path: '/tools/new', iconId: 'icon-add', titleKey: 'app.menu.addTool' },
+  { path: '/python', glyph: 'PY', titleKey: 'app.menu.python' },
+  { path: '/tools', glyph: 'TL', titleKey: 'app.menu.tools' },
+  { path: '/tools/new', glyph: '+', titleKey: 'app.menu.addTool' },
 ]
 
 const settingsMenuItem: MenuItem = {
   path: '/settings',
-  iconId: 'icon-setting',
+  glyph: 'ST',
   titleKey: 'app.settings',
 }
 
@@ -319,24 +318,31 @@ onBeforeUnmount(() => {
     <div ref="workbenchMainRef" class="workbench-main">
       <nav class="activity-bar" :aria-label="t('app.activityBar')">
         <div class="activity-bar-head"></div>
-        <d-tooltip v-for="item in menuItems" :key="item.path" :content="menuTitle(item)" position="right">
-          <button
-            class="activity-item"
-            :class="{ active: activeMenu === item.path }"
-            type="button"
-            @click="handlePrimaryNavigation(item)"
-          >
-            <i :class="item.iconId" style="font-size: 20px;"></i>
-          </button>
-        </d-tooltip>
+        <button
+          v-for="item in menuItems"
+          :key="item.path"
+          class="activity-item"
+          :class="{ active: activeMenu === item.path }"
+          type="button"
+          :title="menuTitle(item)"
+          :aria-label="menuTitle(item)"
+          @click="handlePrimaryNavigation(item)"
+        >
+          <span class="activity-glyph">{{ item.glyph }}</span>
+        </button>
 
         <div class="activity-spacer" />
 
-        <d-tooltip :content="t('app.settings')" position="right">
-          <button class="activity-item utility-item" type="button" :class="{ active: activeMenu === '/settings' }" @click="openSettings">
-            <i class="icon-setting" style="font-size: 18px;"></i>
-          </button>
-        </d-tooltip>
+        <button
+          class="activity-item utility-item"
+          type="button"
+          :class="{ active: activeMenu === '/settings' }"
+          :title="t('app.settings')"
+          :aria-label="t('app.settings')"
+          @click="openSettings"
+        >
+          <span class="activity-glyph">{{ settingsMenuItem.glyph }}</span>
+        </button>
       </nav>
 
       <aside v-if="showSidebar" class="side-bar" :aria-label="t('app.explorer')" :style="{ width: `${sidebarWidth}px` }">
@@ -377,7 +383,7 @@ onBeforeUnmount(() => {
       <section ref="editorStackRef" class="editor-stack">
         <header class="editor-tabs">
           <div class="editor-tab is-active">
-            <i :class="activeMenuItem.iconId" style="font-size: 14px;"></i>
+            <span class="editor-tab-glyph">{{ activeMenuItem.glyph }}</span>
             <span>{{ menuTitle(activeMenuItem) }}</span>
           </div>
         </header>
@@ -439,6 +445,8 @@ onBeforeUnmount(() => {
       @pick-python="hub.pickPythonInterpreter"
       @run="hub.handleRun"
     />
+
+    <NotificationViewport />
   </div>
 </template>
 
@@ -508,6 +516,16 @@ onBeforeUnmount(() => {
   bottom: 7px;
   width: 2px;
   background: var(--vscode-accent-color);
+}
+
+.activity-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .activity-spacer {
@@ -633,6 +651,17 @@ onBeforeUnmount(() => {
   color: var(--vscode-text-primary);
   border-top: 1px solid var(--vscode-accent-color);
   background: var(--vscode-editor-bg);
+}
+
+.editor-tab-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--vscode-text-muted);
 }
 
 .editor-content {

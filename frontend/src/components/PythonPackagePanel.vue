@@ -1,17 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Button as DButton } from 'vue-devui/button'
-import { Input as DInput } from 'vue-devui/input'
-import { LoadingDirective as vLoading } from 'vue-devui/loading'
-import { Modal as DModal } from 'vue-devui/modal'
-import { Search as DSearch } from 'vue-devui/search'
-import { Table as DDataTable, Column as DColumn } from 'vue-devui/table'
-import 'vue-devui/button/style.css'
-import 'vue-devui/input/style.css'
-import 'vue-devui/loading/style.css'
-import 'vue-devui/modal/style.css'
-import 'vue-devui/search/style.css'
-import 'vue-devui/table/style.css'
+
 import type { PythonPackageItem } from '../types'
 import { useI18n } from '../composables/useI18n'
 
@@ -35,8 +24,6 @@ const emit = defineEmits<{
 
 const packageKeyword = ref('')
 const packageToInstall = ref('')
-const uninstallConfirmVisible = ref(false)
-const uninstallTargetName = ref('')
 const { t } = useI18n()
 
 const filteredPackages = computed(() => {
@@ -52,7 +39,7 @@ const filteredPackages = computed(() => {
 
 const isDangerStatus = computed(() => {
   const text = props.statusText.toLowerCase()
-  return text.includes('fail') || text.includes('失败')
+  return text.includes('fail') || text.includes('failed') || text.includes('失败')
 })
 
 function installPackage(): void {
@@ -65,28 +52,16 @@ function installPackage(): void {
   packageToInstall.value = ''
 }
 
-function uninstallPackage(name: string): void {
+function confirmUninstall(name: string): void {
   if (!name.trim()) {
     return
   }
 
+  if (typeof window !== 'undefined' && !window.confirm(t('python.uninstallConfirm', { name }))) {
+    return
+  }
+
   emit('uninstallPackage', name.trim())
-}
-
-function confirmUninstall(name: string): void {
-  uninstallTargetName.value = name
-  uninstallConfirmVisible.value = true
-}
-
-function doUninstall(): void {
-  uninstallConfirmVisible.value = false
-  uninstallPackage(uninstallTargetName.value)
-  uninstallTargetName.value = ''
-}
-
-function cancelUninstall(): void {
-  uninstallConfirmVisible.value = false
-  uninstallTargetName.value = ''
 }
 
 function isRowBusy(name: string): boolean {
@@ -105,29 +80,33 @@ function isRowBusy(name: string): boolean {
         <h2>{{ t('python.managerTitle') }}</h2>
         <p>{{ t('python.managerDesc') }}</p>
       </div>
-      <d-button :loading="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</d-button>
+      <button class="panel-button" type="button" :disabled="loading" @click="emit('refreshPackages')">
+        {{ t('python.refresh') }}
+      </button>
     </header>
 
     <div class="toolbar-row interpreter-row">
-      <d-input :model-value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
-      <d-button @click="emit('browsePython')">{{ t('python.browse') }}</d-button>
-      <d-button @click="emit('useSystemPython')">{{ t('python.systemPython') }}</d-button>
+      <input class="field-input" :value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
+      <button class="panel-button" type="button" @click="emit('browsePython')">{{ t('python.browse') }}</button>
+      <button class="panel-button" type="button" @click="emit('useSystemPython')">{{ t('python.systemPython') }}</button>
     </div>
 
     <div class="toolbar-row install-row">
-      <d-input
+      <input
         v-model="packageToInstall"
+        class="field-input"
+        type="text"
         :placeholder="t('python.installInput')"
         @keyup.enter="installPackage"
       />
-      <d-button
-        color="primary"
-        variant="solid"
-        :loading="processing && processingAction === 'install'"
+      <button
+        class="panel-button primary"
+        type="button"
+        :disabled="processing && processingAction === 'install'"
         @click="installPackage"
       >
         {{ t('python.install') }}
-      </d-button>
+      </button>
     </div>
 
     <p class="status-text" :class="{ danger: isDangerStatus }">
@@ -135,40 +114,48 @@ function isRowBusy(name: string): boolean {
     </p>
 
     <div class="toolbar-row search-row">
-      <d-search v-model="packageKeyword" :placeholder="t('python.searchInstalled')" :is-keyup-search="true" :delay="200" icon-position="left" />
+      <label class="search-box">
+        <span class="search-icon" aria-hidden="true">/</span>
+        <input v-model="packageKeyword" type="search" :placeholder="t('python.searchInstalled')" />
+      </label>
       <span class="count">{{ filteredPackages.length }} / {{ packages.length }}</span>
     </div>
 
-    <div class="table-wrap" v-loading="loading">
-      <d-data-table :dataSource="filteredPackages" :scrollable="true" style="height: 100%;">
-        <d-column field="name" :header="t('python.name')" :minWidth="220" />
-        <d-column field="version" :header="t('python.version')" width="160" />
-        <d-column :header="t('python.action')" width="130">
-          <template #cell="scope">
-            <d-button
-              size="sm"
-              color="danger"
-              variant="outline"
-              :disabled="processing && !isRowBusy(scope.rowItem.name)"
-              @click="confirmUninstall(scope.rowItem.name)"
-            >
-              {{ t('python.uninstall') }}
-            </d-button>
-          </template>
-        </d-column>
-      </d-data-table>
-    </div>
+    <div class="table-wrap">
+      <div v-if="loading" class="loading-overlay">
+        <span class="loading-spinner" />
+      </div>
 
-    <!-- 卸载确认弹窗 -->
-    <d-modal v-model="uninstallConfirmVisible" :title="t('python.uninstall')">
-      <p>{{ t('python.uninstallConfirm', { name: uninstallTargetName }) }}</p>
-      <template #footer>
-        <div style="display:flex;justify-content:flex-end;gap:8px;">
-          <d-button @click="cancelUninstall">{{ t('tools.cancel') }}</d-button>
-          <d-button color="danger" @click="doUninstall">{{ t('python.uninstall') }}</d-button>
-        </div>
-      </template>
-    </d-modal>
+      <table v-else-if="filteredPackages.length > 0" class="package-table">
+        <thead>
+          <tr>
+            <th>{{ t('python.name') }}</th>
+            <th>{{ t('python.version') }}</th>
+            <th>{{ t('python.action') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in filteredPackages" :key="item.name">
+            <td class="package-name">{{ item.name }}</td>
+            <td>{{ item.version }}</td>
+            <td class="action-cell">
+              <button
+                class="panel-button danger"
+                type="button"
+                :disabled="processing && !isRowBusy(item.name)"
+                @click="confirmUninstall(item.name)"
+              >
+                {{ t('python.uninstall') }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-else class="empty-state">
+        <p class="empty-state-title">{{ t('python.noPackageData') }}</p>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -220,6 +207,66 @@ function isRowBusy(name: string): boolean {
   grid-template-columns: 1fr auto;
 }
 
+.panel-button {
+  height: 32px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 4px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.panel-button:hover:not(:disabled) {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-hover-bg);
+}
+
+.panel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.panel-button.primary {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-accent-color);
+  color: #ffffff;
+}
+
+.panel-button.danger:hover:not(:disabled) {
+  border-color: var(--el-color-danger);
+  color: var(--el-color-danger);
+}
+
+.field-input,
+.search-box input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box input {
+  padding-left: 34px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--vscode-text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
 .count {
   font-size: 12px;
   color: var(--vscode-text-muted);
@@ -236,13 +283,86 @@ function isRowBusy(name: string): boolean {
 }
 
 .table-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
   border: 1px solid var(--vscode-border-color);
+  border-radius: 8px;
+  overflow: auto;
+  background: var(--vscode-sidebar-bg);
+}
+
+.package-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.package-table th,
+.package-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vscode-border-color);
+  text-align: left;
+  font-size: 12px;
+}
+
+.package-table th {
+  position: sticky;
+  top: 0;
+  background: var(--vscode-editor-bg);
+  color: var(--vscode-text-muted);
+  z-index: 1;
+}
+
+.package-name {
+  font-family: var(--vscode-font-mono);
+  color: var(--vscode-text-primary);
+}
+
+.action-cell {
+  width: 140px;
+}
+
+.empty-state {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-title {
+  color: var(--vscode-text-muted);
+  font-size: 13px;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--vscode-editor-bg) 62%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid color-mix(in srgb, var(--vscode-border-color) 70%, transparent);
+  border-top-color: var(--vscode-accent-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 980px) {
-  .interpreter-row {
+  .interpreter-row,
+  .install-row,
+  .search-row {
     grid-template-columns: 1fr;
   }
 }

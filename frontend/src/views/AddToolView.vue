@@ -1,13 +1,5 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import { Button as DButton } from 'vue-devui/button'
-import { Form as DForm, FormItem as DFormItem } from 'vue-devui/form'
-import { Input as DInput } from 'vue-devui/input'
-import { Select as DSelect } from 'vue-devui/select'
-import 'vue-devui/button/style.css'
-import 'vue-devui/form/style.css'
-import 'vue-devui/input/style.css'
-import 'vue-devui/select/style.css'
 
 import { useToolHub } from '../composables/useToolHub'
 import { useI18n } from '../composables/useI18n'
@@ -17,11 +9,6 @@ import type { AddToolPayload, ToolType } from '../types'
 const hub = useToolHub()
 const { t } = useI18n()
 const notify = useNotify()
-
-const toolTypeOptions = [
-  { label: 'Python', value: 'python' },
-  { label: 'EXE', value: 'exe' },
-]
 
 interface AddToolFormState {
   id: string
@@ -203,65 +190,69 @@ function clearForm(): void {
       <p>{{ t('addTool.subtitle') }}</p>
     </header>
 
-    <d-form label-position="top" class="add-tool-form">
+    <form class="add-tool-form" @submit.prevent="submit">
       <div class="form-grid">
-        <d-form-item :label="t('addTool.toolType')">
-          <d-select
-            v-model="form.type"
-            :options="toolTypeOptions"
-            :allow-clear="false"
-          />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.toolType') }}</span>
+          <select v-model="form.type">
+            <option value="python">Python</option>
+            <option value="exe">EXE</option>
+          </select>
+        </label>
 
-        <d-form-item :label="t('addTool.toolId')">
-          <d-input v-model="form.id" :placeholder="t('addTool.idHint')" clearable />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.toolId') }}</span>
+          <input v-model="form.id" type="text" :placeholder="t('addTool.idHint')" />
+        </label>
 
-        <d-form-item :label="t('addTool.toolName')">
-          <d-input v-model="form.name" clearable />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.toolName') }}</span>
+          <input v-model="form.name" type="text" />
+        </label>
 
-        <d-form-item :label="t('addTool.toolPath')" class="path-item">
+        <label class="form-field path-item">
+          <span>{{ t('addTool.toolPath') }}</span>
           <div class="path-input-row">
-            <d-input
-              v-model="form.path"
-              :placeholder="isPythonTool ? t('addTool.pyHint') : t('addTool.exeHint')"
-              clearable
-            />
-            <d-button @click="browseToolPath">{{ t('tools.browse') }}</d-button>
+            <input v-model="form.path" type="text" :placeholder="isPythonTool ? t('addTool.pyHint') : t('addTool.exeHint')" />
+            <button class="field-button" type="button" @click="browseToolPath">{{ t('tools.browse') }}</button>
           </div>
-        </d-form-item>
+        </label>
 
-        <d-form-item v-if="isPythonTool" :label="t('addTool.pythonPath')" class="path-item">
+        <label v-if="isPythonTool" class="form-field path-item">
+          <span>{{ t('addTool.pythonPath') }}</span>
           <div class="path-input-row">
-            <d-input v-model="form.python" clearable />
-            <d-button @click="browsePythonPath">{{ t('tools.browse') }}</d-button>
+            <input v-model="form.python" type="text" />
+            <button class="field-button" type="button" @click="browsePythonPath">{{ t('tools.browse') }}</button>
           </div>
           <p class="tip-text">{{ t('addTool.pythonHelp') }}</p>
-        </d-form-item>
+        </label>
 
-        <d-form-item :label="t('addTool.cwd')">
-          <d-input v-model="form.cwd" clearable />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.cwd') }}</span>
+          <input v-model="form.cwd" type="text" />
+        </label>
 
-        <d-form-item :label="t('addTool.argsTemplate')">
-          <d-input v-model="form.argsTemplate" clearable />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.argsTemplate') }}</span>
+          <input v-model="form.argsTemplate" type="text" />
+        </label>
 
-        <d-form-item :label="t('addTool.tags')">
-          <d-input v-model="form.tagsText" :placeholder="t('addTool.tagsHint')" clearable />
-        </d-form-item>
+        <label class="form-field">
+          <span>{{ t('addTool.tags') }}</span>
+          <input v-model="form.tagsText" type="text" :placeholder="t('addTool.tagsHint')" />
+        </label>
 
-        <d-form-item :label="t('addTool.description')" class="description-item">
-          <d-input v-model="form.description" type="textarea" :rows="3" />
-        </d-form-item>
+        <label class="form-field description-item">
+          <span>{{ t('addTool.description') }}</span>
+          <textarea v-model="form.description" rows="4" />
+        </label>
       </div>
 
       <div class="actions">
-        <d-button @click="clearForm">{{ t('addTool.clear') }}</d-button>
-        <d-button type="primary" :loading="submitting" @click="submit">{{ t('addTool.submit') }}</d-button>
+        <button class="action-button" type="button" @click="clearForm">{{ t('addTool.clear') }}</button>
+        <button class="action-button primary" type="submit" :disabled="submitting">{{ t('addTool.submit') }}</button>
       </div>
-    </d-form>
+    </form>
   </section>
 </template>
 
@@ -303,6 +294,41 @@ function clearForm(): void {
   gap: 10px 14px;
 }
 
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field span {
+  font-size: 12px;
+  color: var(--vscode-text-primary);
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+  font: inherit;
+}
+
+.form-field input,
+.form-field select {
+  height: 36px;
+}
+
+.form-field textarea {
+  min-height: 112px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  resize: vertical;
+}
+
 .path-item,
 .description-item {
   grid-column: 1 / -1;
@@ -312,6 +338,34 @@ function clearForm(): void {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
+}
+
+.field-button,
+.action-button {
+  height: 36px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.field-button:hover,
+.action-button:hover:not(:disabled) {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-hover-bg);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-button.primary {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-accent-color);
+  color: #ffffff;
 }
 
 .tip-text {

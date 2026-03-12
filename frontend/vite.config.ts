@@ -21,18 +21,6 @@ export default defineConfig({
           if (normalizedId.includes('/node_modules/@xterm/')) {
             return 'xterm'
           }
-
-          if (normalizedId.includes('/node_modules/vue-devui/notification/')) {
-            return 'devui-notification'
-          }
-
-          if (normalizedId.includes('/node_modules/clipboard/')) {
-            return 'clipboard'
-          }
-
-          if (normalizedId.includes('/node_modules/lodash/')) {
-            return 'lodash'
-          }
         },
       },
     },

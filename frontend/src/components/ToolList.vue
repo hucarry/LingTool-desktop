@@ -1,37 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { Badge as DBadge } from 'vue-devui/badge'
-import { Button as DButton } from 'vue-devui/button'
-import { Card as DCard } from 'vue-devui/card'
-import { Checkbox as DCheckbox } from 'vue-devui/checkbox'
-import { Form as DForm, FormItem as DFormItem } from 'vue-devui/form'
-import { Row as DRow, Col as DCol } from 'vue-devui/grid'
-import { Input as DInput } from 'vue-devui/input'
-import { LoadingDirective as vLoading } from 'vue-devui/loading'
-import { Modal as DModal } from 'vue-devui/modal'
-import { Result as DResult } from 'vue-devui/result'
-import { Search as DSearch } from 'vue-devui/search'
-import { Select as DSelect } from 'vue-devui/select'
-import { Tag as DTag } from 'vue-devui/tag'
-import { Tooltip as DTooltip } from 'vue-devui/tooltip'
-import 'vue-devui/badge/style.css'
-import 'vue-devui/button/style.css'
-import 'vue-devui/card/style.css'
-import 'vue-devui/checkbox/style.css'
-import 'vue-devui/form/style.css'
-import 'vue-devui/grid/style.css'
-import 'vue-devui/input/style.css'
-import 'vue-devui/loading/style.css'
-import 'vue-devui/modal/style.css'
-import 'vue-devui/result/style.css'
-import 'vue-devui/search/style.css'
-import 'vue-devui/select/style.css'
-import 'vue-devui/tag/style.css'
-import 'vue-devui/tooltip/style.css'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 
 import type { AddToolPayload, ToolItem } from '../types'
 import { useI18n } from '../composables/useI18n'
-import { useNotify } from '../composables/useNotify'
+
+const ToolEditDialog = defineAsyncComponent(() => import('./ToolEditDialog.vue'))
 
 const props = defineProps<{
   tools: ToolItem[]
@@ -55,23 +28,9 @@ const emit = defineEmits<{
 const keyword = ref('')
 const selectedIds = ref<string[]>([])
 const editVisible = ref(false)
-
-const editForm = reactive({
-  id: '',
-  name: '',
-  type: 'python',
-  path: '',
-  python: '',
-  cwd: '',
-  argsTemplate: '',
-  tagsText: '',
-  description: '',
-})
+const editingToolId = ref('')
 
 const { t } = useI18n()
-const notify = useNotify()
-const deleteConfirmVisible = ref(false)
-
 
 const filteredTools = computed(() => {
   const text = keyword.value.trim().toLowerCase()
@@ -88,43 +47,23 @@ const filteredTools = computed(() => {
 
 const selectedCount = computed(() => selectedIds.value.length)
 const selectedSet = computed(() => new Set(selectedIds.value))
-const isPythonEdit = computed(() => editForm.type === 'python')
+const editingTool = computed(() => {
+  if (!editingToolId.value) {
+    return null
+  }
+
+  return props.tools.find((tool) => tool.id === editingToolId.value) ?? null
+})
 
 watch(
   () => props.tools,
   (nextTools) => {
     const liveIds = new Set(nextTools.map((item) => item.id))
     selectedIds.value = selectedIds.value.filter((id) => liveIds.has(id))
-  },
-)
 
-watch(
-  () => props.editToolPathSelection,
-  (path) => {
-    if (!editVisible.value || !path?.trim()) {
-      return
-    }
-
-    editForm.path = path
-  },
-)
-
-watch(
-  () => props.editToolPythonSelection,
-  (path) => {
-    if (!editVisible.value || !path?.trim()) {
-      return
-    }
-
-    editForm.python = path
-  },
-)
-
-watch(
-  () => editForm.type,
-  (nextType) => {
-    if (nextType !== 'python') {
-      editForm.python = ''
+    if (editingToolId.value && !liveIds.has(editingToolId.value)) {
+      editingToolId.value = ''
+      editVisible.value = false
     }
   },
 )
@@ -149,15 +88,7 @@ function toggleSelect(toolId: string, checked: boolean): void {
 }
 
 function openEdit(tool: ToolItem): void {
-  editForm.id = tool.id
-  editForm.name = tool.name
-  editForm.type = tool.type === 'python' ? 'python' : 'exe'
-  editForm.path = tool.path
-  editForm.python = tool.python ?? ''
-  editForm.cwd = tool.cwd ?? ''
-  editForm.argsTemplate = tool.argsTemplate ?? ''
-  editForm.tagsText = tool.tags.join(', ')
-  editForm.description = tool.description ?? ''
+  editingToolId.value = tool.id
   editVisible.value = true
 }
 
@@ -174,74 +105,17 @@ function openEditSelected(): void {
   openEdit(target)
 }
 
-async function deleteSelected(): Promise<void> {
+function deleteSelected(): void {
   if (selectedIds.value.length === 0) {
     return
   }
 
-  deleteConfirmVisible.value = true
-}
+  if (typeof window !== 'undefined' && !window.confirm(t('tools.confirmDeleteMessage'))) {
+    return
+  }
 
-function confirmDelete(): void {
-  deleteConfirmVisible.value = false
   emit('deleteTools', [...selectedIds.value])
   selectedIds.value = []
-}
-
-function cancelDelete(): void {
-  deleteConfirmVisible.value = false
-}
-
-function browseEditToolPath(): void {
-  emit('pickEditToolPath', {
-    defaultPath: editForm.path || editForm.cwd || undefined,
-    toolType: editForm.type,
-  })
-}
-
-function browseEditToolPython(): void {
-  emit('pickEditToolPython', {
-    defaultPath: editForm.python || editForm.cwd || editForm.path || undefined,
-  })
-}
-
-function saveEdit(): void {
-  const id = editForm.id.trim()
-  const name = editForm.name.trim()
-  const path = editForm.path.trim()
-
-  if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(t('tools.validationIdFormat'))
-    return
-  }
-
-  if (!name) {
-    notify.warning(t('tools.validationName'))
-    return
-  }
-
-  if (!path) {
-    notify.warning(t('tools.validationPath'))
-    return
-  }
-
-  const payload: AddToolPayload = {
-    id,
-    name,
-    type: editForm.type,
-    path,
-    python: editForm.type === 'python' ? (editForm.python.trim() || undefined) : undefined,
-    cwd: editForm.cwd.trim() || undefined,
-    argsTemplate: editForm.argsTemplate.trim(),
-    tags: editForm.tagsText
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index),
-    description: editForm.description.trim() || undefined,
-  }
-
-  emit('updateTool', payload)
-  editVisible.value = false
 }
 </script>
 
@@ -255,150 +129,85 @@ function saveEdit(): void {
 
       <div class="header-actions">
         <span class="selected-count">{{ t('tools.selected') }}: {{ selectedCount }}</span>
-        <d-button size="sm" @click="emit('refresh')">{{ t('python.refresh') }}</d-button>
-        <d-button size="sm" :disabled="selectedCount !== 1" @click="openEditSelected">{{ t('tools.editSelected') }}</d-button>
-        <d-button size="sm" color="danger" :disabled="selectedCount === 0" :loading="deleting" @click="deleteSelected">
+        <button class="header-button" type="button" @click="emit('refresh')">{{ t('python.refresh') }}</button>
+        <button class="header-button" type="button" :disabled="selectedCount !== 1" @click="openEditSelected">
+          {{ t('tools.editSelected') }}
+        </button>
+        <button class="header-button danger" type="button" :disabled="selectedCount === 0 || deleting" @click="deleteSelected">
           {{ t('tools.deleteSelected') }}
-        </d-button>
+        </button>
       </div>
     </header>
 
-    <d-search v-model="keyword" :placeholder="t('tools.search')" :is-keyup-search="true" :delay="200" icon-position="left" />
+    <label class="search-box">
+      <span class="search-icon" aria-hidden="true">/</span>
+      <input v-model="keyword" type="search" :placeholder="t('tools.search')" />
+    </label>
 
     <div class="list-scroll">
-      <d-scrollbar height="100%">
-        <d-row :gutter="16" class="tool-rows" v-loading="loading">
-          <d-col
-            v-for="tool in filteredTools"
-            :key="tool.id"
-            :span="6"
-          >
-            <d-card
-              class="tool-card"
-              shadow="hover"
-              @click="openTool(tool)"
-            >
-              <template #title>
-                <div class="card-header">
-                  <div class="card-title-group">
-                    <d-checkbox
-                      :model-value="selectedSet.has(tool.id)"
-                      @click.stop
-                      @change="(value: string | number | boolean) => toggleSelect(tool.id, Boolean(value))"
-                    />
-                    <h3>{{ tool.name }}</h3>
-                  </div>
-                  <div class="card-badges">
-                    <d-tag size="sm">{{ tool.type }}</d-tag>
-                    <d-badge
-                      :status="tool.valid ? 'success' : 'danger'"
-                      :count="tool.valid ? t('tools.ready') : t('tools.invalidPath')"
-                    />
-                  </div>
-                </div>
-              </template>
+      <div class="tool-rows">
+        <article v-for="tool in filteredTools" :key="tool.id" class="tool-card" @click="openTool(tool)">
+          <header class="card-header">
+            <div class="card-title-group">
+              <input
+                class="card-checkbox"
+                type="checkbox"
+                :checked="selectedSet.has(tool.id)"
+                @click.stop
+                @change="(event) => toggleSelect(tool.id, (event.target as HTMLInputElement).checked)"
+              />
+              <h3>{{ tool.name }}</h3>
+            </div>
+            <div class="card-badges">
+              <span class="tool-type-chip">{{ tool.type }}</span>
+              <span class="tool-status-chip" :class="tool.valid ? 'is-valid' : 'is-invalid'">
+                {{ tool.valid ? t('tools.ready') : t('tools.invalidPath') }}
+              </span>
+            </div>
+          </header>
 
-              <div class="card-body">
-                <p class="tool-id">{{ tool.id }}</p>
-                <d-tooltip :content="tool.path" position="top">
-                  <p class="tool-path">{{ tool.path }}</p>
-                </d-tooltip>
-                
-                <div class="tool-tags" v-if="tool.tags && tool.tags.length">
-                  <d-tag v-for="tag in tool.tags" :key="tag" size="sm" color="#7693f5">{{ tag }}</d-tag>
-                </div>
-              </div>
+          <div class="card-body">
+            <p class="tool-id">{{ tool.id }}</p>
+            <p class="tool-path" :title="tool.path">{{ tool.path }}</p>
 
-              <template #actions>
-                <div class="card-footer" @click.stop>
-                  <div class="action-buttons">
-                    <d-button size="sm" :loading="updating && editForm.id === tool.id" @click.stop="openEdit(tool)">
-                      {{ t('tools.edit') }}
-                    </d-button>
-                    <d-button
-                      color="primary"
-                      size="sm"
-                      :disabled="!tool.valid"
-                      @click.stop="runTool(tool)"
-                    >
-                      {{ t('tools.run') }}
-                    </d-button>
-                  </div>
-                </div>
-              </template>
-            </d-card>
-          </d-col>
+            <div v-if="tool.tags && tool.tags.length" class="tool-tags">
+              <span v-for="tag in tool.tags" :key="tag" class="tool-tag">{{ tag }}</span>
+            </div>
+          </div>
 
-          <d-col :span="24" v-if="filteredTools.length === 0 && !loading">
-            <d-result icon="info" :desc="t('tools.noMatch')" />
-          </d-col>
-        </d-row>
-      </d-scrollbar>
+          <footer class="card-footer" @click.stop>
+            <div class="action-buttons">
+              <button class="card-button" type="button" :disabled="updating && editingToolId === tool.id" @click.stop="openEdit(tool)">
+                {{ t('tools.edit') }}
+              </button>
+              <button class="card-button primary" type="button" :disabled="!tool.valid" @click.stop="runTool(tool)">
+                {{ t('tools.run') }}
+              </button>
+            </div>
+          </footer>
+        </article>
+
+        <div v-if="filteredTools.length === 0 && !loading" class="empty-state">
+          <p class="empty-state-title">{{ t('tools.noMatch') }}</p>
+        </div>
+
+        <div v-if="loading" class="loading-overlay">
+          <span class="loading-spinner" />
+        </div>
+      </div>
     </div>
 
-    <d-modal v-model="editVisible" :title="t('tools.editDialog')" append-to-body>
-      <d-form label-position="top">
-        <d-form-item label="ID">
-          <d-input v-model="editForm.id" disabled />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.name')">
-          <d-input v-model="editForm.name" />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.type')">
-          <d-select v-model="editForm.type" :options="[{ label: 'python', value: 'python' }, { label: 'exe', value: 'exe' }]" :allow-clear="false" />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.path')">
-          <div class="path-row">
-            <d-input v-model="editForm.path" />
-            <d-button @click="browseEditToolPath">{{ t('tools.browse') }}</d-button>
-          </div>
-        </d-form-item>
-
-        <d-form-item v-if="isPythonEdit" :label="t('tools.python')">
-          <div class="path-row">
-            <d-input v-model="editForm.python" />
-            <d-button @click="browseEditToolPython">{{ t('tools.browse') }}</d-button>
-          </div>
-        </d-form-item>
-
-        <d-form-item :label="t('tools.cwd')">
-          <d-input v-model="editForm.cwd" />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.argsTemplate')">
-          <d-input v-model="editForm.argsTemplate" />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.tags')">
-          <d-input v-model="editForm.tagsText" />
-        </d-form-item>
-
-        <d-form-item :label="t('tools.description')">
-          <d-input v-model="editForm.description" type="textarea" :rows="3" />
-        </d-form-item>
-      </d-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <d-button @click="editVisible = false">{{ t('tools.cancel') }}</d-button>
-          <d-button type="primary" :loading="updating" @click="saveEdit">{{ t('tools.save') }}</d-button>
-        </div>
-      </template>
-    </d-modal>
-
-    <!-- 删除确认弹窗 -->
-    <d-modal v-model="deleteConfirmVisible" :title="t('tools.deleteSelected')">
-      <p>{{ t('tools.confirmDeleteMessage') }}</p>
-      <template #footer>
-        <div class="dialog-footer">
-          <d-button @click="cancelDelete">{{ t('tools.cancel') }}</d-button>
-          <d-button color="danger" @click="confirmDelete">{{ t('tools.deleteSelected') }}</d-button>
-        </div>
-      </template>
-    </d-modal>
+    <ToolEditDialog
+      v-if="editVisible"
+      v-model:visible="editVisible"
+      :tool="editingTool"
+      :updating="updating"
+      :edit-tool-path-selection="editToolPathSelection"
+      :edit-tool-python-selection="editToolPythonSelection"
+      @save="(payload: AddToolPayload) => emit('updateTool', payload)"
+      @pick-tool-path="(payload) => emit('pickEditToolPath', payload)"
+      @pick-tool-python="(payload) => emit('pickEditToolPython', payload)"
+    />
   </section>
 </template>
 
@@ -445,39 +254,100 @@ function saveEdit(): void {
   margin-right: 4px;
 }
 
+.header-button,
+.card-button {
+  height: 30px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 4px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.header-button:hover:not(:disabled),
+.card-button:hover:not(:disabled) {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-hover-bg);
+}
+
+.header-button:disabled,
+.card-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-button.danger:hover:not(:disabled) {
+  border-color: var(--el-color-danger);
+  color: var(--el-color-danger);
+}
+
+.card-button.primary {
+  border-color: var(--vscode-accent-color);
+  background: var(--vscode-accent-color);
+  color: #ffffff;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: var(--vscode-sidebar-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px 0 34px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--vscode-text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
 .list-scroll {
   flex: 1;
   min-height: 0;
-  overflow-x: auto;
+  overflow: auto;
 }
 
 .tool-rows {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
   padding: 8px 4px 16px;
-  min-width: 0;
 }
 
-/* ---- 卡片 d-card 样式覆盖 ---- */
 .tool-card {
-  cursor: pointer;
-  margin-bottom: 16px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.tool-card :deep(.devui-card) {
-  background: var(--vscode-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 188px;
   border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
+  border-radius: 8px;
+  background: var(--vscode-sidebar-bg);
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.tool-card:hover :deep(.devui-card) {
+.tool-card:hover {
   border-color: var(--vscode-accent-color);
+  transform: translateY(-1px);
 }
 
 .card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  width: 100%;
+  gap: 12px;
 }
 
 .card-title-group {
@@ -496,23 +366,52 @@ function saveEdit(): void {
   overflow: hidden;
 }
 
+.card-checkbox {
+  accent-color: var(--vscode-accent-color);
+}
+
 .card-badges {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tool-type-chip,
+.tool-status-chip,
+.tool-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tool-type-chip {
+  border: 1px solid var(--vscode-border-color);
+  color: var(--vscode-text-muted);
+}
+
+.tool-status-chip.is-valid {
+  background: color-mix(in srgb, var(--el-color-success) 16%, transparent);
+  color: var(--el-color-success);
+}
+
+.tool-status-chip.is-invalid {
+  background: color-mix(in srgb, var(--el-color-danger) 16%, transparent);
+  color: var(--el-color-danger);
 }
 
 .card-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
+  margin-top: 14px;
+  min-height: 0;
+  flex: 1;
 }
 
 .tool-id {
@@ -522,22 +421,16 @@ function saveEdit(): void {
 }
 
 .tool-path {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--vscode-border-color);
   background: var(--vscode-editor-bg);
   color: var(--vscode-text-muted);
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: var(--vscode-font-mono);
   font-size: 11px;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-  cursor: pointer;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
 }
 
 .tool-tags {
@@ -548,15 +441,71 @@ function saveEdit(): void {
   margin-top: auto;
 }
 
-.path-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+.tool-tag {
+  background: color-mix(in srgb, var(--vscode-accent-color) 18%, transparent);
+  color: var(--vscode-accent-color);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.action-buttons {
+  display: flex;
   gap: 8px;
 }
 
-.dialog-footer {
+.empty-state {
+  grid-column: 1 / -1;
+  min-height: 220px;
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--vscode-border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-sidebar-bg) 75%, transparent);
+}
+
+.empty-state-title {
+  color: var(--vscode-text-muted);
+  font-size: 13px;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--vscode-editor-bg) 62%, transparent);
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid color-mix(in srgb, var(--vscode-border-color) 70%, transparent);
+  border-top-color: var(--vscode-accent-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .tool-list-header {
+    flex-direction: column;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

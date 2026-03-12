@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import { Button as DButton } from 'vue-devui/button'
-import { Input as DInput } from 'vue-devui/input'
-import 'vue-devui/button/style.css'
-import 'vue-devui/input/style.css'
 import { useI18n } from '../composables/useI18n'
 import { useSettings } from '../composables/useSettings'
 
@@ -25,18 +21,10 @@ const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = 
         </div>
 
         <div class="theme-segmented">
-          <button
-            class="seg-btn"
-            :class="{ active: theme === 'dark' }"
-            @click="theme = 'dark'"
-          >
+          <button class="seg-btn" :class="{ active: theme === 'dark' }" @click="theme = 'dark'">
             {{ t('settings.themeDark') }}
           </button>
-          <button
-            class="seg-btn"
-            :class="{ active: theme === 'light' }"
-            @click="theme = 'light'"
-          >
+          <button class="seg-btn" :class="{ active: theme === 'light' }" @click="theme = 'light'">
             {{ t('settings.themeLight') }}
           </button>
         </div>
@@ -49,13 +37,9 @@ const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = 
         </div>
 
         <div class="python-row">
-          <d-input
-            :model-value="defaultPythonPath"
-            readonly
-            :placeholder="t('settings.placeholder')"
-          />
-          <d-button @click="pickDefaultPython">{{ t('python.browse') }}</d-button>
-          <d-button @click="clearDefaultPythonPath">{{ t('settings.clear') }}</d-button>
+          <input class="python-input" :value="defaultPythonPath" readonly :placeholder="t('settings.placeholder')" />
+          <button class="action-button" type="button" @click="pickDefaultPython">{{ t('python.browse') }}</button>
+          <button class="action-button" type="button" @click="clearDefaultPythonPath">{{ t('settings.clear') }}</button>
         </div>
       </section>
     </div>
@@ -122,9 +106,10 @@ const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = 
   gap: 4px;
 }
 
-.seg-btn {
-  border: none;
-  background: transparent;
+.seg-btn,
+.action-button {
+  border: 1px solid var(--vscode-border-color);
+  background: var(--vscode-sidebar-bg);
   padding: 6px 16px;
   border-radius: 4px;
   color: var(--vscode-text-primary);
@@ -134,12 +119,17 @@ const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = 
   transition: all 0.2s ease;
 }
 
+.seg-btn {
+  border-color: transparent;
+}
+
 .seg-btn.active {
   background: var(--vscode-accent-color);
   color: #fff;
 }
 
-.seg-btn:hover:not(.active) {
+.seg-btn:hover:not(.active),
+.action-button:hover {
   background: var(--vscode-hover-bg);
 }
 
@@ -148,6 +138,16 @@ const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = 
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
+}
+
+.python-input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 6px;
+  background: var(--vscode-editor-bg);
+  color: var(--vscode-text-primary);
+  padding: 0 12px;
 }
 
 @media (max-width: 760px) {
