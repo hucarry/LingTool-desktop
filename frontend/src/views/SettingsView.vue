@@ -53,14 +53,22 @@ const text = computed(() => {
           <p>{{ text.themeDesc }}</p>
         </div>
 
-        <el-segmented
-          v-model="theme"
-          class="theme-switcher"
-          :options="[
-            { label: text.themeDark, value: 'dark' },
-            { label: text.themeLight, value: 'light' },
-          ]"
-        />
+        <div class="theme-segmented">
+          <button
+            class="seg-btn"
+            :class="{ active: theme === 'dark' }"
+            @click="theme = 'dark'"
+          >
+            {{ text.themeDark }}
+          </button>
+          <button
+            class="seg-btn"
+            :class="{ active: theme === 'light' }"
+            @click="theme = 'light'"
+          >
+            {{ text.themeLight }}
+          </button>
+        </div>
       </section>
 
       <section class="settings-card">
@@ -70,13 +78,13 @@ const text = computed(() => {
         </div>
 
         <div class="python-row">
-          <el-input
+          <d-input
             :model-value="defaultPythonPath"
             readonly
             :placeholder="text.placeholder"
           />
-          <el-button @click="pickDefaultPython">{{ text.browse }}</el-button>
-          <el-button @click="clearDefaultPythonPath">{{ text.clear }}</el-button>
+          <d-button @click="pickDefaultPython">{{ text.browse }}</d-button>
+          <d-button @click="clearDefaultPythonPath">{{ text.clear }}</d-button>
         </div>
       </section>
     </div>
@@ -134,8 +142,34 @@ const text = computed(() => {
   line-height: 1.5;
 }
 
-.theme-switcher {
-  width: fit-content;
+.theme-segmented {
+  display: inline-flex;
+  background: var(--vscode-editor-bg);
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-border-color);
+  gap: 4px;
+}
+
+.seg-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 16px;
+  border-radius: 4px;
+  color: var(--vscode-text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.seg-btn.active {
+  background: var(--vscode-accent-color);
+  color: #fff;
+}
+
+.seg-btn:hover:not(.active) {
+  background: var(--vscode-hover-bg);
 }
 
 .python-row {

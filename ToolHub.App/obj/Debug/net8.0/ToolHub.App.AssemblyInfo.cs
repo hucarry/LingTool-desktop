@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ToolHub.App")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+45731a400575a35d34b6bb4ae1437bff6bc45126")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e3d6bde4976374b9b3189a88e0d42362f25a1dda")]
 [assembly: System.Reflection.AssemblyProductAttribute("ToolHub.App")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ToolHub.App")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

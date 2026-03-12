@@ -90,76 +90,143 @@ function runTool(): void {
 </script>
 
 <template>
-  <el-drawer
+  <d-drawer
     :model-value="visible"
     :title="t('runner.title')"
-    size="520px"
-    destroy-on-close
+    width="520px"
+    @update:model-value="(v: boolean) => emit('update:visible', v)"
     @close="closeDrawer"
-    @update:model-value="(value: boolean) => emit('update:visible', value)"
   >
     <template v-if="tool">
-      <el-alert v-if="!tool.valid" type="error" :closable="false" show-icon>
-        <template #title>
-          {{ tool.validationMessage || t('runner.invalidConfig') }}
-        </template>
-      </el-alert>
+      <d-alert v-if="!tool.valid" type="error" :showIcon="true">
+        {{ tool.validationMessage || t('runner.invalidConfig') }}
+      </d-alert>
 
-      <el-descriptions :column="1" border class="tool-desc">
-        <el-descriptions-item :label="t('runner.name')">{{ tool.name }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.id')">{{ tool.id }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.type')">{{ tool.type }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.path')">{{ tool.path }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.cwd')">{{ tool.cwd || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.python')">{{ tool.python || t('runner.systemPython') }}</el-descriptions-item>
-        <el-descriptions-item :label="t('runner.argsTemplate')">
-          <code>{{ tool.argsTemplate || t('runner.none') }}</code>
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('runner.description')">{{ tool.description || '-' }}</el-descriptions-item>
-      </el-descriptions>
+      <div class="tool-desc-table">
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.name') }}</span>
+          <span class="desc-value">{{ tool.name }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.id') }}</span>
+          <span class="desc-value">{{ tool.id }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.type') }}</span>
+          <span class="desc-value">{{ tool.type }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.path') }}</span>
+          <span class="desc-value">{{ tool.path }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.cwd') }}</span>
+          <span class="desc-value">{{ tool.cwd || '-' }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.python') }}</span>
+          <span class="desc-value">{{ tool.python || t('runner.systemPython') }}</span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.argsTemplate') }}</span>
+          <span class="desc-value"><code>{{ tool.argsTemplate || t('runner.none') }}</code></span>
+        </div>
+        <div class="desc-row">
+          <span class="desc-label">{{ t('runner.description') }}</span>
+          <span class="desc-value">{{ tool.description || '-' }}</span>
+        </div>
+      </div>
 
-      <el-form label-position="top" class="runner-form">
-        <el-form-item v-if="tool.type === 'python'" :label="t('runner.pythonInterpreter')">
+      <div class="runner-form">
+        <div v-if="tool.type === 'python'" class="form-item">
+          <label>{{ t('runner.pythonInterpreter') }}</label>
           <div class="python-picker">
-            <el-input
+            <d-input
               :model-value="pythonOverride || ''"
               readonly
               :placeholder="pythonFallbackText"
             />
             <div class="python-picker-actions">
-              <el-button @click="emit('pickPython')">{{ t('python.browse') }}</el-button>
-              <el-button @click="emit('update:pythonOverride', tool.python || '')">{{ t('runner.useToolDefault') }}</el-button>
-              <el-button @click="emit('update:pythonOverride', defaultPythonPath || '')">{{ t('runner.useAppDefault') }}</el-button>
-              <el-button @click="emit('update:pythonOverride', '')">{{ t('runner.useSystemPython') }}</el-button>
+              <d-button size="sm" @click="emit('pickPython')">{{ t('python.browse') }}</d-button>
+              <d-button size="sm" @click="emit('update:pythonOverride', tool.python || '')">{{ t('runner.useToolDefault') }}</d-button>
+              <d-button size="sm" @click="emit('update:pythonOverride', defaultPythonPath || '')">{{ t('runner.useAppDefault') }}</d-button>
+              <d-button size="sm" @click="emit('update:pythonOverride', '')">{{ t('runner.useSystemPython') }}</d-button>
             </div>
           </div>
           <div class="python-tip">{{ t('runner.pythonExample') }}</div>
-        </el-form-item>
+        </div>
 
-        <el-form-item v-for="field in placeholders" :key="field" :label="t('runner.argument', { field })">
-          <el-input v-model="formState[field]" :placeholder="t('runner.enterArgument', { field })" clearable />
-        </el-form-item>
+        <div v-for="field in placeholders" :key="field" class="form-item">
+          <label>{{ t('runner.argument', { field }) }}</label>
+          <d-input v-model="formState[field]" :placeholder="t('runner.enterArgument', { field })" clearable />
+        </div>
 
-        <el-empty
-          v-if="placeholders.length === 0"
-          :description="t('runner.noDynamicArgs')"
-          :image-size="92"
-        />
-      </el-form>
+        <div class="empty-args" v-if="placeholders.length === 0">
+          <i class="icon-refresh" style="font-size: 48px; color: var(--vscode-text-muted); opacity: 0.5;"></i>
+          <p>{{ t('runner.noDynamicArgs') }}</p>
+        </div>
+      </div>
 
       <div class="drawer-actions">
-        <el-button @click="closeDrawer">{{ t('runner.cancel') }}</el-button>
-        <el-button type="primary" :disabled="!tool.valid" @click="runTool">{{ t('runner.runInTerminal') }}</el-button>
+        <d-button @click="closeDrawer">{{ t('runner.cancel') }}</d-button>
+        <d-button color="primary" variant="solid" :disabled="!tool.valid" @click="runTool">{{ t('runner.runInTerminal') }}</d-button>
       </div>
     </template>
-  </el-drawer>
+  </d-drawer>
 </template>
 
 <style scoped>
-.tool-desc {
+.tool-desc-table {
   margin-top: 14px;
   border-radius: 3px;
+  border: 1px solid var(--vscode-border-color);
   overflow: hidden;
+  font-size: 13px;
+}
+
+.desc-row {
+  display: flex;
+  border-bottom: 1px solid var(--vscode-border-color);
+}
+
+.desc-row:last-child {
+  border-bottom: none;
+}
+
+.desc-label {
+  width: 130px;
+  padding: 8px 12px;
+  background: var(--vscode-sidebar-bg);
+  border-right: 1px solid var(--vscode-border-color);
+  font-weight: 600;
+  color: var(--vscode-text-muted);
+}
+
+.desc-value {
+  flex: 1;
+  padding: 8px 12px;
+  color: var(--vscode-text-primary);
+  word-break: break-all;
+}
+
+.form-item {
+  margin-bottom: 18px;
+}
+.form-item > label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--vscode-text-primary);
+}
+
+.empty-args {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: var(--vscode-text-muted);
+  gap: 12px;
 }
 
 .runner-form {

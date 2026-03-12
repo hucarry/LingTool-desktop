@@ -1,8 +1,9 @@
 import { createApp } from 'vue'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+import DevUI from 'vue-devui'
+import 'vue-devui/style.css'
+import '@devui-design/icons/icomoon/devui-icon.css'
 import './style.css'
 import App from './App.vue'
 import { router } from './router'
 
-createApp(App).use(ElementPlus).use(router).mount('#app')
+createApp(App).use(DevUI).use(router).mount('#app')

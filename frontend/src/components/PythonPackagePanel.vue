@@ -59,6 +59,13 @@ function uninstallPackage(name: string): void {
   emit('uninstallPackage', name.trim())
 }
 
+function confirmUninstall(name: string): void {
+  const confirmText = t('python.uninstallConfirm', { name })
+  if (window.confirm(confirmText)) {
+    uninstallPackage(name)
+  }
+}
+
 function isRowBusy(name: string): boolean {
   if (!props.processing) {
     return false
@@ -75,28 +82,29 @@ function isRowBusy(name: string): boolean {
         <h2>{{ t('python.managerTitle') }}</h2>
         <p>{{ t('python.managerDesc') }}</p>
       </div>
-      <el-button :loading="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</el-button>
+      <d-button :loading="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</d-button>
     </header>
 
     <div class="toolbar-row interpreter-row">
-      <el-input :model-value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
-      <el-button @click="emit('browsePython')">{{ t('python.browse') }}</el-button>
-      <el-button @click="emit('useSystemPython')">{{ t('python.systemPython') }}</el-button>
+      <d-input :model-value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
+      <d-button @click="emit('browsePython')">{{ t('python.browse') }}</d-button>
+      <d-button @click="emit('useSystemPython')">{{ t('python.systemPython') }}</d-button>
     </div>
 
     <div class="toolbar-row install-row">
-      <el-input
+      <d-input
         v-model="packageToInstall"
         :placeholder="t('python.installInput')"
         @keyup.enter="installPackage"
       />
-      <el-button
-        type="primary"
+      <d-button
+        color="primary"
+        variant="solid"
         :loading="processing && processingAction === 'install'"
         @click="installPackage"
       >
         {{ t('python.install') }}
-      </el-button>
+      </d-button>
     </div>
 
     <p class="status-text" :class="{ danger: isDangerStatus }">
@@ -104,44 +112,28 @@ function isRowBusy(name: string): boolean {
     </p>
 
     <div class="toolbar-row search-row">
-      <el-input v-model="packageKeyword" clearable :placeholder="t('python.searchInstalled')" />
+      <d-input v-model="packageKeyword" clearable :placeholder="t('python.searchInstalled')" />
       <span class="count">{{ filteredPackages.length }} / {{ packages.length }}</span>
     </div>
 
-    <div class="table-wrap">
-      <el-table
-        v-loading="loading"
-        :data="filteredPackages"
-        stripe
-        border
-        height="100%"
-        :empty-text="t('python.noPackageData')"
-      >
-        <el-table-column prop="name" :label="t('python.name')" min-width="220" />
-        <el-table-column prop="version" :label="t('python.version')" width="160" />
-        <el-table-column :label="t('python.action')" width="130" fixed="right">
-          <template #default="{ row }">
-            <el-popconfirm
-              :title="t('python.uninstallConfirm', { name: row.name })"
-              :confirm-button-text="t('python.uninstall')"
-              :cancel-button-text="t('python.cancel')"
-              @confirm="uninstallPackage(row.name)"
+    <div class="table-wrap" v-loading="loading">
+      <d-data-table :dataSource="filteredPackages" :scrollable="true" style="height: 100%;">
+        <d-column field="name" :header="t('python.name')" :minWidth="220" />
+        <d-column field="version" :header="t('python.version')" width="160" />
+        <d-column :header="t('python.action')" width="130">
+          <template #cell="scope">
+            <d-button
+              size="sm"
+              color="danger"
+              variant="outline"
+              :disabled="processing && !isRowBusy(scope.rowItem.name)"
+              @click="confirmUninstall(scope.rowItem.name)"
             >
-              <template #reference>
-                <el-button
-                  size="small"
-                  type="danger"
-                  plain
-                  :loading="isRowBusy(row.name)"
-                  :disabled="processing && !isRowBusy(row.name)"
-                >
-                  {{ t('python.uninstall') }}
-                </el-button>
-              </template>
-            </el-popconfirm>
+              {{ t('python.uninstall') }}
+            </d-button>
           </template>
-        </el-table-column>
-      </el-table>
+        </d-column>
+      </d-data-table>
     </div>
   </section>
 </template>

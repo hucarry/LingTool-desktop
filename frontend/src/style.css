@@ -31,21 +31,21 @@
 
   color-scheme: dark;
 
-  --el-color-primary: var(--vscode-accent-color);
-  --el-bg-color: #252526;
-  --el-bg-color-overlay: #252526;
-  --el-bg-color-page: var(--vscode-editor-bg);
-  --el-fill-color-blank: #252526;
-  --el-fill-color-light: #333333;
-  --el-fill-color-lighter: #3c3c3c;
-  --el-text-color-primary: var(--vscode-text-primary);
-  --el-text-color-regular: #c5c5c5;
-  --el-text-color-secondary: var(--vscode-text-muted);
-  --el-border-color: var(--vscode-border-color);
-  --el-border-color-light: var(--vscode-border-color);
-  --el-mask-color: rgba(0, 0, 0, 0.55);
-  --el-fill-color-dark: #1f1f1f;
-  --el-font-family: var(--vscode-font-ui);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 }
 
 :root.light-theme {
@@ -68,21 +68,21 @@
   --glass-border: var(--vscode-border-color);
   --font-mono: var(--vscode-font-mono);
   color-scheme: light;
-  --el-color-primary: var(--vscode-accent-color);
-  --el-bg-color: #eef2f8;
-  --el-bg-color-overlay: #ffffff;
-  --el-bg-color-page: var(--vscode-editor-bg);
-  --el-fill-color-blank: #ffffff;
-  --el-fill-color-light: #eef2f8;
-  --el-fill-color-lighter: #e6ecf6;
-  --el-text-color-primary: var(--vscode-text-primary);
-  --el-text-color-regular: #334155;
-  --el-text-color-secondary: var(--vscode-text-muted);
-  --el-border-color: var(--vscode-border-color);
-  --el-border-color-light: var(--vscode-border-color);
-  --el-mask-color: rgba(15, 23, 42, 0.2);
-  --el-fill-color-dark: #dce4f1;
-  --el-font-family: var(--vscode-font-ui);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 }
 
 * {
@@ -162,13 +162,13 @@ p {
 }
 
 .el-button--primary {
-  --el-button-bg-color: var(--vscode-accent-color);
-  --el-button-border-color: var(--vscode-accent-color);
-  --el-button-hover-bg-color: var(--vscode-active-bg);
-  --el-button-hover-border-color: var(--vscode-active-bg);
-  --el-button-active-bg-color: var(--vscode-hover-bg);
-  --el-button-active-border-color: var(--vscode-hover-bg);
-  --el-button-text-color: #ffffff;
+  
+  
+  
+  
+  
+  
+  
 }
 
 .el-input__wrapper,
@@ -197,12 +197,12 @@ p {
 }
 
 .el-table {
-  --el-table-bg-color: var(--vscode-editor-bg);
-  --el-table-tr-bg-color: var(--vscode-editor-bg);
-  --el-table-header-bg-color: var(--vscode-sidebar-bg);
-  --el-table-text-color: var(--vscode-text-primary);
-  --el-table-header-text-color: var(--vscode-text-muted);
-  --el-table-border-color: var(--vscode-border-color);
+  
+  
+  
+  
+  
+  
 }
 
 .el-table th.el-table__cell,
@@ -221,7 +221,7 @@ p {
 }
 
 .el-descriptions__table {
-  --el-descriptions-table-border: var(--vscode-border-color);
+  
 }
 
 .el-tag {
@@ -233,4 +233,5 @@ p {
 .el-empty__description p {
   color: var(--vscode-text-muted);
 }
+
 

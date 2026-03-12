@@ -1,5 +1,5 @@
 import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { bridge } from '../services/bridge'
 import { useI18n } from './useI18n'
 import { useSettings } from './useSettings'
@@ -473,7 +473,7 @@ function handleToolAddedMessage(message: ToolAddedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `工具已新增：${message.toolId}`
     : `Tool added: ${message.toolId}`
-  ElMessage.success(successMessage)
+  alert(successMessage)
 }
 
 function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
@@ -483,7 +483,7 @@ function handleToolUpdatedMessage(message: ToolUpdatedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `工具已更新：${message.toolId}`
     : `Tool updated: ${message.toolId}`
-  ElMessage.success(successMessage)
+  alert(successMessage)
 }
 
 function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
@@ -491,7 +491,7 @@ function handleToolsDeletedMessage(message: ToolsDeletedMessage): void {
   const successMessage = locale.value === 'zh-CN'
     ? `已删除 ${message.deletedCount} 个工具`
     : `${message.deletedCount} tool(s) deleted`
-  ElMessage.success(successMessage)
+  alert(successMessage)
 }
 
 function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
@@ -519,7 +519,7 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
         action: actionText,
         packageName: message.packageName,
       })
-      ElMessage.success(
+      alert(
         t('python.status.succeeded', {
           action: actionText,
           packageName: message.packageName,
@@ -533,7 +533,7 @@ function handlePythonPackageInstallStatusMessage(message: PythonPackageInstallSt
         packageName: message.packageName,
         details: message.message ? ` (${message.message})` : '',
       })
-      ElMessage.error(
+      alert(
         t('python.status.failed', {
           action: actionText,
           packageName: message.packageName,
@@ -621,7 +621,7 @@ function handleBackendMessage(message: BackMessage): void {
 
       if (message.message.includes('Terminal not found or not running')) {
         fetchTerminals()
-        ElMessage.warning(t('terminal.currentUnavailable'))
+        alert(t('terminal.currentUnavailable'))
         break
       }
 
@@ -630,9 +630,9 @@ function handleBackendMessage(message: BackMessage): void {
       }
 
       if (typeof message.details === 'string' && message.details.trim()) {
-        ElMessage.error(`${message.message}: ${message.details}`)
+        alert(`${message.message}: ${message.details}`)
       } else {
-        ElMessage.error(message.message)
+        alert(message.message)
       }
       break
     case 'pythonSelected':
@@ -648,7 +648,7 @@ function handleBackendMessage(message: BackMessage): void {
         if (typeof message.path === 'string' && message.path.trim()) {
           setDefaultPythonPath(message.path)
 
-          ElMessage.success(
+          alert(
             locale.value === 'zh-CN'
               ? '已更新默认 Python 解释器'
               : 'Default Python interpreter updated',

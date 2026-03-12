@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Box, Cpu, Plus, Setting } from '@element-plus/icons-vue'
 import ToolRunner from './components/ToolRunner.vue'
 import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
@@ -10,7 +9,7 @@ import { useSettings } from './composables/useSettings'
 
 interface MenuItem {
   path: '/python' | '/tools' | '/tools/new' | '/settings'
-  icon: typeof Box
+  iconId: string
   titleKey?: string
   title?: Record<Locale, string>
 }
@@ -51,11 +50,11 @@ const workbenchMainRef = ref<HTMLElement>()
 const editorStackRef = ref<HTMLElement>()
 
 const menuItems: MenuItem[] = [
-  { path: '/python', icon: Box, titleKey: 'app.menu.python' },
-  { path: '/tools', icon: Cpu, titleKey: 'app.menu.tools' },
+  { path: '/python', iconId: 'icon-code', titleKey: 'app.menu.python' },
+  { path: '/tools', iconId: 'icon-folder', titleKey: 'app.menu.tools' },
   {
     path: '/tools/new',
-    icon: Plus,
+    iconId: 'icon-add',
     title: {
       'zh-CN': '新增工具',
       'en-US': 'Add Tool',
@@ -65,7 +64,7 @@ const menuItems: MenuItem[] = [
 
 const settingsMenuItem: MenuItem = {
   path: '/settings',
-  icon: Setting,
+  iconId: 'icon-setting',
   title: {
     'zh-CN': '设置',
     'en-US': 'Settings',
@@ -306,6 +305,10 @@ function handlePrimaryNavigation(item: MenuItem): void {
 }
 
 function openSettings(): void {
+  if (activeMenu.value === '/settings') {
+    toggleSidebarVisibility()
+    return
+  }
   setSidebarVisible(true)
   navigate('/settings')
 }
@@ -327,6 +330,7 @@ onBeforeUnmount(() => {
   <div class="workbench-root" :class="{ 'is-dragging': isDragging }">
     <div ref="workbenchMainRef" class="workbench-main">
       <nav class="activity-bar" :aria-label="t('app.activityBar')">
+        <div class="activity-bar-head"></div>
         <button
           v-for="item in menuItems"
           :key="item.path"
@@ -336,13 +340,13 @@ onBeforeUnmount(() => {
           :title="menuTitle(item)"
           @click="handlePrimaryNavigation(item)"
         >
-          <el-icon :size="20"><component :is="item.icon" /></el-icon>
+          <i :class="item.iconId" style="font-size: 20px;"></i>
         </button>
 
         <div class="activity-spacer" />
 
-        <button class="activity-item utility-item" type="button" :title="t('app.settings')" @click="openSettings">
-          <el-icon :size="18"><Setting /></el-icon>
+        <button class="activity-item utility-item" type="button" :title="t('app.settings')" :class="{ active: activeMenu === '/settings' }" @click="openSettings">
+          <i class="icon-setting" style="font-size: 18px;"></i>
         </button>
       </nav>
 
@@ -350,7 +354,7 @@ onBeforeUnmount(() => {
         <header class="side-bar-head">{{ t('app.explorer') }}</header>
 
         <button
-          v-for="item in sideMenuItems"
+          v-for="item in menuItems"
           :key="`side-${item.path}`"
           class="side-item"
           :class="{ active: activeMenu === item.path }"
@@ -359,6 +363,18 @@ onBeforeUnmount(() => {
         >
           <span class="side-item-title">{{ menuTitle(item) }}</span>
           <span class="side-item-path">{{ item.path }}</span>
+        </button>
+        
+        <div class="activity-spacer" />
+        
+        <button
+          class="side-item side-utility-item"
+          :class="{ active: activeMenu === '/settings' }"
+          type="button"
+          @click="navigate('/settings')"
+        >
+          <span class="side-item-title">{{ menuTitle(settingsMenuItem) }}</span>
+          <span class="side-item-path">{{ settingsMenuItem.path }}</span>
         </button>
       </aside>
 
@@ -372,7 +388,7 @@ onBeforeUnmount(() => {
       <section ref="editorStackRef" class="editor-stack">
         <header class="editor-tabs">
           <div class="editor-tab is-active">
-            <el-icon :size="14"><component :is="activeMenuItem.icon" /></el-icon>
+            <i :class="activeMenuItem.iconId" style="font-size: 14px;"></i>
             <span>{{ menuTitle(activeMenuItem) }}</span>
           </div>
         </header>
@@ -466,7 +482,11 @@ onBeforeUnmount(() => {
   align-items: center;
   background: var(--vscode-activitybar-bg);
   border-right: 1px solid var(--vscode-border-color);
-  padding-top: 10px;
+}
+
+.activity-bar-head {
+  height: 35px; /* match side-bar-head height */
+  width: 100%;
 }
 
 .activity-item {
@@ -584,6 +604,10 @@ onBeforeUnmount(() => {
   font-family: var(--vscode-font-mono);
 }
 
+.side-utility-item {
+  margin-bottom: 8px;
+}
+
 .editor-stack {
   flex: 1;
   min-width: 0;
@@ -604,85 +628,93 @@ onBeforeUnmount(() => {
 
 .editor-tab {
   height: 100%;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px;
+  gap: 6px;
+  padding: 0 14px;
+  border-right: 1px solid var(--vscode-border-color);
   font-size: 12px;
   color: var(--vscode-text-muted);
-  border-right: 1px solid var(--vscode-border-color);
+  background: var(--vscode-editor-bg);
+  cursor: default;
 }
 
 .editor-tab.is-active {
   color: var(--vscode-text-primary);
+  border-top: 1px solid var(--vscode-accent-color);
   background: var(--vscode-editor-bg);
 }
 
 .editor-content {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 10px 14px;
+  position: relative;
 }
 
 .panel-dock {
   flex-shrink: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   border-top: 1px solid var(--vscode-border-color);
   background: var(--vscode-panel-bg);
-  transition: height 0.18s ease;
+  position: relative;
 }
 
 .drag-handle {
-  height: 4px;
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
   cursor: ns-resize;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+  z-index: 10;
 }
 
 .drag-handle-line {
-  width: 44px;
+  position: absolute;
+  top: 2px;
+  left: 0;
+  right: 0;
   height: 2px;
-  border-radius: 999px;
   background: transparent;
+  transition: background 0.1s;
 }
 
-.drag-handle:hover .drag-handle-line {
+.drag-handle:hover .drag-handle-line,
+.workbench-root.is-dragging .drag-handle-line {
   background: var(--vscode-accent-color);
 }
 
 .panel-header {
-  height: 32px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--vscode-border-color);
+  height: 35px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 16px 0 0;
+  border-bottom: 1px solid var(--vscode-border-color);
 }
 
 .panel-header-left {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  height: 100%;
 }
 
 .panel-tab {
   border: 0;
   background: transparent;
-  color: var(--vscode-text-muted);
+  height: 100%;
+  padding: 0 12px;
   font-size: 11px;
-  letter-spacing: 0.8px;
-  padding: 0;
-  height: 32px;
-  border-bottom: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vscode-text-muted);
   cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+
+.panel-tab:hover {
+  color: var(--vscode-text-primary);
 }
 
 .panel-tab.is-active {
@@ -691,6 +723,7 @@ onBeforeUnmount(() => {
 }
 
 .panel-caption {
+  margin-left: 12px;
   font-size: 11px;
   color: var(--vscode-text-muted);
 }
@@ -698,9 +731,12 @@ onBeforeUnmount(() => {
 .panel-toggle {
   border: 0;
   background: transparent;
+  padding: 4px;
   color: var(--vscode-text-muted);
-  font-size: 11px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .panel-toggle:hover {
@@ -710,7 +746,7 @@ onBeforeUnmount(() => {
 .panel-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  position: relative;
 }
 
 .status-bar {
@@ -719,37 +755,28 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 8px;
   background: var(--vscode-statusbar-bg);
-  color: #ffffff;
+  color: var(--vscode-statusbar-color);
   font-size: 11px;
 }
 
 .status-left,
 .status-right {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  height: 100%;
 }
 
 .status-item {
-  opacity: 0.95;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px;
+  cursor: default;
 }
 
-@media (max-width: 960px) {
-  .side-bar {
-    display: none;
-  }
-
-  .side-sash {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  .editor-content {
-    padding: 6px;
-  }
+.status-item:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 </style>

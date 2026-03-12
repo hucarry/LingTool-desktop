@@ -1,6 +1,6 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { useToolHub } from '../composables/useToolHub'
 import { useI18n } from '../composables/useI18n'
 import type { AddToolPayload, ToolType } from '../types'
@@ -199,22 +199,22 @@ function submit(): void {
   const path = form.path.trim()
 
   if (!id) {
-    ElMessage.error(text.value.validationId)
+    alert(text.value.validationId)
     return
   }
 
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    ElMessage.error(text.value.validationIdFormat)
+    alert(text.value.validationIdFormat)
     return
   }
 
   if (!name) {
-    ElMessage.error(text.value.validationName)
+    alert(text.value.validationName)
     return
   }
 
   if (!path) {
-    ElMessage.error(text.value.validationPath)
+    alert(text.value.validationPath)
     return
   }
 
@@ -235,7 +235,7 @@ function submit(): void {
 
 function clearForm(): void {
   resetForm()
-  ElMessage.info(text.value.resetDone)
+  alert(text.value.resetDone)
 }
 </script>
 
@@ -246,9 +246,9 @@ function clearForm(): void {
       <p>{{ text.subtitle }}</p>
     </header>
 
-    <el-form label-position="top" class="add-tool-form">
+    <d-form label-position="top" class="add-tool-form">
       <div class="form-grid">
-        <el-form-item :label="text.toolType">
+        <d-form-item :label="text.toolType">
           <el-segmented
             v-model="form.type"
             :options="[
@@ -256,57 +256,57 @@ function clearForm(): void {
               { label: 'exe', value: 'exe' },
             ]"
           />
-        </el-form-item>
+        </d-form-item>
 
-        <el-form-item :label="text.toolId">
-          <el-input v-model="form.id" :placeholder="text.idHint" clearable />
-        </el-form-item>
+        <d-form-item :label="text.toolId">
+          <d-input v-model="form.id" :placeholder="text.idHint" clearable />
+        </d-form-item>
 
-        <el-form-item :label="text.toolName">
-          <el-input v-model="form.name" clearable />
-        </el-form-item>
+        <d-form-item :label="text.toolName">
+          <d-input v-model="form.name" clearable />
+        </d-form-item>
 
-        <el-form-item :label="text.toolPath" class="path-item">
+        <d-form-item :label="text.toolPath" class="path-item">
           <div class="path-input-row">
-            <el-input
+            <d-input
               v-model="form.path"
               :placeholder="isPythonTool ? text.pyHint : text.exeHint"
               clearable
             />
-            <el-button @click="browseToolPath">{{ text.browse }}</el-button>
+            <d-button @click="browseToolPath">{{ text.browse }}</d-button>
           </div>
-        </el-form-item>
+        </d-form-item>
 
-        <el-form-item v-if="isPythonTool" :label="text.pythonPath" class="path-item">
+        <d-form-item v-if="isPythonTool" :label="text.pythonPath" class="path-item">
           <div class="path-input-row">
-            <el-input v-model="form.python" clearable />
-            <el-button @click="browsePythonPath">{{ text.browse }}</el-button>
+            <d-input v-model="form.python" clearable />
+            <d-button @click="browsePythonPath">{{ text.browse }}</d-button>
           </div>
           <p class="tip-text">{{ text.pythonHelp }}</p>
-        </el-form-item>
+        </d-form-item>
 
-        <el-form-item :label="text.cwd">
-          <el-input v-model="form.cwd" clearable />
-        </el-form-item>
+        <d-form-item :label="text.cwd">
+          <d-input v-model="form.cwd" clearable />
+        </d-form-item>
 
-        <el-form-item :label="text.argsTemplate">
-          <el-input v-model="form.argsTemplate" clearable />
-        </el-form-item>
+        <d-form-item :label="text.argsTemplate">
+          <d-input v-model="form.argsTemplate" clearable />
+        </d-form-item>
 
-        <el-form-item :label="text.tags">
-          <el-input v-model="form.tagsText" :placeholder="text.tagsHint" clearable />
-        </el-form-item>
+        <d-form-item :label="text.tags">
+          <d-input v-model="form.tagsText" :placeholder="text.tagsHint" clearable />
+        </d-form-item>
 
-        <el-form-item :label="text.description" class="description-item">
-          <el-input v-model="form.description" type="textarea" :rows="3" />
-        </el-form-item>
+        <d-form-item :label="text.description" class="description-item">
+          <d-input v-model="form.description" type="textarea" :rows="3" />
+        </d-form-item>
       </div>
 
       <div class="actions">
-        <el-button @click="clearForm">{{ text.clear }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submit">{{ text.submit }}</el-button>
+        <d-button @click="clearForm">{{ text.clear }}</d-button>
+        <d-button type="primary" :loading="submitting" @click="submit">{{ text.submit }}</d-button>
       </div>
-    </el-form>
+    </d-form>
   </section>
 </template>
 

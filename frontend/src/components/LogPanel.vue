@@ -1,5 +1,4 @@
 import { computed, nextTick, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import type { LogEntry, RunInfo } from '../types'
 import { useI18n } from '../composables/useI18n'
 
@@ -69,15 +68,15 @@ watch(
 
 async function copyLogs(): Promise<void> {
   if (!mergedText.value) {
-    ElMessage.warning(text.value.noLogsCopy)
+    alert(text.value.noLogsCopy)
     return
   }
 
   try {
     await navigator.clipboard.writeText(mergedText.value)
-    ElMessage.success(text.value.copied)
+    alert(text.value.copied)
   } catch {
-    ElMessage.error(text.value.copyFailed)
+    alert(text.value.copyFailed)
   }
 }
 
@@ -103,9 +102,12 @@ function clearLogs(): void {
       </div>
 
       <div class="log-actions">
-        <el-switch v-model="autoScroll" inline-prompt :active-text="text.autoScrollOn" :inactive-text="text.autoScrollOff" />
-        <el-button size="small" @click="copyLogs">{{ text.copy }}</el-button>
-        <el-button size="small" @click="clearLogs" :disabled="!run">{{ text.clear }}</el-button>
+        <d-switch v-model="autoScroll">
+          <template #checked>{{ text.autoScrollOn }}</template>
+          <template #unchecked>{{ text.autoScrollOff }}</template>
+        </d-switch>
+        <d-button size="sm" @click="copyLogs">{{ text.copy }}</d-button>
+        <d-button size="sm" @click="clearLogs" :disabled="!run">{{ text.clear }}</d-button>
       </div>
     </header>
 
@@ -121,7 +123,10 @@ function clearLogs(): void {
           <span class="line">{{ log.line }}</span>
         </p>
       </template>
-      <el-empty v-else :description="text.empty" :image-size="72" />
+      <div v-else class="empty-state">
+        <i class="icon-refresh" style="font-size: 48px; color: var(--vscode-text-muted); opacity: 0.5;"></i>
+        <p>{{ text.empty }}</p>
+      </div>
     </div>
   </section>
 </template>
@@ -207,5 +212,14 @@ function clearLogs(): void {
 
 .stderr .line {
   color: var(--el-color-danger);
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--vscode-text-muted);
+  gap: 12px;
 }
 </style>
