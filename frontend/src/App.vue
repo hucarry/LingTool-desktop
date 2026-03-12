@@ -6,9 +6,10 @@ import ToolRunner from './components/ToolRunner.vue'
 import TerminalPanel from './components/TerminalPanel.vue'
 import { useToolHub } from './composables/useToolHub'
 import { useI18n, type Locale } from './composables/useI18n'
+import { useSettings } from './composables/useSettings'
 
 interface MenuItem {
-  path: '/python' | '/tools' | '/tools/new'
+  path: '/python' | '/tools' | '/tools/new' | '/settings'
   icon: typeof Box
   titleKey?: string
   title?: Record<Locale, string>
@@ -17,7 +18,8 @@ interface MenuItem {
 const hub = useToolHub()
 const route = useRoute()
 const router = useRouter()
-const { locale, setLocale, t, formatSessionCount } = useI18n()
+const { locale, t, formatSessionCount } = useI18n()
+const { defaultPythonPath } = useSettings()
 
 const runnerVisible = hub.runnerVisible
 const pythonOverride = hub.pythonOverride
@@ -26,6 +28,7 @@ const activeTool = hub.activeTool
 type DragKind = 'none' | 'terminal' | 'sidebar'
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'toolhub.sidebarWidth'
+const SIDEBAR_VISIBLE_STORAGE_KEY = 'toolhub.sidebarVisible'
 const ACTIVITY_BAR_WIDTH = 48
 const SIDEBAR_SASH_WIDTH = 4
 const MIN_EDITOR_WIDTH = 420
@@ -43,6 +46,7 @@ const dragKind = ref<DragKind>('none')
 const isDragging = computed(() => dragKind.value !== 'none')
 const isSidebarDragging = computed(() => dragKind.value === 'sidebar')
 const sidebarWidth = ref(loadSidebarWidth())
+const sidebarVisible = ref(loadSidebarVisible())
 const workbenchMainRef = ref<HTMLElement>()
 const editorStackRef = ref<HTMLElement>()
 
@@ -58,9 +62,24 @@ const menuItems: MenuItem[] = [
     },
   },
 ]
+
+const settingsMenuItem: MenuItem = {
+  path: '/settings',
+  icon: Setting,
+  title: {
+    'zh-CN': '设置',
+    'en-US': 'Settings',
+  },
+}
+
 const fallbackMenuItem: MenuItem = menuItems[0]!
+const sideMenuItems: MenuItem[] = [...menuItems, settingsMenuItem]
 
 const activeMenu = computed<MenuItem['path']>(() => {
+  if (route.path.startsWith('/settings')) {
+    return '/settings'
+  }
+
   if (route.path.startsWith('/tools/new')) {
     return '/tools/new'
   }
@@ -73,7 +92,7 @@ const activeMenu = computed<MenuItem['path']>(() => {
 })
 
 const activeMenuItem = computed(() => {
-  return menuItems.find((item) => item.path === activeMenu.value) ?? fallbackMenuItem
+  return sideMenuItems.find((item) => item.path === activeMenu.value) ?? fallbackMenuItem
 })
 
 const panelHeight = computed(() => {
@@ -94,16 +113,14 @@ const terminalSessionCaption = computed(() => {
   return formatSessionCount(hub.terminals.value.length)
 })
 
+const showSidebar = computed(() => sidebarVisible.value)
+
 function menuTitle(item: MenuItem): string {
   if (item.titleKey) {
     return t(item.titleKey)
   }
 
   return item.title?.[locale.value] ?? item.path
-}
-
-function switchLocale(next: Locale): void {
-  setLocale(next)
 }
 
 function navigate(path: MenuItem['path']): void {
@@ -132,6 +149,23 @@ function loadSidebarWidth(): number {
   return DEFAULT_SIDEBAR_WIDTH
 }
 
+function loadSidebarVisible(): boolean {
+  if (typeof window === 'undefined') {
+    return true
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_VISIBLE_STORAGE_KEY)
+    if (raw === 'false') {
+      return false
+    }
+  } catch {
+    // ignore
+  }
+
+  return true
+}
+
 function getSidebarMaxWidth(): number {
   if (!workbenchMainRef.value) {
     return MAX_SIDEBAR_WIDTH
@@ -158,6 +192,26 @@ function setSidebarWidth(nextWidth: number): void {
       // ignore
     }
   }
+}
+
+function setSidebarVisible(nextVisible: boolean): void {
+  sidebarVisible.value = nextVisible
+
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(SIDEBAR_VISIBLE_STORAGE_KEY, String(nextVisible))
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function toggleSidebarVisibility(): void {
+  if (dragKind.value === 'sidebar') {
+    onGlobalDragEnd()
+  }
+
+  setSidebarVisible(!sidebarVisible.value)
 }
 
 function beginDrag(kind: DragKind, cursor: 'ns-resize' | 'ew-resize'): void {
@@ -241,6 +295,21 @@ function expandTerminal(): void {
   }
 }
 
+function handlePrimaryNavigation(item: MenuItem): void {
+  if (activeMenu.value === item.path) {
+    toggleSidebarVisibility()
+    return
+  }
+
+  setSidebarVisible(true)
+  navigate(item.path)
+}
+
+function openSettings(): void {
+  setSidebarVisible(true)
+  navigate('/settings')
+}
+
 onMounted(() => {
   hub.initToolHub()
   clampSidebarWidthIfNeeded()
@@ -256,35 +325,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="workbench-root" :class="{ 'is-dragging': isDragging }">
-    <header class="title-bar">
-      <div class="title-left">
-        <span class="app-badge">TH</span>
-        <span class="app-name">{{ t('app.brand') }}</span>
-      </div>
-      <div class="title-center">{{ menuTitle(activeMenuItem) }} - {{ t('app.workspace') }}</div>
-      <div class="title-right">
-        <span>{{ t('app.layout') }}</span>
-        <div class="locale-switch">
-          <button
-            type="button"
-            class="locale-btn"
-            :class="{ active: locale === 'zh-CN' }"
-            @click="switchLocale('zh-CN')"
-          >
-            {{ t('app.lang.zh') }}
-          </button>
-          <button
-            type="button"
-            class="locale-btn"
-            :class="{ active: locale === 'en-US' }"
-            @click="switchLocale('en-US')"
-          >
-            {{ t('app.lang.en') }}
-          </button>
-        </div>
-      </div>
-    </header>
-
     <div ref="workbenchMainRef" class="workbench-main">
       <nav class="activity-bar" :aria-label="t('app.activityBar')">
         <button
@@ -294,23 +334,23 @@ onBeforeUnmount(() => {
           :class="{ active: activeMenu === item.path }"
           type="button"
           :title="menuTitle(item)"
-          @click="navigate(item.path)"
+          @click="handlePrimaryNavigation(item)"
         >
           <el-icon :size="20"><component :is="item.icon" /></el-icon>
         </button>
 
         <div class="activity-spacer" />
 
-        <button class="activity-item utility-item" type="button" :title="t('app.settings')">
+        <button class="activity-item utility-item" type="button" :title="t('app.settings')" @click="openSettings">
           <el-icon :size="18"><Setting /></el-icon>
         </button>
       </nav>
 
-      <aside class="side-bar" :aria-label="t('app.explorer')" :style="{ width: `${sidebarWidth}px` }">
+      <aside v-if="showSidebar" class="side-bar" :aria-label="t('app.explorer')" :style="{ width: `${sidebarWidth}px` }">
         <header class="side-bar-head">{{ t('app.explorer') }}</header>
 
         <button
-          v-for="item in menuItems"
+          v-for="item in sideMenuItems"
           :key="`side-${item.path}`"
           class="side-item"
           :class="{ active: activeMenu === item.path }"
@@ -323,6 +363,7 @@ onBeforeUnmount(() => {
       </aside>
 
       <div
+        v-if="showSidebar"
         class="side-sash"
         :class="{ active: isSidebarDragging }"
         @mousedown="onSidebarDragStart"
@@ -388,6 +429,7 @@ onBeforeUnmount(() => {
       v-model:visible="runnerVisible"
       v-model:python-override="pythonOverride"
       :tool="activeTool"
+      :default-python-path="defaultPythonPath"
       @pick-python="hub.pickPythonInterpreter"
       @run="hub.handleRun"
     />
@@ -407,87 +449,6 @@ onBeforeUnmount(() => {
 .workbench-root.is-dragging :deep(.xterm),
 .workbench-root.is-dragging :deep(iframe) {
   pointer-events: none;
-}
-
-.title-bar {
-  height: 30px;
-  flex-shrink: 0;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--vscode-border-color);
-  background: var(--vscode-titlebar-bg);
-  color: var(--vscode-text-muted);
-  font-size: 12px;
-}
-
-.title-left,
-.title-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.title-right {
-  justify-content: flex-end;
-}
-
-.title-center {
-  color: var(--vscode-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.app-badge {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  background: var(--vscode-accent-color);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.app-name {
-  color: var(--vscode-text-primary);
-  font-weight: 600;
-}
-
-.locale-switch {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--vscode-border-color);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.locale-btn {
-  height: 20px;
-  min-width: 34px;
-  border: 0;
-  background: transparent;
-  color: var(--vscode-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.locale-btn + .locale-btn {
-  border-left: 1px solid var(--vscode-border-color);
-}
-
-.locale-btn:hover {
-  background: var(--vscode-hover-bg);
-  color: var(--vscode-text-primary);
-}
-
-.locale-btn.active {
-  background: var(--vscode-accent-color);
-  color: #ffffff;
 }
 
 .workbench-main {
@@ -784,22 +745,9 @@ onBeforeUnmount(() => {
   .side-sash {
     display: none;
   }
-
-  .title-right {
-    display: none;
-  }
-
-  .title-bar {
-    grid-template-columns: auto 1fr;
-    gap: 12px;
-  }
 }
 
 @media (max-width: 640px) {
-  .title-center {
-    display: none;
-  }
-
   .editor-content {
     padding: 6px;
   }

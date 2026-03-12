@@ -204,3 +204,5 @@ C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\obj\Release\net8.0\win-x64\ref\ToolHub.App.dll
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-BIdaDZVr.css
 C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-ByZJQ72-.js
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-B0VqmHPk.css
+C:\Users\89352\Desktop\插件管理平台\ToolHub.App\bin\Release\net8.0\win-x64\wwwroot\assets\index-C1-eHEYc.js

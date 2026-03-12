@@ -7,6 +7,9 @@ namespace ToolHub.App;
 
 public sealed class ProcessManager : IDisposable
 {
+    /// <summary>已完成运行的最大保留条数，超出后自动清理最旧的记录。</summary>
+    private const int MaxCompletedRunHistory = 200;
+
     private readonly ConcurrentDictionary<string, RunContext> _runs = new();
     private readonly Action<object> _sendMessage;
 
@@ -69,6 +72,9 @@ public sealed class ProcessManager : IDisposable
 
             _sendMessage(new ErrorMessage($"启动工具失败: {tool.Name}", ex.Message));
             _sendMessage(new RunStatusMessage(CloneRun(run)));
+
+            // 启动失败时也需要释放 Process 对象，防止句柄泄漏
+            DisposeProcessSafe(process);
         }
 
         return CloneRun(run);
@@ -114,18 +120,19 @@ public sealed class ProcessManager : IDisposable
         {
             try
             {
-                if (!IsProcessRunning(context.Process))
+                if (IsProcessRunning(context.Process))
                 {
-                    continue;
+                    context.StopRequested = true;
+                    ProcessKiller.KillProcessTreeAsync(context.Process).GetAwaiter().GetResult();
                 }
-
-                context.StopRequested = true;
-                ProcessKiller.KillProcessTreeAsync(context.Process).GetAwaiter().GetResult();
             }
             catch
             {
-                // Ignore dispose errors to avoid blocking app shutdown.
+                // 忽略终止错误，避免阻塞应用关闭
             }
+
+            // 无论进程是否还在运行，都释放 Process 对象
+            DisposeProcessSafe(context.Process);
         }
     }
 
@@ -191,6 +198,12 @@ public sealed class ProcessManager : IDisposable
         }
 
         _sendMessage(new RunStatusMessage(CloneRun(run)));
+
+        // 释放已完成的 Process 对象，回收系统句柄
+        DisposeProcessSafe(context.Process);
+
+        // 清理过旧的运行记录，防止内存无限增长
+        TrimCompletedRuns();
     }
 
     private static ProcessStartInfo BuildStartInfo(
@@ -282,6 +295,39 @@ public sealed class ProcessManager : IDisposable
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(ProcessManager));
+        }
+    }
+
+    /// <summary>安全释放 Process 对象，忽略任何释放错误。</summary>
+    private static void DisposeProcessSafe(Process process)
+    {
+        try
+        {
+            process.Dispose();
+        }
+        catch
+        {
+            // 忽略释放错误
+        }
+    }
+
+    /// <summary>清理过旧的已完成运行记录，防止 _runs 字典无限增长。</summary>
+    private void TrimCompletedRuns()
+    {
+        var completedEntries = _runs
+            .Where(pair => pair.Value.Run.EndTime is not null)
+            .OrderBy(pair => pair.Value.Run.EndTime)
+            .ToList();
+
+        if (completedEntries.Count <= MaxCompletedRunHistory)
+        {
+            return;
+        }
+
+        var excessCount = completedEntries.Count - MaxCompletedRunHistory;
+        foreach (var entry in completedEntries.Take(excessCount))
+        {
+            _runs.TryRemove(entry.Key, out _);
         }
     }
 

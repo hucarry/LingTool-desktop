@@ -93,7 +93,7 @@ export interface GetRunsRequest {
 export interface BrowsePythonRequest {
   type: 'browsePython'
   defaultPath?: string
-  purpose?: 'toolRunner' | 'packageManager'
+  purpose?: 'toolRunner' | 'packageManager' | 'settingsDefaultPython'
 }
 
 export interface BrowseFileRequest {
@@ -205,7 +205,7 @@ export interface ErrorMessage {
 export interface PythonSelectedMessage {
   type: 'pythonSelected'
   path?: string
-  purpose?: 'toolRunner' | 'packageManager'
+  purpose?: 'toolRunner' | 'packageManager' | 'settingsDefaultPython'
 }
 
 export interface FileSelectedMessage {

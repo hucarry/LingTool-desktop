@@ -132,8 +132,7 @@ internal static class Program
                 JsonOptions
             );
 
-            // 使用异步路由处理消息
-            _ = MessageRouter.RouteAsync(context, rawMessage);
+            MessageRouter.RouteAsync(context, rawMessage).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {

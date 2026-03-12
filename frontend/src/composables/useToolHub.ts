@@ -2,6 +2,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { bridge } from '../services/bridge'
 import { useI18n } from './useI18n'
+import { useSettings } from './useSettings'
 import type {
   AddToolPayload,
   BackMessage,
@@ -36,7 +37,9 @@ const activeTool = ref<ToolItem | null>(null)
 const runnerVisible = ref(false)
 const pythonOverride = ref('')
 
-const packagePythonPath = ref('')
+const { defaultPythonPath, setDefaultPythonPath } = useSettings()
+
+const packagePythonPath = ref(defaultPythonPath.value)
 const pythonPackages = ref<{ name: string; version: string }[]>([])
 const loadingPythonPackages = ref(false)
 const pythonOperationBusy = ref(false)
@@ -73,6 +76,20 @@ const TERMINAL_OUTPUT_BUFFER_LIMIT = 10000
 watch(locale, () => {
   if (!pythonOperationBusy.value) {
     pythonPackageStatus.value = t('python.ready')
+  }
+})
+
+watch(defaultPythonPath, (nextPath, previousPath) => {
+  if (packagePythonPath.value === (previousPath ?? '')) {
+    packagePythonPath.value = nextPath
+  }
+
+  if (
+    activeTool.value?.type === 'python'
+    && !activeTool.value.python
+    && pythonOverride.value === (previousPath ?? '')
+  ) {
+    pythonOverride.value = nextPath
   }
 })
 
@@ -246,16 +263,24 @@ function fetchTerminals(): void {
 
 function openTool(tool: ToolItem): void {
   activeTool.value = tool
-  pythonOverride.value = tool.type === 'python' ? (tool.python ?? '') : ''
+  pythonOverride.value = tool.type === 'python'
+    ? (tool.python ?? defaultPythonPath.value)
+    : ''
   runnerVisible.value = true
 }
 
 function handleRun(payload: { toolId: string; args: Record<string, string>; python?: string }): void {
+  const tool = tools.value.find((item) => item.id === payload.toolId)
+  const effectivePython = payload.python?.trim()
+    || (tool?.type === 'python'
+      ? (tool.python?.trim() || defaultPythonPath.value.trim() || undefined)
+      : undefined)
+
   bridge.send({
     type: 'runToolInTerminal',
     toolId: payload.toolId,
     args: payload.args,
-    python: payload.python,
+    python: effectivePython,
     terminalId: activeTerminalId.value || undefined,
   })
 }
@@ -267,7 +292,11 @@ function pickPythonInterpreter(): void {
 
   bridge.send({
     type: 'browsePython',
-    defaultPath: pythonOverride.value || activeTool.value.cwd || activeTool.value.path,
+    defaultPath: pythonOverride.value
+      || activeTool.value.python
+      || defaultPythonPath.value
+      || activeTool.value.cwd
+      || activeTool.value.path,
     purpose: 'toolRunner',
   })
 }
@@ -275,7 +304,7 @@ function pickPythonInterpreter(): void {
 function pickPythonForPackages(): void {
   bridge.send({
     type: 'browsePython',
-    defaultPath: packagePythonPath.value || pythonOverride.value,
+    defaultPath: packagePythonPath.value || defaultPythonPath.value || pythonOverride.value,
     purpose: 'packageManager',
   })
 }
@@ -410,11 +439,6 @@ function handleToolsMessage(message: ToolsMessage): void {
   addingTool.value = false
   updatingTool.value = false
   deletingTools.value = false
-
-  if (!packagePythonPath.value) {
-    const firstPythonTool = message.tools.find((item) => item.type === 'python')
-    packagePythonPath.value = firstPythonTool?.python ?? ''
-  }
 }
 
 function handleFileSelectedMessage(message: FileSelectedMessage): void {
@@ -616,6 +640,19 @@ function handleBackendMessage(message: BackMessage): void {
         if (typeof message.path === 'string' && message.path.trim()) {
           packagePythonPath.value = message.path
           refreshPythonPackages()
+        }
+        break
+      }
+
+      if (message.purpose === 'settingsDefaultPython') {
+        if (typeof message.path === 'string' && message.path.trim()) {
+          setDefaultPythonPath(message.path)
+
+          ElMessage.success(
+            locale.value === 'zh-CN'
+              ? '已更新默认 Python 解释器'
+              : 'Default Python interpreter updated',
+          )
         }
         break
       }

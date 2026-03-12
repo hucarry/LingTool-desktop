@@ -240,6 +240,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'runner.pythonInterpreter': 'Python Interpreter',
     'runner.pythonFallback': 'Fallback order: custom override -> tools.json python -> system python',
     'runner.useToolDefault': 'Use Tool Default',
+    'runner.useAppDefault': 'Use App Default',
     'runner.useSystemPython': 'Use System Python',
     'runner.pythonExample': 'Example: C:\\project\\.venv\\Scripts\\python.exe',
     'runner.argument': 'Argument {field}',

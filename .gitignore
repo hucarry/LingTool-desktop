@@ -1,0 +1,13 @@
+# 编译输出目录
+bin/
+obj/
+
+# 发布输出目录
+publish/
+
+# 临时构建目录
+.tmp_build/
+.tmp_photino/
+
+# Python 虚拟环境
+.venv/

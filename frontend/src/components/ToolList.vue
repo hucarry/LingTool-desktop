@@ -376,6 +376,7 @@ function saveEdit(): void {
 .list-scroll {
   flex: 1;
   min-height: 0;
+  overflow-x: auto;
 }
 
 .tool-rows {
@@ -383,6 +384,7 @@ function saveEdit(): void {
   flex-direction: column;
   gap: 8px;
   padding: 4px 4px 10px;
+  min-width: 1100px;
 }
 
 .tool-row {
@@ -391,11 +393,13 @@ function saveEdit(): void {
   border-radius: 3px;
   padding: 10px;
   display: grid;
-  grid-template-columns: auto minmax(180px, 1.4fr) minmax(120px, 0.6fr) minmax(220px, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr) 120px minmax(280px, 320px);
   gap: 12px;
   align-items: center;
   cursor: pointer;
   transition: border-color 0.16s ease;
+  width: 100%;
+  min-width: 0;
 }
 
 .tool-row:hover {
@@ -412,6 +416,10 @@ function saveEdit(): void {
   font-size: 14px;
   font-weight: 600;
   color: var(--vscode-text-primary);
+}
+
+.row-main {
+  min-width: 0;
 }
 
 .tool-id {
@@ -464,23 +472,28 @@ function saveEdit(): void {
 }
 
 .row-actions {
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
 }
 
 .action-buttons {
   display: inline-flex;
   gap: 8px;
+  justify-self: end;
+  flex-shrink: 0;
 }
 
 .tool-tags {
   min-width: 0;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow: hidden;
 }
 
 .tag {
@@ -493,6 +506,7 @@ function saveEdit(): void {
   color: var(--vscode-text-muted);
   background: #333333;
   border: 1px solid #4a4a4a;
+  flex: 0 0 auto;
 }
 
 .path-row {
@@ -505,17 +519,5 @@ function saveEdit(): void {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-@media (max-width: 1280px) {
-  .tool-row {
-    grid-template-columns: 1fr;
-  }
-
-  .row-actions {
-    justify-content: flex-start;
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }
 </style>

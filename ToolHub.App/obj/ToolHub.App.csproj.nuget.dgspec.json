@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\89352\\Desktop\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj": {}
+    "D:\\Programming Code\\05_OtherNet\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj": {}
   },
   "projects": {
-    "C:\\Users\\89352\\Desktop\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj": {
+    "D:\\Programming Code\\05_OtherNet\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\89352\\Desktop\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj",
+        "projectUniqueName": "D:\\Programming Code\\05_OtherNet\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj",
         "projectName": "ToolHub.App",
-        "projectPath": "C:\\Users\\89352\\Desktop\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj",
+        "projectPath": "D:\\Programming Code\\05_OtherNet\\插件管理平台\\ToolHub.App\\ToolHub.App.csproj",
         "packagesPath": "C:\\Users\\89352\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\89352\\Desktop\\插件管理平台\\ToolHub.App\\obj\\",
+        "outputPath": "D:\\Programming Code\\05_OtherNet\\插件管理平台\\ToolHub.App\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -50,12 +50,6 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
-            "Microsoft.NET.ILLink.Tasks": {
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[8.0.22, )",
-              "autoReferenced": true
-            },
             "PTY": {
               "target": "Package",
               "version": "[1.0.3, )"
@@ -86,10 +80,6 @@
               "version": "[8.0.22, 8.0.22]"
             },
             {
-              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[8.0.22, 8.0.22]"
-            },
-            {
               "name": "Microsoft.NETCore.App.Host.win-x64",
               "version": "[8.0.22, 8.0.22]"
             },
@@ -98,15 +88,7 @@
               "version": "[8.0.22, 8.0.22]"
             },
             {
-              "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[8.0.22, 8.0.22]"
-            },
-            {
               "name": "Microsoft.WindowsDesktop.App.Ref",
-              "version": "[8.0.22, 8.0.22]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
               "version": "[8.0.22, 8.0.22]"
             }
           ],
@@ -116,11 +98,6 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
-        }
-      },
-      "runtimes": {
-        "win-x64": {
-          "#import": []
         }
       }
     }

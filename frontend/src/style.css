@@ -48,6 +48,43 @@
   --el-font-family: var(--vscode-font-ui);
 }
 
+:root.light-theme {
+  --vscode-workbench-bg: #f5f7fb;
+  --vscode-titlebar-bg: #e7ebf3;
+  --vscode-activitybar-bg: #e2e8f2;
+  --vscode-sidebar-bg: #eef2f8;
+  --vscode-editor-bg: #ffffff;
+  --vscode-tabs-bg: #f3f6fb;
+  --vscode-panel-bg: #ffffff;
+  --vscode-statusbar-bg: #0e639c;
+  --vscode-border-color: #d5dce8;
+  --vscode-hover-bg: #dde6f4;
+  --vscode-active-bg: #d6dfef;
+  --vscode-text-primary: #1f2937;
+  --vscode-text-muted: #5f6b7a;
+  --vscode-accent-color: #0e639c;
+  --text-primary: var(--vscode-text-primary);
+  --text-secondary: var(--vscode-text-muted);
+  --glass-border: var(--vscode-border-color);
+  --font-mono: var(--vscode-font-mono);
+  color-scheme: light;
+  --el-color-primary: var(--vscode-accent-color);
+  --el-bg-color: #eef2f8;
+  --el-bg-color-overlay: #ffffff;
+  --el-bg-color-page: var(--vscode-editor-bg);
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #eef2f8;
+  --el-fill-color-lighter: #e6ecf6;
+  --el-text-color-primary: var(--vscode-text-primary);
+  --el-text-color-regular: #334155;
+  --el-text-color-secondary: var(--vscode-text-muted);
+  --el-border-color: var(--vscode-border-color);
+  --el-border-color-light: var(--vscode-border-color);
+  --el-mask-color: rgba(15, 23, 42, 0.2);
+  --el-fill-color-dark: #dce4f1;
+  --el-font-family: var(--vscode-font-ui);
+}
+
 * {
   box-sizing: border-box;
 }

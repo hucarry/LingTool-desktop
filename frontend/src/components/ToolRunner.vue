@@ -7,6 +7,7 @@ const props = defineProps<{
   visible: boolean
   tool: ToolItem | null
   pythonOverride?: string
+  defaultPythonPath?: string
 }>()
 
 const emit = defineEmits<{
@@ -16,8 +17,18 @@ const emit = defineEmits<{
   (e: 'run', payload: { toolId: string; args: Record<string, string>; python?: string }): void
 }>()
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const formState = reactive<Record<string, string>>({})
+
+const pythonFallbackText = computed(() => {
+  if (props.defaultPythonPath?.trim()) {
+    return locale.value === 'zh-CN'
+      ? '优先级：手动覆盖 -> 工具默认 -> 应用默认 -> 系统 Python'
+      : 'Priority: manual override -> tool default -> app default -> system Python'
+  }
+
+  return t('runner.pythonFallback')
+})
 
 const placeholders = computed(() => {
   const template = props.tool?.argsTemplate ?? ''
@@ -49,7 +60,7 @@ watch(
     })
 
     if (props.tool?.type === 'python') {
-      emit('update:pythonOverride', props.tool.python ?? '')
+      emit('update:pythonOverride', props.tool.python ?? props.defaultPythonPath ?? '')
     } else {
       emit('update:pythonOverride', '')
     }
@@ -113,11 +124,12 @@ function runTool(): void {
             <el-input
               :model-value="pythonOverride || ''"
               readonly
-              :placeholder="t('runner.pythonFallback')"
+              :placeholder="pythonFallbackText"
             />
             <div class="python-picker-actions">
               <el-button @click="emit('pickPython')">{{ t('python.browse') }}</el-button>
               <el-button @click="emit('update:pythonOverride', tool.python || '')">{{ t('runner.useToolDefault') }}</el-button>
+              <el-button @click="emit('update:pythonOverride', defaultPythonPath || '')">{{ t('runner.useAppDefault') }}</el-button>
               <el-button @click="emit('update:pythonOverride', '')">{{ t('runner.useSystemPython') }}</el-button>
             </div>
           </div>
