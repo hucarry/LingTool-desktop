@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import { useToolHub } from '../composables/useToolHub'
 import { useI18n } from '../composables/useI18n'
@@ -33,9 +33,40 @@ const form = reactive<AddToolFormState>({
   tagsText: '',
   description: '',
 })
+const touchedFields = reactive({
+  id: false,
+  name: false,
+  path: false,
+  python: false,
+})
+const submitAttempted = ref(false)
 
 const isPythonTool = computed(() => form.type === 'python')
 const submitting = computed(() => hub.addingTool.value)
+const validationErrors = computed(() => {
+  const id = form.id.trim()
+  const name = form.name.trim()
+  const path = form.path.trim()
+
+  return {
+    id: !id ? t('addTool.validationId') : /^[a-zA-Z0-9._-]+$/.test(id) ? '' : t('addTool.validationIdFormat'),
+    name: name ? '' : t('addTool.validationName'),
+    path: path ? '' : t('addTool.validationPath'),
+  }
+})
+const pathHint = computed(() => {
+  if (shouldShowError('path')) {
+    return validationErrors.value.path
+  }
+
+  return isPythonTool.value ? t('addTool.pyHint') : t('addTool.exeHint')
+})
+const pythonHint = computed(() => {
+  return form.python.trim() ? t('addTool.pythonOverrideHint') : t('addTool.pythonHelp')
+})
+const firstValidationMessage = computed(() => {
+  return validationErrors.value.id || validationErrors.value.name || validationErrors.value.path || ''
+})
 
 watch(
   () => hub.addToolPathSelection.value,
@@ -118,6 +149,24 @@ function resetForm(): void {
   form.argsTemplate = ''
   form.tagsText = ''
   form.description = ''
+  resetValidationState()
+}
+
+function resetValidationState(): void {
+  touchedFields.id = false
+  touchedFields.name = false
+  touchedFields.path = false
+  touchedFields.python = false
+  submitAttempted.value = false
+}
+
+function markTouched(field: keyof typeof touchedFields): void {
+  touchedFields[field] = true
+}
+
+function shouldShowError(field: keyof typeof validationErrors.value): boolean {
+  const touched = field in touchedFields ? touchedFields[field as keyof typeof touchedFields] : false
+  return Boolean(validationErrors.value[field] && (submitAttempted.value || touched))
 }
 
 function browseToolPath(): void {
@@ -138,41 +187,23 @@ function parseTags(tagsText: string): string[] {
 }
 
 function submit(): void {
+  submitAttempted.value = true
+  touchedFields.id = true
+  touchedFields.name = true
+  touchedFields.path = true
+  touchedFields.python = true
+
+  if (firstValidationMessage.value) {
+    notify.warning(firstValidationMessage.value, {
+      groupKey: 'addTool.validation',
+      mergeMode: 'replace',
+    })
+    return
+  }
+
   const id = form.id.trim()
   const name = form.name.trim()
   const path = form.path.trim()
-
-  if (!id) {
-    notify.warning(t('addTool.validationId'), {
-      groupKey: 'addTool.validation',
-      mergeMode: 'replace',
-    })
-    return
-  }
-
-  if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
-    notify.warning(t('addTool.validationIdFormat'), {
-      groupKey: 'addTool.validation',
-      mergeMode: 'replace',
-    })
-    return
-  }
-
-  if (!name) {
-    notify.warning(t('addTool.validationName'), {
-      groupKey: 'addTool.validation',
-      mergeMode: 'replace',
-    })
-    return
-  }
-
-  if (!path) {
-    notify.warning(t('addTool.validationPath'), {
-      groupKey: 'addTool.validation',
-      mergeMode: 'replace',
-    })
-    return
-  }
 
   const payload: AddToolPayload = {
     id,
@@ -207,6 +238,11 @@ function clearForm(): void {
 
     <form class="add-tool-form" @submit.prevent="submit">
       <div class="form-grid">
+        <div class="form-summary">
+          <strong>{{ t('addTool.summaryTitle') }}</strong>
+          <span>{{ form.path.trim() ? t('addTool.summaryReady') : t('addTool.summaryEmpty') }}</span>
+        </div>
+
         <label class="form-field">
           <span>{{ t('addTool.toolType') }}</span>
           <select v-model="form.type">
@@ -215,36 +251,49 @@ function clearForm(): void {
           </select>
         </label>
 
-        <label class="form-field">
+        <label class="form-field" :class="{ 'has-error': shouldShowError('id') }">
           <span>{{ t('addTool.toolId') }}</span>
-          <input v-model="form.id" type="text" :placeholder="t('addTool.idHint')" />
+          <input v-model="form.id" type="text" :placeholder="t('addTool.idHint')" @blur="markTouched('id')" />
+          <p class="tip-text" :class="{ 'is-error': shouldShowError('id') }">
+            {{ shouldShowError('id') ? validationErrors.id : t('addTool.idHint') }}
+          </p>
         </label>
 
-        <label class="form-field">
+        <label class="form-field" :class="{ 'has-error': shouldShowError('name') }">
           <span>{{ t('addTool.toolName') }}</span>
-          <input v-model="form.name" type="text" />
+          <input v-model="form.name" type="text" @blur="markTouched('name')" />
+          <p class="tip-text" :class="{ 'is-error': shouldShowError('name') }">
+            {{ shouldShowError('name') ? validationErrors.name : t('addTool.nameInlineHint') }}
+          </p>
         </label>
 
-        <label class="form-field path-item">
+        <label class="form-field path-item" :class="{ 'has-error': shouldShowError('path') }">
           <span>{{ t('addTool.toolPath') }}</span>
           <div class="path-input-row">
-            <input v-model="form.path" type="text" :placeholder="isPythonTool ? t('addTool.pyHint') : t('addTool.exeHint')" />
+            <input
+              v-model="form.path"
+              type="text"
+              :placeholder="isPythonTool ? t('addTool.pyHint') : t('addTool.exeHint')"
+              @blur="markTouched('path')"
+            />
             <button class="field-button" type="button" @click="browseToolPath">{{ t('tools.browse') }}</button>
           </div>
+          <p class="tip-text" :class="{ 'is-error': shouldShowError('path') }">{{ pathHint }}</p>
         </label>
 
         <label v-if="isPythonTool" class="form-field path-item">
           <span>{{ t('addTool.pythonPath') }}</span>
           <div class="path-input-row">
-            <input v-model="form.python" type="text" />
+            <input v-model="form.python" type="text" @blur="markTouched('python')" />
             <button class="field-button" type="button" @click="browsePythonPath">{{ t('tools.browse') }}</button>
           </div>
-          <p class="tip-text">{{ t('addTool.pythonHelp') }}</p>
+          <p class="tip-text">{{ pythonHint }}</p>
         </label>
 
         <label class="form-field">
           <span>{{ t('addTool.cwd') }}</span>
           <input v-model="form.cwd" type="text" />
+          <p class="tip-text">{{ t('addTool.cwdInlineHint') }}</p>
         </label>
 
         <label class="form-field">
@@ -309,10 +358,37 @@ function clearForm(): void {
   gap: 10px 14px;
 }
 
+.form-summary {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--vscode-border-color);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.form-summary strong {
+  font-size: 12px;
+  color: var(--vscode-text-primary);
+}
+
+.form-summary span {
+  font-size: 12px;
+  color: var(--vscode-text-muted);
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.form-field.has-error input,
+.form-field.has-error select,
+.form-field.has-error textarea {
+  border-color: var(--status-danger);
 }
 
 .form-field span {
@@ -387,6 +463,10 @@ function clearForm(): void {
   margin-top: 6px;
   color: var(--vscode-text-muted);
   font-size: 12px;
+}
+
+.tip-text.is-error {
+  color: var(--status-danger);
 }
 
 .actions {

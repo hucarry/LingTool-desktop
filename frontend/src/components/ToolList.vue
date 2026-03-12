@@ -30,10 +30,12 @@ const keyword = ref('')
 const selectedIds = ref<string[]>([])
 const editVisible = ref(false)
 const editingToolId = ref('')
+const filterMode = ref<'all' | 'ready' | 'invalid'>('all')
+const pendingSelectionFallbackId = ref('')
 
 const { t } = useI18n()
 
-const filteredTools = computed(() => {
+const searchedTools = computed(() => {
   const text = keyword.value.trim().toLowerCase()
   if (!text) {
     return props.tools
@@ -46,17 +48,34 @@ const filteredTools = computed(() => {
   })
 })
 
+const visibleTools = computed(() => {
+  if (filterMode.value === 'invalid') {
+    return searchedTools.value.filter((tool) => !tool.valid)
+  }
+
+  if (filterMode.value === 'ready') {
+    return searchedTools.value.filter((tool) => tool.valid)
+  }
+
+  return searchedTools.value
+})
+
 const selectedCount = computed(() => selectedIds.value.length)
 const selectedSet = computed(() => new Set(selectedIds.value))
 const hasSelection = computed(() => selectedCount.value > 0)
+const selectedInvalidCount = computed(
+  () => props.tools.filter((tool) => selectedSet.value.has(tool.id) && !tool.valid).length,
+)
+const canFixSelected = computed(() => selectedCount.value === 1 && selectedInvalidCount.value === 1)
 const hasActiveSearch = computed(() => keyword.value.trim().length > 0)
-const invalidFilteredCount = computed(() => filteredTools.value.filter((tool) => !tool.valid).length)
-const allFilteredSelected = computed(() => {
-  if (filteredTools.value.length === 0) {
+const invalidTotalCount = computed(() => props.tools.filter((tool) => !tool.valid).length)
+const readyTotalCount = computed(() => props.tools.filter((tool) => tool.valid).length)
+const allVisibleSelected = computed(() => {
+  if (visibleTools.value.length === 0) {
     return false
   }
 
-  return filteredTools.value.every((tool) => selectedSet.value.has(tool.id))
+  return visibleTools.value.every((tool) => selectedSet.value.has(tool.id))
 })
 const editingTool = computed(() => {
   if (!editingToolId.value) {
@@ -71,6 +90,13 @@ watch(
   (nextTools) => {
     const liveIds = new Set(nextTools.map((item) => item.id))
     selectedIds.value = selectedIds.value.filter((id) => liveIds.has(id))
+
+    if (pendingSelectionFallbackId.value) {
+      if (liveIds.has(pendingSelectionFallbackId.value)) {
+        selectedIds.value = [pendingSelectionFallbackId.value]
+      }
+      pendingSelectionFallbackId.value = ''
+    }
 
     if (editingToolId.value && !liveIds.has(editingToolId.value)) {
       editingToolId.value = ''
@@ -98,15 +124,15 @@ function toggleSelect(toolId: string, checked: boolean): void {
   selectedIds.value = Array.from(next)
 }
 
-function toggleSelectAllFiltered(checked: boolean): void {
+function toggleSelectAllVisible(checked: boolean): void {
   if (!checked) {
-    const filteredIds = new Set(filteredTools.value.map((tool) => tool.id))
-    selectedIds.value = selectedIds.value.filter((id) => !filteredIds.has(id))
+    const visibleIds = new Set(visibleTools.value.map((tool) => tool.id))
+    selectedIds.value = selectedIds.value.filter((id) => !visibleIds.has(id))
     return
   }
 
   const next = new Set(selectedIds.value)
-  filteredTools.value.forEach((tool) => {
+  visibleTools.value.forEach((tool) => {
     next.add(tool.id)
   })
   selectedIds.value = Array.from(next)
@@ -118,6 +144,10 @@ function clearSelection(): void {
 
 function clearSearch(): void {
   keyword.value = ''
+}
+
+function setFilterMode(mode: 'all' | 'ready' | 'invalid'): void {
+  filterMode.value = mode
 }
 
 function openEdit(tool: ToolItem): void {
@@ -147,6 +177,8 @@ function deleteSelected(): void {
     return
   }
 
+  const deletingIds = new Set(selectedIds.value)
+  pendingSelectionFallbackId.value = visibleTools.value.find((tool) => !deletingIds.has(tool.id))?.id ?? ''
   emit('deleteTools', [...selectedIds.value])
   selectedIds.value = []
 }
@@ -157,16 +189,16 @@ function deleteSelected(): void {
     <header class="tool-list-header">
       <div>
         <h2>{{ t('tools.catalog') }}</h2>
-        <p>{{ t('tools.items', { filtered: filteredTools.length, total: tools.length }) }}</p>
+        <p>{{ t('tools.items', { filtered: visibleTools.length, total: tools.length }) }}</p>
       </div>
 
       <div class="header-actions">
         <label class="select-all-toggle">
           <input
             type="checkbox"
-            :checked="allFilteredSelected"
-            :disabled="filteredTools.length === 0"
-            @change="(event) => toggleSelectAllFiltered((event.target as HTMLInputElement).checked)"
+            :checked="allVisibleSelected"
+            :disabled="visibleTools.length === 0"
+            @change="(event) => toggleSelectAllVisible((event.target as HTMLInputElement).checked)"
           />
           <span>{{ t('tools.selectAll') }}</span>
         </label>
@@ -188,8 +220,15 @@ function deleteSelected(): void {
     </label>
 
     <div class="tool-stats">
-      <span class="stat-chip">{{ t('tools.filteredCount', { count: filteredTools.length }) }}</span>
-      <span class="stat-chip">{{ t('tools.invalidCount', { count: invalidFilteredCount }) }}</span>
+      <button class="stat-chip action" :class="{ active: filterMode === 'all' }" type="button" @click="setFilterMode('all')">
+        {{ t('tools.filteredCount', { count: searchedTools.length }) }}
+      </button>
+      <button class="stat-chip action" :class="{ active: filterMode === 'ready' }" type="button" @click="setFilterMode('ready')">
+        {{ t('tools.readyCount', { count: readyTotalCount }) }}
+      </button>
+      <button class="stat-chip action" :class="{ active: filterMode === 'invalid' }" type="button" @click="setFilterMode('invalid')">
+        {{ t('tools.invalidCount', { count: invalidTotalCount }) }}
+      </button>
       <button v-if="hasActiveSearch" class="stat-chip action" type="button" @click="clearSearch">
         {{ t('tools.clearSearch') }}
       </button>
@@ -198,6 +237,9 @@ function deleteSelected(): void {
     <div v-if="hasSelection" class="selection-bar">
       <span class="selection-summary">{{ t('tools.selectionSummary', { count: selectedCount }) }}</span>
       <div class="selection-actions">
+        <button v-if="canFixSelected" class="selection-button warning" type="button" @click="openEditSelected">
+          {{ t('tools.fixPath') }}
+        </button>
         <button class="selection-button" type="button" :disabled="selectedCount !== 1" @click="openEditSelected">
           {{ t('tools.editSelected') }}
         </button>
@@ -210,7 +252,7 @@ function deleteSelected(): void {
 
     <div class="list-scroll">
       <div class="tool-rows">
-        <article v-for="tool in filteredTools" :key="tool.id" class="tool-card" @click="openTool(tool)">
+        <article v-for="tool in visibleTools" :key="tool.id" class="tool-card" @click="openTool(tool)">
           <header class="card-header">
             <div class="card-title-group">
               <input
@@ -237,6 +279,10 @@ function deleteSelected(): void {
               <span v-if="tool.cwd" class="tool-meta-item">{{ t('tools.cwdShort') }}: {{ tool.cwd }}</span>
               <span v-if="tool.description" class="tool-meta-item">{{ t('tools.descriptionShort') }}</span>
             </div>
+            <div v-if="!tool.valid" class="tool-warning">
+              <span class="tool-warning-badge">{{ t('tools.invalidPath') }}</span>
+              <p class="tool-warning-text">{{ t('tools.invalidHint') }}</p>
+            </div>
             <p v-if="tool.description" class="tool-description">{{ tool.description }}</p>
 
             <div v-if="tool.tags && tool.tags.length" class="tool-tags">
@@ -249,20 +295,47 @@ function deleteSelected(): void {
               <button class="card-button" type="button" :disabled="updating && editingToolId === tool.id" @click.stop="openEdit(tool)">
                 {{ t('tools.edit') }}
               </button>
-              <button class="card-button primary" type="button" :disabled="!tool.valid" @click.stop="runTool(tool)">
+              <button
+                v-if="tool.valid"
+                class="card-button primary"
+                type="button"
+                @click.stop="runTool(tool)"
+              >
                 {{ t('tools.run') }}
+              </button>
+              <button
+                v-else
+                class="card-button warning"
+                type="button"
+                :disabled="updating && editingToolId === tool.id"
+                @click.stop="openEdit(tool)"
+              >
+                {{ t('tools.fixPath') }}
               </button>
             </div>
           </footer>
         </article>
 
-        <div v-if="filteredTools.length === 0 && !loading" class="empty-state">
+        <div v-if="visibleTools.length === 0 && !loading" class="empty-state">
           <div class="empty-state-content">
             <p class="empty-state-title">{{ hasActiveSearch ? t('tools.noMatch') : t('tools.emptyTitle') }}</p>
-            <p class="empty-state-text">{{ hasActiveSearch ? t('tools.emptySearchHint') : t('tools.emptyHint') }}</p>
+            <p class="empty-state-text">
+              {{
+                hasActiveSearch
+                  ? t('tools.emptySearchHint')
+                  : filterMode === 'invalid'
+                    ? t('tools.emptyInvalidHint')
+                    : filterMode === 'ready'
+                      ? t('tools.emptyReadyHint')
+                      : t('tools.emptyHint')
+              }}
+            </p>
             <div class="empty-state-actions">
               <button v-if="hasActiveSearch" class="header-button" type="button" @click="clearSearch">
                 {{ t('tools.clearSearch') }}
+              </button>
+              <button v-if="filterMode !== 'all'" class="header-button" type="button" @click="setFilterMode('all')">
+                {{ t('tools.showAll') }}
               </button>
               <button class="header-button" type="button" @click="emit('refresh')">{{ t('python.refresh') }}</button>
               <button class="header-button primary" type="button" @click="emit('createTool')">{{ t('app.menu.addTool') }}</button>
@@ -379,6 +452,19 @@ function deleteSelected(): void {
   color: #ffffff;
 }
 
+.card-button.warning,
+.selection-button.warning {
+  border-color: var(--status-warning);
+  background: var(--status-warning-soft);
+  color: var(--status-warning);
+}
+
+.card-button.warning:hover:not(:disabled),
+.selection-button.warning:hover:not(:disabled) {
+  border-color: var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning-soft) 78%, var(--status-warning) 22%);
+}
+
 .search-box {
   position: relative;
   display: flex;
@@ -424,6 +510,12 @@ function deleteSelected(): void {
 
 .stat-chip.action {
   cursor: pointer;
+}
+
+.stat-chip.active {
+  border-color: var(--vscode-accent-color);
+  background: var(--accent-soft);
+  color: var(--vscode-accent-color);
 }
 
 .stat-chip.action:hover {
@@ -630,6 +722,35 @@ function deleteSelected(): void {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.tool-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--status-warning) 35%, transparent);
+  border-radius: 6px;
+  background: var(--status-warning-soft);
+}
+
+.tool-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--status-warning-soft) 72%, #ffffff 28%);
+  color: var(--status-warning);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tool-warning-text {
+  color: var(--vscode-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .tool-tags {
