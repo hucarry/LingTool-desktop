@@ -29,6 +29,8 @@ type DragKind = 'none' | 'terminal' | 'sidebar'
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'toolhub.sidebarWidth'
 const SIDEBAR_VISIBLE_STORAGE_KEY = 'toolhub.sidebarVisible'
+const TERMINAL_HEIGHT_STORAGE_KEY = 'toolhub.terminalHeight'
+const TERMINAL_EXPANDED_STORAGE_KEY = 'toolhub.terminalExpanded'
 const ACTIVITY_BAR_WIDTH = 48
 const SIDEBAR_SASH_WIDTH = 4
 const MIN_EDITOR_WIDTH = 420
@@ -40,8 +42,8 @@ const MIN_TERMINAL_HEIGHT = 140
 const DEFAULT_TERMINAL_HEIGHT = 260
 const COLLAPSED_TERMINAL_HEIGHT = 34
 
-const terminalHeight = ref(DEFAULT_TERMINAL_HEIGHT)
-const terminalExpanded = ref(true)
+const terminalHeight = ref(loadTerminalHeight())
+const terminalExpanded = ref(loadTerminalExpanded())
 const dragKind = ref<DragKind>('none')
 const isDragging = computed(() => dragKind.value !== 'none')
 const isSidebarDragging = computed(() => dragKind.value === 'sidebar')
@@ -152,6 +154,49 @@ function loadSidebarVisible(): boolean {
   return true
 }
 
+function loadTerminalHeight(): number {
+  if (typeof window === 'undefined') {
+    return DEFAULT_TERMINAL_HEIGHT
+  }
+
+  try {
+    const raw = window.localStorage.getItem(TERMINAL_HEIGHT_STORAGE_KEY)
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN
+    if (Number.isFinite(parsed)) {
+      return Math.max(MIN_TERMINAL_HEIGHT, parsed)
+    }
+  } catch {
+    // ignore
+  }
+
+  return DEFAULT_TERMINAL_HEIGHT
+}
+
+function loadTerminalExpanded(): boolean {
+  if (typeof window === 'undefined') {
+    return true
+  }
+
+  try {
+    return window.localStorage.getItem(TERMINAL_EXPANDED_STORAGE_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
+
+function persistTerminalPanelState(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(TERMINAL_HEIGHT_STORAGE_KEY, String(terminalHeight.value))
+    window.localStorage.setItem(TERMINAL_EXPANDED_STORAGE_KEY, String(terminalExpanded.value))
+  } catch {
+    // ignore
+  }
+}
+
 function getSidebarMaxWidth(): number {
   if (!workbenchMainRef.value) {
     return MAX_SIDEBAR_WIDTH
@@ -229,9 +274,11 @@ function onGlobalDragMove(event: MouseEvent): void {
     const nextHeight = Math.round(rect.bottom - event.clientY)
 
     terminalHeight.value = Math.max(MIN_TERMINAL_HEIGHT, Math.min(maxHeight, nextHeight))
+    persistTerminalPanelState()
 
     if (!terminalExpanded.value) {
       terminalExpanded.value = true
+      persistTerminalPanelState()
     }
     return
   }
@@ -273,11 +320,13 @@ function onDragEnd(): void {
 
 function toggleTerminal(): void {
   terminalExpanded.value = !terminalExpanded.value
+  persistTerminalPanelState()
 }
 
 function expandTerminal(): void {
   if (!terminalExpanded.value) {
     terminalExpanded.value = true
+    persistTerminalPanelState()
   }
 }
 
