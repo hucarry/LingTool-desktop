@@ -1,9 +1,15 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace ToolHub.App.Utils;
 
 public static class PythonInterpreterProbe
 {
+    /// <summary>IsUsable 结果缓存的有效期。</summary>
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+
+    /// <summary>缓存 path → (isUsable, checkedAtUtc)。</summary>
+    private static readonly ConcurrentDictionary<string, (bool IsUsable, DateTime CheckedAtUtc)> UsabilityCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly string[] DefaultCandidates =
     [
         "python",
@@ -24,6 +30,21 @@ public static class PythonInterpreterProbe
             return false;
         }
 
+        // 检查缓存
+        if (UsabilityCache.TryGetValue(normalized, out var cached)
+            && (DateTime.UtcNow - cached.CheckedAtUtc) < CacheTtl)
+        {
+            return cached.IsUsable;
+        }
+
+        var result = CheckUsability(normalized);
+        UsabilityCache[normalized] = (result, DateTime.UtcNow);
+        return result;
+    }
+
+    /// <summary>实际执行可用性检查（无缓存）。</summary>
+    private static bool CheckUsability(string normalized)
+    {
         if (!Path.IsPathRooted(normalized))
         {
             return ExistsOnPath(normalized);

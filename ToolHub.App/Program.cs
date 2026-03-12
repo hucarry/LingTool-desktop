@@ -23,16 +23,20 @@ internal static class Program
         var pythonPackageManager = new PythonPackageManager(appRoot);
 
         PhotinoWindow? window = null;
+        var sendLock = new object();
 
         void SendMessage(object payload)
         {
-            if (window is null)
+            lock (sendLock)
             {
-                return;
-            }
+                if (window is null)
+                {
+                    return;
+                }
 
-            var json = JsonSerializer.Serialize(payload, JsonOptions);
-            window.SendWebMessage(json);
+                var json = JsonSerializer.Serialize(payload, JsonOptions);
+                window.SendWebMessage(json);
+            }
         }
 
         var processManager = new ProcessManager(SendMessage);

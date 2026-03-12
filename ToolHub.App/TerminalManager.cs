@@ -185,6 +185,15 @@ public sealed class TerminalManager : IDisposable
     private async Task ReadOutputAsync(TerminalContext context)
     {
         var buffer = new byte[4096];
+        var textBuffer = new System.Text.StringBuilder();
+        var flushLock = new object();
+        const int flushIntervalMs = 50;
+
+        // 定时 flush 缓冲区
+        using var flushTimer = new System.Threading.Timer(_ =>
+        {
+            FlushOutputBuffer(context, textBuffer, flushLock);
+        }, null, flushIntervalMs, flushIntervalMs);
 
         try
         {
@@ -200,7 +209,10 @@ public sealed class TerminalManager : IDisposable
                 }
 
                 var text = Encoding.UTF8.GetString(buffer, 0, count);
-                _sendMessage(new TerminalOutputMessage(context.Info.TerminalId, text, LogChannels.Stdout, DateTimeOffset.UtcNow));
+                lock (flushLock)
+                {
+                    textBuffer.Append(text);
+                }
             }
         }
         catch (OperationCanceledException) when (context.StopRequested || context.ReadCancellation.IsCancellationRequested)
@@ -222,6 +234,39 @@ public sealed class TerminalManager : IDisposable
                     DateTimeOffset.UtcNow
                 ));
             }
+        }
+
+        // 循环结束后发送缓冲区中剩余的数据
+        FlushOutputBuffer(context, textBuffer, flushLock);
+    }
+
+    /// <summary>将缓冲区中的文本一次性发送给前端，减少高频输出时的消息数量。</summary>
+    private void FlushOutputBuffer(TerminalContext context, System.Text.StringBuilder textBuffer, object flushLock)
+    {
+        string chunk;
+        lock (flushLock)
+        {
+            if (textBuffer.Length == 0)
+            {
+                return;
+            }
+
+            chunk = textBuffer.ToString();
+            textBuffer.Clear();
+        }
+
+        try
+        {
+            _sendMessage(new TerminalOutputMessage(
+                context.Info.TerminalId,
+                chunk,
+                LogChannels.Stdout,
+                DateTimeOffset.UtcNow
+            ));
+        }
+        catch
+        {
+            // 忽略发送错误（终端可能已关闭）
         }
     }
 
