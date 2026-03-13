@@ -197,7 +197,7 @@ function deleteSelected(): void {
     />
 
     <div class="relative min-h-0 flex-1 overflow-auto">
-      <div class="grid grid-cols-1 gap-4 p-1 md:grid-cols-2 2xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 p-1 sm:grid-cols-4">
         <ToolCard
           v-for="tool in visibleTools"
           :key="tool.id"
