@@ -16,6 +16,7 @@ import {
   MIN_SIDEBAR_WIDTH,
   SIDEBAR_SASH_WIDTH,
   MIN_TERMINAL_HEIGHT,
+  DEFAULT_TERMINAL_HEIGHT,
   useWorkbenchStore,
 } from '../../stores/workbench'
 import { usePythonStore } from '../../stores/python'
@@ -44,6 +45,11 @@ const { sidebarWidth, sidebarVisible, terminalHeight, terminalExpanded } = store
 const workbenchMainRef = ref<HTMLElement | null>(null)
 const editorStackRef = ref<HTMLElement | null>(null)
 const dragKind = ref<DragKind>('none')
+const isNarrowScreen = ref(false)
+const isCompactScreen = ref(false)
+const didAutoCollapseTerminalForCompact = ref(false)
+const NARROW_SCREEN_BREAKPOINT = 1100
+const COMPACT_SCREEN_BREAKPOINT = 860
 
 const menuItems = computed(() => [
   { path: '/python' as const, glyph: 'PY', title: t('app.menu.python') },
@@ -105,6 +111,36 @@ const activeTerminalStatus = computed(() => {
   const shellName = terminal.shell.split(/[\\/]/).pop() || terminal.shell
   return `${shellName} (${t(`terminal.status.${terminal.status}`)})`
 })
+const effectiveSidebarWidth = computed(() => {
+  if (!isNarrowScreen.value) {
+    return sidebarWidth.value
+  }
+
+  if (typeof window === 'undefined') {
+    return 300
+  }
+
+  return Math.max(240, Math.min(320, window.innerWidth - ACTIVITY_BAR_WIDTH - 24))
+})
+const showSidebarSash = computed(() => sidebarVisible.value && !isNarrowScreen.value)
+const statusLeftItems = computed(() => {
+  if (isNarrowScreen.value) {
+    return [t('app.brand'), activeMenuItem.value?.title ?? '']
+  }
+
+  return [t('app.brand'), activeMenuItem.value?.title ?? '', currentViewSummary.value]
+})
+const statusRightItems = computed(() => {
+  if (isNarrowScreen.value) {
+    return [{ label: activeTerminalStatus.value }]
+  }
+
+  return [
+    { label: `${t('settings.themeTitle')}: ${themeLabel.value}` },
+    { label: `${t('settings.pythonTitle')}: ${defaultPythonLabel.value}`, title: defaultPythonPath.value || t('app.python.systemDefault') },
+    { label: activeTerminalStatus.value },
+  ]
+})
 
 function navigate(path: MenuPath): void {
   if (activeMenu.value === path) {
@@ -112,8 +148,14 @@ function navigate(path: MenuPath): void {
     return
   }
 
-  workbenchStore.setSidebarVisible(true)
   router.push(path)
+
+  if (isNarrowScreen.value) {
+    workbenchStore.setSidebarVisible(false)
+    return
+  }
+
+  workbenchStore.setSidebarVisible(true)
 }
 
 function getSidebarMaxWidth(): number {
@@ -131,11 +173,45 @@ function getSidebarMaxWidth(): number {
 }
 
 function clampSidebarWidthIfNeeded(): void {
-  if (typeof window !== 'undefined' && window.innerWidth <= 960) {
+  if (isNarrowScreen.value) {
     return
   }
 
   workbenchStore.setSidebarWidth(sidebarWidth.value, getSidebarMaxWidth())
+}
+
+function updateViewportState(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const nextIsNarrow = window.innerWidth < NARROW_SCREEN_BREAKPOINT
+  const nextIsCompact = window.innerWidth < COMPACT_SCREEN_BREAKPOINT
+  const wasNarrow = isNarrowScreen.value
+  const wasCompact = isCompactScreen.value
+  isNarrowScreen.value = nextIsNarrow
+  isCompactScreen.value = nextIsCompact
+
+  if (nextIsCompact) {
+    workbenchStore.setTerminalHeight(Math.min(terminalHeight.value, 180))
+
+    if (!wasCompact && terminalExpanded.value && !didAutoCollapseTerminalForCompact.value) {
+      workbenchStore.setTerminalExpanded(false)
+      didAutoCollapseTerminalForCompact.value = true
+    }
+  } else if (!nextIsCompact && terminalHeight.value < DEFAULT_TERMINAL_HEIGHT) {
+    workbenchStore.setTerminalHeight(DEFAULT_TERMINAL_HEIGHT)
+  }
+
+  if (nextIsNarrow) {
+    onGlobalDragEnd()
+    if (!wasNarrow) {
+      workbenchStore.setSidebarVisible(false)
+    }
+    return
+  }
+
+  clampSidebarWidthIfNeeded()
 }
 
 function beginDrag(kind: DragKind, cursor: 'ns-resize' | 'ew-resize'): void {
@@ -183,10 +259,12 @@ function onGlobalDragEnd(): void {
 }
 
 function onWindowResize(): void {
+  updateViewportState()
   clampSidebarWidthIfNeeded()
 }
 
 onMounted(() => {
+  updateViewportState()
   clampSidebarWidthIfNeeded()
   window.addEventListener('resize', onWindowResize)
 })
@@ -200,71 +278,80 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex h-screen flex-col overflow-hidden bg-workbench text-foreground" :class="{ 'is-dragging': dragKind !== 'none' }">
     <div ref="workbenchMainRef" class="flex min-h-0 flex-1 overflow-hidden">
-      <ActivityBarNav :items="menuItems" :active-path="activeMenu" @navigate="navigate" />
+      <ActivityBarNav :items="menuItems" :active-path="activeMenu" :compact="isCompactScreen" @navigate="navigate" />
 
-      <ExplorerSidebar
-        v-if="sidebarVisible"
-        :items="menuItems"
-        :active-path="activeMenu"
-        :width="sidebarWidth"
-        @navigate="navigate"
-      />
+      <div class="relative flex min-w-0 flex-1 overflow-hidden">
+        <ExplorerSidebar
+          v-if="sidebarVisible"
+          :class="isNarrowScreen ? 'absolute inset-y-0 left-0 z-30' : ''"
+          :items="menuItems"
+          :active-path="activeMenu"
+          :width="effectiveSidebarWidth"
+          :overlay="isNarrowScreen"
+          @navigate="navigate"
+          @close="workbenchStore.setSidebarVisible(false)"
+        />
 
-      <div
-        v-if="sidebarVisible"
-        :class="[
-          'relative w-1 shrink-0 cursor-ew-resize bg-transparent',
-          dragKind === 'sidebar' ? 'before:bg-accent' : 'before:bg-transparent hover:before:bg-accent',
-        ]"
-        @mousedown="beginDrag('sidebar', 'ew-resize')"
-      >
-        <span class="pointer-events-none absolute inset-y-0 left-0.5 w-px transition-colors before:bg-transparent" />
+        <button
+          v-if="sidebarVisible && isNarrowScreen"
+          type="button"
+          class="absolute inset-0 z-20 bg-black/20 backdrop-blur-[1px]"
+          aria-label="Close explorer"
+          @click="workbenchStore.setSidebarVisible(false)"
+        />
+
+        <div
+          v-if="showSidebarSash"
+          :class="[
+            'relative w-1 shrink-0 cursor-ew-resize bg-transparent',
+            dragKind === 'sidebar' ? 'before:bg-accent' : 'before:bg-transparent hover:before:bg-accent',
+          ]"
+          @mousedown="beginDrag('sidebar', 'ew-resize')"
+        >
+          <span class="pointer-events-none absolute inset-y-0 left-0.5 w-px transition-colors before:bg-transparent" />
+        </div>
+
+        <section ref="editorStackRef" class="flex min-w-0 flex-1 flex-col bg-editor">
+          <EditorHeader
+            :glyph="activeMenuItem?.glyph ?? 'PY'"
+            :title="activeMenuItem?.title ?? ''"
+            :theme-label="themeLabel"
+            :default-python-label="defaultPythonLabel"
+            :default-python-title="defaultPythonPath || t('app.python.systemDefault')"
+            :python-title="t('settings.pythonTitle')"
+          />
+
+          <main class="min-h-0 flex-1">
+            <RouterView />
+          </main>
+
+          <TerminalDock
+            :height="terminalHeight"
+            :expanded="terminalExpanded"
+            :terminals="terminals"
+            :active-terminal-id="activeTerminalId"
+            :outputs-by-terminal="terminalOutputsById"
+            :session-caption="sessionCaption"
+            :title="t('terminal.panel')"
+            :toggle-label="terminalExpanded ? t('app.hide') : t('app.show')"
+            @toggle="workbenchStore.toggleTerminalExpanded"
+            @expand="workbenchStore.setTerminalExpanded(true)"
+            @drag-start="beginDrag('terminal', 'ns-resize')"
+            @select-terminal="terminalsStore.selectTerminal"
+            @create-terminal="terminalsStore.createTerminal"
+            @stop-terminal="terminalsStore.stopTerminal"
+            @stop-all-terminals="terminalsStore.stopAllTerminals"
+            @input="terminalsStore.sendTerminalInput"
+            @resize-terminal="terminalsStore.resizeTerminal"
+            @clear-output="terminalsStore.clearTerminalOutput"
+          />
+        </section>
       </div>
-
-      <section ref="editorStackRef" class="flex min-w-0 flex-1 flex-col bg-editor">
-        <EditorHeader
-          :glyph="activeMenuItem?.glyph ?? 'PY'"
-          :title="activeMenuItem?.title ?? ''"
-          :theme-label="themeLabel"
-          :default-python-label="defaultPythonLabel"
-          :default-python-title="defaultPythonPath || t('app.python.systemDefault')"
-          :python-title="t('settings.pythonTitle')"
-        />
-
-        <main class="min-h-0 flex-1">
-          <RouterView />
-        </main>
-
-        <TerminalDock
-          :height="terminalHeight"
-          :expanded="terminalExpanded"
-          :terminals="terminals"
-          :active-terminal-id="activeTerminalId"
-          :outputs-by-terminal="terminalOutputsById"
-          :session-caption="sessionCaption"
-          :title="t('terminal.panel')"
-          :toggle-label="terminalExpanded ? t('app.hide') : t('app.show')"
-          @toggle="workbenchStore.toggleTerminalExpanded"
-          @expand="workbenchStore.setTerminalExpanded(true)"
-          @drag-start="beginDrag('terminal', 'ns-resize')"
-          @select-terminal="terminalsStore.selectTerminal"
-          @create-terminal="terminalsStore.createTerminal"
-          @stop-terminal="terminalsStore.stopTerminal"
-          @stop-all-terminals="terminalsStore.stopAllTerminals"
-          @input="terminalsStore.sendTerminalInput"
-          @resize-terminal="terminalsStore.resizeTerminal"
-          @clear-output="terminalsStore.clearTerminalOutput"
-        />
-      </section>
     </div>
 
     <StatusBar
-      :left-items="[t('app.brand'), activeMenuItem?.title ?? '', currentViewSummary]"
-      :right-items="[
-        { label: `${t('settings.themeTitle')}: ${themeLabel}` },
-        { label: `${t('settings.pythonTitle')}: ${defaultPythonLabel}`, title: defaultPythonPath || t('app.python.systemDefault') },
-        { label: activeTerminalStatus },
-      ]"
+      :left-items="statusLeftItems"
+      :right-items="statusRightItems"
     />
   </div>
 </template>
