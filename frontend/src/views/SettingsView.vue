@@ -1,162 +1,53 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+
+import UiButton from '../components/ui/UiButton.vue'
+import UiInput from '../components/ui/UiInput.vue'
+import UiPanel from '../components/ui/UiPanel.vue'
 import { useI18n } from '../composables/useI18n'
-import { useSettings } from '../composables/useSettings'
+import { useSettingsStore } from '../stores/settings'
 
 const { t } = useI18n()
-const { theme, defaultPythonPath, pickDefaultPython, clearDefaultPythonPath } = useSettings()
+const settingsStore = useSettingsStore()
+const { theme, defaultPythonPath } = storeToRefs(settingsStore)
 </script>
 
 <template>
-  <section class="settings-view">
-    <div class="settings-shell">
-      <header class="settings-header">
-        <h2>{{ t('settings.title') }}</h2>
-        <p>{{ t('settings.description') }}</p>
-      </header>
+  <section class="h-full overflow-auto p-3">
+    <div class="flex flex-col gap-4">
+      <UiPanel class="space-y-2">
+        <h2 class="text-lg font-semibold text-foreground">{{ t('settings.title') }}</h2>
+        <p class="max-w-3xl text-sm leading-6 text-muted">{{ t('settings.description') }}</p>
+      </UiPanel>
 
-      <section class="settings-card">
-        <div class="settings-copy">
-          <h3>{{ t('settings.themeTitle') }}</h3>
-          <p>{{ t('settings.themeDesc') }}</p>
+      <UiPanel class="flex flex-col gap-4">
+        <div class="space-y-1">
+          <h3 class="text-sm font-semibold text-foreground">{{ t('settings.themeTitle') }}</h3>
+          <p class="text-xs leading-5 text-muted">{{ t('settings.themeDesc') }}</p>
         </div>
 
-        <div class="theme-segmented">
-          <button class="seg-btn" :class="{ active: theme === 'dark' }" @click="theme = 'dark'">
+        <div class="inline-flex w-fit gap-2 rounded-field border border-border bg-editor p-1">
+          <UiButton :variant="theme === 'dark' ? 'primary' : 'ghost'" size="sm" @click="settingsStore.setTheme('dark')">
             {{ t('settings.themeDark') }}
-          </button>
-          <button class="seg-btn" :class="{ active: theme === 'light' }" @click="theme = 'light'">
+          </UiButton>
+          <UiButton :variant="theme === 'light' ? 'primary' : 'ghost'" size="sm" @click="settingsStore.setTheme('light')">
             {{ t('settings.themeLight') }}
-          </button>
+          </UiButton>
         </div>
-      </section>
+      </UiPanel>
 
-      <section class="settings-card">
-        <div class="settings-copy">
-          <h3>{{ t('settings.pythonTitle') }}</h3>
-          <p>{{ t('settings.pythonDesc') }}</p>
+      <UiPanel class="flex flex-col gap-4">
+        <div class="space-y-1">
+          <h3 class="text-sm font-semibold text-foreground">{{ t('settings.pythonTitle') }}</h3>
+          <p class="text-xs leading-5 text-muted">{{ t('settings.pythonDesc') }}</p>
         </div>
 
-        <div class="python-row">
-          <input class="python-input" :value="defaultPythonPath" readonly :placeholder="t('settings.placeholder')" />
-          <button class="action-button" type="button" @click="pickDefaultPython">{{ t('python.browse') }}</button>
-          <button class="action-button" type="button" @click="clearDefaultPythonPath">{{ t('settings.clear') }}</button>
+        <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <UiInput :model-value="defaultPythonPath" readonly :placeholder="t('settings.placeholder')" />
+          <UiButton @click="settingsStore.pickDefaultPython">{{ t('python.browse') }}</UiButton>
+          <UiButton @click="settingsStore.clearDefaultPythonPath">{{ t('settings.clear') }}</UiButton>
         </div>
-      </section>
+      </UiPanel>
     </div>
   </section>
 </template>
-
-<style scoped>
-.settings-view {
-  height: 100%;
-  min-height: 0;
-  overflow: auto;
-}
-
-.settings-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px;
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-editor-bg);
-}
-
-.settings-header h2 {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--vscode-text-primary);
-}
-
-.settings-header p {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--vscode-text-muted);
-  line-height: 1.6;
-}
-
-.settings-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-sidebar-bg);
-}
-
-.settings-copy h3 {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--vscode-text-primary);
-}
-
-.settings-copy p {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--vscode-text-muted);
-  line-height: 1.5;
-}
-
-.theme-segmented {
-  display: inline-flex;
-  background: var(--vscode-editor-bg);
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid var(--vscode-border-color);
-  gap: 4px;
-}
-
-.seg-btn,
-.action-button {
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-sidebar-bg);
-  padding: 6px 16px;
-  border-radius: 4px;
-  color: var(--vscode-text-primary);
-  cursor: pointer;
-  font-size: 13px;
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.seg-btn {
-  border-color: transparent;
-}
-
-.seg-btn.active {
-  background: var(--vscode-accent-color);
-  color: #fff;
-}
-
-.seg-btn:hover:not(.active),
-.action-button:hover {
-  background: var(--vscode-hover-bg);
-}
-
-.python-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.python-input {
-  width: 100%;
-  height: 34px;
-  border: 1px solid var(--vscode-border-color);
-  border-radius: 6px;
-  background: var(--vscode-editor-bg);
-  color: var(--vscode-text-primary);
-  padding: 0 12px;
-}
-
-@media (max-width: 760px) {
-  .settings-shell {
-    padding: 10px;
-  }
-
-  .python-row {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { PythonPackageItem } from '../types'
+import UiBadge from './ui/UiBadge.vue'
+import UiButton from './ui/UiButton.vue'
+import UiField from './ui/UiField.vue'
+import UiInput from './ui/UiInput.vue'
+import UiPanel from './ui/UiPanel.vue'
 import { useI18n } from '../composables/useI18n'
+import type { PythonPackageItem } from '../types'
 
 const props = defineProps<{
   pythonPath: string
@@ -37,17 +42,13 @@ const filteredPackages = computed(() => {
   })
 })
 
-const isDangerStatus = computed(() => {
-  const text = props.statusText.toLowerCase()
-  return text.includes('fail') || text.includes('failed') || text.includes('失败')
-})
-
 const statusTone = computed(() => {
   if (props.processing) {
-    return 'running'
+    return 'accent'
   }
 
-  return isDangerStatus.value ? 'danger' : 'ready'
+  const text = props.statusText.toLowerCase()
+  return text.includes('fail') || text.includes('failed') || text.includes('澶辫触') ? 'danger' : 'success'
 })
 
 function installPackage(): void {
@@ -73,347 +74,88 @@ function confirmUninstall(name: string): void {
 }
 
 function isRowBusy(name: string): boolean {
-  if (!props.processing) {
-    return false
-  }
-
-  return props.processingAction === 'uninstall' && props.processingPackage === name
+  return props.processing && props.processingAction === 'uninstall' && props.processingPackage === name
 }
 </script>
 
 <template>
-  <section class="package-panel">
-    <header class="panel-header">
-      <div>
-        <h2>{{ t('python.managerTitle') }}</h2>
-        <p>{{ t('python.managerDesc') }}</p>
+  <UiPanel class="flex h-full min-h-0 flex-col gap-4 bg-editor">
+    <header class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+      <div class="space-y-1">
+        <h2 class="text-base font-semibold text-foreground">{{ t('python.managerTitle') }}</h2>
+        <p class="text-xs text-muted">{{ t('python.managerDesc') }}</p>
       </div>
-      <button class="panel-button" type="button" :disabled="loading" @click="emit('refreshPackages')">
-        {{ t('python.refresh') }}
-      </button>
+      <UiButton :disabled="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</UiButton>
     </header>
 
-    <div class="toolbar-row interpreter-row">
-      <input class="field-input" :value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
-      <button class="panel-button" type="button" @click="emit('browsePython')">{{ t('python.browse') }}</button>
-      <button class="panel-button" type="button" @click="emit('useSystemPython')">{{ t('python.systemPython') }}</button>
+    <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <UiInput :model-value="pythonPath || 'python'" readonly :placeholder="t('python.currentInterpreter')" />
+      <UiButton @click="emit('browsePython')">{{ t('python.browse') }}</UiButton>
+      <UiButton @click="emit('useSystemPython')">{{ t('python.systemPython') }}</UiButton>
     </div>
 
-    <div class="toolbar-row install-row">
-      <input
+    <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+      <UiInput
         v-model="packageToInstall"
-        class="field-input"
-        type="text"
         :placeholder="t('python.installInput')"
         @keyup.enter="installPackage"
       />
-      <button
-        class="panel-button primary"
-        type="button"
-        :disabled="processing && processingAction === 'install'"
-        @click="installPackage"
-      >
+      <UiButton variant="primary" :disabled="processing && processingAction === 'install'" @click="installPackage">
         {{ t('python.install') }}
-      </button>
+      </UiButton>
     </div>
 
-    <div class="status-banner" :class="statusTone">
-      <p class="status-text">{{ statusText || t('python.ready') }}</p>
+    <div class="rounded-panel border border-border p-3" :class="statusTone === 'success' ? 'bg-success-soft' : statusTone === 'danger' ? 'bg-danger-soft' : 'bg-accent-soft'">
+      <p class="text-sm leading-6 text-foreground">{{ statusText || t('python.ready') }}</p>
     </div>
 
-    <div class="toolbar-row search-row">
-      <label class="search-box">
-        <span class="search-icon" aria-hidden="true">/</span>
-        <input v-model="packageKeyword" type="search" :placeholder="t('python.searchInstalled')" />
-      </label>
-      <span class="count">{{ filteredPackages.length }} / {{ packages.length }}</span>
+    <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+      <UiField>
+        <UiInput v-model="packageKeyword" type="search" :placeholder="t('python.searchInstalled')" />
+      </UiField>
+      <UiBadge>{{ filteredPackages.length }} / {{ packages.length }}</UiBadge>
     </div>
 
-    <div class="table-wrap">
-      <div v-if="loading" class="loading-overlay">
-        <span class="loading-spinner" />
+    <div class="relative min-h-0 flex-1 overflow-auto rounded-panel border border-border bg-sidebar">
+      <div v-if="loading" class="absolute inset-0 flex items-center justify-center bg-overlay backdrop-blur-sm">
+        <span class="h-7 w-7 animate-spin rounded-full border-2 border-border-soft border-t-accent" />
       </div>
 
-      <table v-else-if="filteredPackages.length > 0" class="package-table">
-        <thead>
+      <table v-else-if="filteredPackages.length > 0" class="min-w-full border-collapse text-sm">
+        <thead class="sticky top-0 bg-editor text-left text-xs text-muted">
           <tr>
-            <th>{{ t('python.name') }}</th>
-            <th>{{ t('python.version') }}</th>
-            <th>{{ t('python.action') }}</th>
+            <th class="border-b border-border px-3 py-2.5">{{ t('python.name') }}</th>
+            <th class="border-b border-border px-3 py-2.5">{{ t('python.version') }}</th>
+            <th class="border-b border-border px-3 py-2.5">{{ t('python.action') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in filteredPackages" :key="item.name">
-            <td class="package-name">{{ item.name }}</td>
-            <td>{{ item.version }}</td>
-            <td class="action-cell">
-              <button
-                class="panel-button danger"
-                type="button"
+            <td class="border-b border-border px-3 py-2.5 font-mono text-foreground">{{ item.name }}</td>
+            <td class="border-b border-border px-3 py-2.5 text-foreground">{{ item.version }}</td>
+            <td class="border-b border-border px-3 py-2.5">
+              <UiButton
+                size="sm"
+                variant="danger"
                 :disabled="processing && !isRowBusy(item.name)"
                 @click="confirmUninstall(item.name)"
               >
                 {{ t('python.uninstall') }}
-              </button>
+              </UiButton>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div v-else class="empty-state">
-        <div class="empty-state-content">
-          <p class="empty-state-title">{{ t('python.noPackageData') }}</p>
-          <div class="empty-state-actions">
-            <button class="panel-button" type="button" @click="emit('refreshPackages')">{{ t('python.refresh') }}</button>
-            <button class="panel-button" type="button" @click="emit('useSystemPython')">{{ t('python.systemPython') }}</button>
+      <div v-else class="flex min-h-56 items-center justify-center p-6">
+        <div class="flex flex-col items-center gap-3 text-center">
+          <p class="text-sm text-muted">{{ t('python.noPackageData') }}</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <UiButton @click="emit('refreshPackages')">{{ t('python.refresh') }}</UiButton>
+            <UiButton @click="emit('useSystemPython')">{{ t('python.systemPython') }}</UiButton>
           </div>
         </div>
       </div>
     </div>
-  </section>
+  </UiPanel>
 </template>
-
-<style scoped>
-.package-panel {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--panel-gap);
-  padding: 12px;
-  background: var(--vscode-editor-bg);
-}
-
-.panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.panel-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--vscode-text-primary);
-}
-
-.panel-header p {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--vscode-text-muted);
-}
-
-.toolbar-row {
-  display: grid;
-  align-items: center;
-  gap: 8px;
-}
-
-.interpreter-row {
-  grid-template-columns: 1fr auto auto;
-}
-
-.install-row {
-  grid-template-columns: 1fr auto;
-}
-
-.search-row {
-  grid-template-columns: 1fr auto;
-}
-
-.panel-button {
-  height: var(--control-height-compact);
-  border: 1px solid var(--vscode-border-color);
-  border-radius: var(--control-radius-compact);
-  background: var(--vscode-sidebar-bg);
-  color: var(--vscode-text-primary);
-  padding: 0 var(--control-padding-inline);
-  cursor: pointer;
-}
-
-.panel-button:hover:not(:disabled) {
-  border-color: var(--vscode-accent-color);
-  background: var(--vscode-hover-bg);
-}
-
-.panel-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.panel-button.primary {
-  border-color: var(--vscode-accent-color);
-  background: var(--vscode-accent-color);
-  color: #ffffff;
-}
-
-.panel-button.danger:hover:not(:disabled) {
-  border-color: var(--status-danger);
-  color: var(--status-danger);
-}
-
-.field-input,
-.search-box input {
-  width: 100%;
-  height: var(--control-height);
-  border: 1px solid var(--vscode-border-color);
-  border-radius: var(--control-radius);
-  background: var(--vscode-sidebar-bg);
-  color: var(--vscode-text-primary);
-  padding: 0 var(--control-padding-inline);
-}
-
-.search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-box input {
-  padding-left: 34px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--vscode-text-muted);
-  font-size: 12px;
-  pointer-events: none;
-}
-
-.count {
-  font-size: 12px;
-  color: var(--vscode-text-muted);
-}
-
-.status-banner {
-  padding: 10px 12px;
-  border: 1px solid var(--vscode-border-color);
-  border-radius: 8px;
-  background: var(--surface-muted);
-}
-
-.status-banner.ready {
-  border-color: color-mix(in srgb, var(--status-success) 35%, var(--vscode-border-color));
-  background: var(--status-success-soft);
-}
-
-.status-banner.running {
-  border-color: color-mix(in srgb, var(--vscode-accent-color) 35%, var(--vscode-border-color));
-  background: var(--accent-soft);
-}
-
-.status-banner.danger {
-  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--vscode-border-color));
-  background: var(--status-danger-soft);
-}
-
-.status-text {
-  margin: 0;
-  font-size: 12px;
-  color: var(--vscode-text-primary);
-  line-height: 1.45;
-}
-
-.table-wrap {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  border: 1px solid var(--vscode-border-color);
-  border-radius: 8px;
-  overflow: auto;
-  background: var(--vscode-sidebar-bg);
-}
-
-.package-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.package-table th,
-.package-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--vscode-border-color);
-  text-align: left;
-  font-size: 12px;
-}
-
-.package-table th {
-  position: sticky;
-  top: 0;
-  background: var(--vscode-editor-bg);
-  color: var(--vscode-text-muted);
-  z-index: 1;
-}
-
-.package-name {
-  font-family: var(--vscode-font-mono);
-  color: var(--vscode-text-primary);
-}
-
-.action-cell {
-  width: 140px;
-}
-
-.empty-state {
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-state-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  text-align: center;
-  padding: 0 16px;
-}
-
-.empty-state-title {
-  color: var(--vscode-text-muted);
-  font-size: 13px;
-}
-
-.empty-state-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-overlay);
-  backdrop-filter: blur(2px);
-}
-
-.loading-spinner {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--border-soft);
-  border-top-color: var(--vscode-accent-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 980px) {
-  .interpreter-row,
-  .install-row,
-  .search-row {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

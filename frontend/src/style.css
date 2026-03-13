@@ -1,6 +1,53 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono-stack);
+
+  --color-workbench: var(--surface-workbench);
+  --color-activity: var(--surface-activitybar);
+  --color-sidebar: var(--surface-sidebar);
+  --color-editor: var(--surface-editor);
+  --color-tabs: var(--surface-tabs);
+  --color-panel: var(--surface-panel);
+  --color-statusbar: var(--surface-statusbar);
+  --color-statusbar-fg: var(--statusbar-fg);
+  --color-hovered: var(--surface-hover);
+  --color-active: var(--surface-active);
+  --color-elevated: var(--surface-elevated);
+  --color-soft: var(--surface-soft);
+  --color-empty: var(--surface-empty);
+  --color-overlay: var(--surface-overlay);
+  --color-foreground: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent-color);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--status-success);
+  --color-success-soft: var(--status-success-soft);
+  --color-warning: var(--status-warning);
+  --color-warning-soft: var(--status-warning-soft);
+  --color-danger: var(--status-danger);
+  --color-danger-soft: var(--status-danger-soft);
+  --color-border: var(--border-default);
+  --color-border-soft: var(--border-soft);
+
+  --radius-panel: 0.75rem;
+  --radius-field: 0.5rem;
+  --radius-chip: 999px;
+
+  --shadow-flyout: var(--shadow-flyout);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-menu: var(--shadow-menu);
+  --shadow-drawer: var(--shadow-drawer);
+}
+
 :root {
+  --font-ui: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono-stack: Consolas, "Courier New", monospace;
+
   --surface-workbench: #1e1e1e;
-  --surface-titlebar: #3c3c3c;
   --surface-activitybar: #333333;
   --surface-sidebar: #252526;
   --surface-editor: #1e1e1e;
@@ -9,74 +56,55 @@
   --surface-statusbar: #007acc;
   --surface-hover: #2a2d2e;
   --surface-active: #37373d;
-  --surface-elevated: color-mix(in srgb, var(--surface-sidebar) 92%, var(--surface-editor));
-  --surface-soft: color-mix(in srgb, var(--surface-sidebar) 76%, transparent);
-  --surface-empty: color-mix(in srgb, var(--surface-sidebar) 72%, transparent);
-  --surface-overlay: color-mix(in srgb, var(--surface-editor) 62%, transparent);
+  --surface-elevated: color-mix(in srgb, #252526 92%, #1e1e1e);
+  --surface-soft: color-mix(in srgb, #252526 76%, transparent);
+  --surface-empty: color-mix(in srgb, #252526 72%, transparent);
+  --surface-overlay: color-mix(in srgb, #1e1e1e 62%, transparent);
   --border-default: #3c3c3c;
-  --border-soft: color-mix(in srgb, var(--border-default) 70%, transparent);
-  --border-muted: color-mix(in srgb, var(--text-muted) 24%, transparent);
+  --border-soft: color-mix(in srgb, #3c3c3c 70%, transparent);
   --text-primary: #cccccc;
   --text-muted: #9d9d9d;
-  --text-on-accent: #ffffff;
   --accent-color: #007acc;
-  --accent-soft: color-mix(in srgb, var(--accent-color) 18%, transparent);
+  --accent-soft: color-mix(in srgb, #007acc 18%, transparent);
   --status-success: #73c991;
+  --status-success-soft: color-mix(in srgb, #73c991 16%, transparent);
   --status-warning: #cca700;
+  --status-warning-soft: color-mix(in srgb, #cca700 16%, transparent);
   --status-danger: #f48771;
-  --status-success-soft: color-mix(in srgb, var(--status-success) 16%, transparent);
-  --status-danger-soft: color-mix(in srgb, var(--status-danger) 16%, transparent);
-  --overlay-backdrop: rgba(0, 0, 0, 0.28);
-  --shadow-flyout: 0 12px 28px rgba(0, 0, 0, 0.24);
-  --shadow-dialog: 0 18px 48px rgba(0, 0, 0, 0.28);
-  --shadow-menu: 0 6px 20px rgba(0, 0, 0, 0.36);
-  --shadow-drawer: -18px 0 40px rgba(0, 0, 0, 0.24);
+  --status-danger-soft: color-mix(in srgb, #f48771 16%, transparent);
+  --statusbar-fg: #ffffff;
+  --overlay-backdrop: rgb(0 0 0 / 0.28);
+  --shadow-flyout: 0 12px 28px rgb(0 0 0 / 0.24);
+  --shadow-dialog: 0 18px 48px rgb(0 0 0 / 0.28);
+  --shadow-menu: 0 6px 20px rgb(0 0 0 / 0.36);
+  --shadow-drawer: -18px 0 40px rgb(0 0 0 / 0.24);
   --scrollbar-thumb: #424242;
   --scrollbar-thumb-hover: #4f4f4f;
-  --statusbar-hover-bg: rgba(255, 255, 255, 0.1);
-  --control-height: 36px;
-  --control-height-compact: 32px;
-  --control-radius: 6px;
-  --control-radius-compact: 4px;
-  --control-padding-inline: 12px;
-  --control-padding-inline-wide: 14px;
-  --panel-gap: 10px;
-  --vscode-font-ui: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  --vscode-font-mono: Consolas, 'Courier New', monospace;
-
-  /* Legacy aliases for existing component styles */
-  --vscode-workbench-bg: var(--surface-workbench);
-  --vscode-titlebar-bg: var(--surface-titlebar);
-  --vscode-activitybar-bg: var(--surface-activitybar);
-  --vscode-sidebar-bg: var(--surface-sidebar);
-  --vscode-editor-bg: var(--surface-editor);
-  --vscode-tabs-bg: var(--surface-tabs);
-  --vscode-panel-bg: var(--surface-panel);
-  --vscode-statusbar-bg: var(--surface-statusbar);
-  --vscode-statusbar-color: var(--text-on-accent);
-  --vscode-border-color: var(--border-default);
-  --vscode-hover-bg: var(--surface-hover);
-  --vscode-active-bg: var(--surface-active);
-  --vscode-text-primary: var(--text-primary);
-  --vscode-text-muted: var(--text-muted);
-  --vscode-accent-color: var(--accent-color);
-  --text-secondary: var(--text-muted);
-  --glass-border: var(--border-default);
-  --radius-lg: 4px;
-  --radius-md: 3px;
-  --radius-sm: 2px;
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --transition: all 0.16s ease;
-  --font-mono: var(--vscode-font-mono);
-
-  color-scheme: dark;
+  --statusbar-hover-bg: rgb(255 255 255 / 0.1);
+  --terminal-bg: #1e1e1e;
+  --terminal-foreground: #cccccc;
+  --terminal-cursor: #aeafad;
+  --terminal-selection: #264f78;
+  --terminal-black: #000000;
+  --terminal-red: #cd3131;
+  --terminal-green: #0dbc79;
+  --terminal-yellow: #e5e510;
+  --terminal-blue: #2472c8;
+  --terminal-magenta: #bc3fbc;
+  --terminal-cyan: #11a8cd;
+  --terminal-white: #e5e5e5;
+  --terminal-bright-black: #666666;
+  --terminal-bright-red: #f14c4c;
+  --terminal-bright-green: #23d18b;
+  --terminal-bright-yellow: #f5f543;
+  --terminal-bright-blue: #3b8eea;
+  --terminal-bright-magenta: #d670d6;
+  --terminal-bright-cyan: #29b8db;
+  --terminal-bright-white: #e5e5e5;
 }
 
-:root.light-theme {
+html[data-theme="light"] {
   --surface-workbench: #f5f7fb;
-  --surface-titlebar: #e7ebf3;
   --surface-activitybar: #e2e8f2;
   --surface-sidebar: #eef2f8;
   --surface-editor: #ffffff;
@@ -85,65 +113,116 @@
   --surface-statusbar: #0e639c;
   --surface-hover: #dde6f4;
   --surface-active: #d6dfef;
+  --surface-elevated: color-mix(in srgb, #eef2f8 92%, #ffffff);
+  --surface-soft: color-mix(in srgb, #eef2f8 74%, transparent);
+  --surface-empty: color-mix(in srgb, #eef2f8 68%, transparent);
+  --surface-overlay: color-mix(in srgb, #f5f7fb 72%, transparent);
   --border-default: #d5dce8;
+  --border-soft: color-mix(in srgb, #d5dce8 70%, transparent);
   --text-primary: #1f2937;
   --text-muted: #5f6b7a;
-  --text-on-accent: #ffffff;
   --accent-color: #0e639c;
+  --accent-soft: color-mix(in srgb, #0e639c 14%, transparent);
   --status-success: #1f8f5f;
+  --status-success-soft: color-mix(in srgb, #1f8f5f 14%, transparent);
   --status-warning: #9a6b00;
+  --status-warning-soft: color-mix(in srgb, #9a6b00 14%, transparent);
   --status-danger: #c24137;
+  --status-danger-soft: color-mix(in srgb, #c24137 14%, transparent);
   --scrollbar-thumb: #b4bcc9;
   --scrollbar-thumb-hover: #9ea8b8;
-  --statusbar-hover-bg: rgba(255, 255, 255, 0.14);
-
-  color-scheme: light;
+  --statusbar-hover-bg: rgb(255 255 255 / 0.14);
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    @apply m-0 h-full min-h-0 w-full p-0;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply overflow-hidden bg-workbench font-sans text-foreground antialiased;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p {
+    margin: 0;
+  }
 }
 
-html,
-body,
-#app {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  min-height: 0;
+@layer components {
+  .ui-panel {
+    @apply rounded-panel border border-border bg-panel;
+  }
+
+  .ui-btn {
+    @apply inline-flex min-h-9 items-center justify-center rounded-field border border-border bg-sidebar px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-btn:hover:not(:disabled) {
+    @apply border-accent bg-hovered;
+  }
+
+  .ui-btn-primary {
+    @apply border-accent bg-accent text-white;
+  }
+
+  .ui-btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent-color) 88%, white);
+  }
+
+  .ui-btn-danger:hover:not(:disabled) {
+    @apply border-danger text-danger;
+  }
+
+  .ui-field {
+    @apply w-full rounded-field border border-border bg-sidebar px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/30;
+  }
+
+  .ui-field-readonly {
+    @apply bg-editor text-muted;
+  }
+
+  .ui-badge {
+    @apply inline-flex min-h-6 items-center rounded-chip border border-border px-2 text-xs text-muted;
+  }
+
+  .ui-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-backdrop);
+    backdrop-filter: blur(2px);
+  }
 }
 
-body {
-  overflow: hidden;
-  background: var(--vscode-workbench-bg);
-  color: var(--vscode-text-primary);
-  font-family: var(--vscode-font-ui);
-  line-height: 1.4;
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0;
-}
-
-.glass {
-  background: transparent;
-  backdrop-filter: none;
-  border: 0;
-  box-shadow: none;
-}
-
-/* Scrollbars */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -155,7 +234,7 @@ p {
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { useSettingsStore } from '../stores/settings'
 
 const props = defineProps<{
   terminalId: string
@@ -17,10 +19,54 @@ const emit = defineEmits<{
 
 const hostRef = ref<HTMLElement>()
 const renderedChunks = ref(0)
+const settingsStore = useSettingsStore()
+const { theme } = storeToRefs(settingsStore)
 
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
+
+function readThemeVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') {
+    return fallback
+  }
+
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
+function resolveTerminalTheme() {
+  return {
+    background: readThemeVar('--terminal-bg', '#1e1e1e'),
+    foreground: readThemeVar('--terminal-foreground', '#cccccc'),
+    cursor: readThemeVar('--terminal-cursor', '#aeafad'),
+    selectionBackground: readThemeVar('--terminal-selection', '#264f78'),
+    black: readThemeVar('--terminal-black', '#000000'),
+    red: readThemeVar('--terminal-red', '#cd3131'),
+    green: readThemeVar('--terminal-green', '#0dbc79'),
+    yellow: readThemeVar('--terminal-yellow', '#e5e510'),
+    blue: readThemeVar('--terminal-blue', '#2472c8'),
+    magenta: readThemeVar('--terminal-magenta', '#bc3fbc'),
+    cyan: readThemeVar('--terminal-cyan', '#11a8cd'),
+    white: readThemeVar('--terminal-white', '#e5e5e5'),
+    brightBlack: readThemeVar('--terminal-bright-black', '#666666'),
+    brightRed: readThemeVar('--terminal-bright-red', '#f14c4c'),
+    brightGreen: readThemeVar('--terminal-bright-green', '#23d18b'),
+    brightYellow: readThemeVar('--terminal-bright-yellow', '#f5f543'),
+    brightBlue: readThemeVar('--terminal-bright-blue', '#3b8eea'),
+    brightMagenta: readThemeVar('--terminal-bright-magenta', '#d670d6'),
+    brightCyan: readThemeVar('--terminal-bright-cyan', '#29b8db'),
+    brightWhite: readThemeVar('--terminal-bright-white', '#e5e5e5'),
+  }
+}
+
+function applyTerminalTheme(): void {
+  if (!term) {
+    return
+  }
+
+  term.options.theme = resolveTerminalTheme()
+}
 
 function setupTerminal(): void {
   term = new Terminal({
@@ -30,28 +76,7 @@ function setupTerminal(): void {
     fontSize: 13,
     lineHeight: 1.25,
     scrollback: 10000,
-    theme: {
-      background: '#1e1e1e',
-      foreground: '#cccccc',
-      cursor: '#aeafad',
-      selectionBackground: '#264f78',
-      black: '#000000',
-      red: '#cd3131',
-      green: '#0dbc79',
-      yellow: '#e5e510',
-      blue: '#2472c8',
-      magenta: '#bc3fbc',
-      cyan: '#11a8cd',
-      white: '#e5e5e5',
-      brightBlack: '#666666',
-      brightRed: '#f14c4c',
-      brightGreen: '#23d18b',
-      brightYellow: '#f5f543',
-      brightBlue: '#3b8eea',
-      brightMagenta: '#d670d6',
-      brightCyan: '#29b8db',
-      brightWhite: '#e5e5e5',
-    },
+    theme: resolveTerminalTheme(),
   })
 
   fitAddon = new FitAddon()
@@ -171,6 +196,11 @@ watch(
     writeNewChunks()
   },
 )
+
+watch(theme, async () => {
+  await nextTick()
+  applyTerminalTheme()
+})
 </script>
 
 <template>

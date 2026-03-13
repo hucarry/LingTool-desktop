@@ -1,18 +1,21 @@
 import { defineStore } from 'pinia'
+import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 
+import { bridge } from '../services/bridge'
 import { useI18n } from '../composables/useI18n'
-import { useNotify } from '../composables/useNotify'
-import { useSettings } from '../composables/useSettings'
+import { useNotificationsStore } from './notifications'
+import { useSettingsStore } from './settings'
 import type {
   PythonPackageInstallStatusMessage,
   PythonPackagesMessage,
 } from '../types'
 
 export const usePythonStore = defineStore('python', () => {
-  const { defaultPythonPath } = useSettings()
+  const settingsStore = useSettingsStore()
   const { t, locale } = useI18n()
-  const notify = useNotify()
+  const notifications = useNotificationsStore()
+  const { defaultPythonPath } = storeToRefs(settingsStore)
 
   const packagePythonPath = ref(defaultPythonPath.value)
   const pythonPackages = ref<{ name: string; version: string }[]>([])
@@ -42,6 +45,14 @@ export const usePythonStore = defineStore('python', () => {
     packagePythonPath.value = ''
   }
 
+  function pickPythonForPackages(): void {
+    bridge.send({
+      type: 'browsePython',
+      defaultPath: packagePythonPath.value || defaultPythonPath.value || undefined,
+      purpose: 'packageManager',
+    })
+  }
+
   function beginLoadingPackages(): void {
     loadingPythonPackages.value = true
   }
@@ -66,6 +77,42 @@ export const usePythonStore = defineStore('python', () => {
     return action === 'uninstall'
       ? t('python.action.uninstall')
       : t('python.action.install')
+  }
+
+  function refreshPythonPackages(): void {
+    beginLoadingPackages()
+    bridge.send({
+      type: 'getPythonPackages',
+      pythonPath: packagePythonPath.value || undefined,
+    })
+  }
+
+  function installPythonPackage(packageName: string): void {
+    const normalized = packageName.trim()
+    if (!normalized) {
+      return
+    }
+
+    beginOperation('install', normalized)
+    bridge.send({
+      type: 'installPythonPackage',
+      pythonPath: packagePythonPath.value || undefined,
+      packageName: normalized,
+    })
+  }
+
+  function uninstallPythonPackage(packageName: string): void {
+    const normalized = packageName.trim()
+    if (!normalized) {
+      return
+    }
+
+    beginOperation('uninstall', normalized)
+    bridge.send({
+      type: 'uninstallPythonPackage',
+      pythonPath: packagePythonPath.value || undefined,
+      packageName: normalized,
+    })
   }
 
   function handlePythonPackagesMessage(message: PythonPackagesMessage): void {
@@ -93,7 +140,7 @@ export const usePythonStore = defineStore('python', () => {
           action: actionText,
           packageName: message.packageName,
         })
-        notify.success(
+        notifications.success(
           t('python.status.succeeded', {
             action: actionText,
             packageName: message.packageName,
@@ -110,7 +157,7 @@ export const usePythonStore = defineStore('python', () => {
           packageName: message.packageName,
           details: message.message ? ` (${message.message})` : '',
         })
-        notify.error(
+        notifications.error(
           t('python.status.failed', {
             action: actionText,
             packageName: message.packageName,
@@ -136,9 +183,13 @@ export const usePythonStore = defineStore('python', () => {
     pythonPackageStatus,
     setPackagePythonPath,
     useSystemPythonPath,
+    pickPythonForPackages,
     beginLoadingPackages,
     beginOperation,
     resetBusyState,
+    refreshPythonPackages,
+    installPythonPackage,
+    uninstallPythonPackage,
     handlePythonPackagesMessage,
     handlePythonPackageInstallStatusMessage,
   }

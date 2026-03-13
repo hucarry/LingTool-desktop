@@ -1,0 +1,28 @@
+<script setup lang="ts">
+const props = withDefaults(defineProps<{
+  variant?: 'default' | 'primary' | 'danger' | 'ghost'
+  size?: 'sm' | 'md'
+  type?: 'button' | 'submit' | 'reset'
+  block?: boolean
+}>(), {
+  variant: 'default',
+  size: 'md',
+  type: 'button',
+  block: false,
+})
+
+const classes = [
+  'ui-btn',
+  props.variant === 'primary' ? 'ui-btn-primary' : '',
+  props.variant === 'danger' ? 'ui-btn-danger' : '',
+  props.variant === 'ghost' ? 'border-transparent bg-transparent' : '',
+  props.size === 'sm' ? 'min-h-8 px-2.5 text-xs' : '',
+  props.block ? 'w-full' : '',
+]
+</script>
+
+<template>
+  <button :type="type" :class="classes">
+    <slot />
+  </button>
+</template>

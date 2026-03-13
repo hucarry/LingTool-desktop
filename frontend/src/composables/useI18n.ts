@@ -1,53 +1,12 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import { messages, type MessageDictionary } from '../locales'
+import { useSettingsStore } from '../stores/settings'
 
 export type Locale = keyof typeof messages
 
 type MessageParams = Record<string, string | number>
-
-const LOCALE_STORAGE_KEY = 'toolhub.locale'
 const dictionaries: Record<Locale, MessageDictionary> = messages
-
-function loadLocale(): Locale {
-  if (typeof window === 'undefined') {
-    return 'zh-CN'
-  }
-
-  try {
-    const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-    if (saved === 'zh-CN' || saved === 'en-US') {
-      return saved
-    }
-  } catch {
-    // ignore
-  }
-
-  return 'zh-CN'
-}
-
-const locale = ref<Locale>(loadLocale())
-
-function persistLocale(next: Locale): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, next)
-  } catch {
-    // ignore
-  }
-}
-
-function setLocale(next: Locale): void {
-  if (locale.value === next) {
-    return
-  }
-
-  locale.value = next
-  persistLocale(next)
-}
 
 function interpolate(template: string, params?: MessageParams): string {
   if (!params) {
@@ -61,12 +20,15 @@ function interpolate(template: string, params?: MessageParams): string {
 }
 
 function t(key: string, params?: MessageParams): string {
-  const template = dictionaries[locale.value][key] ?? dictionaries['en-US'][key] ?? key
+  const settingsStore = useSettingsStore()
+  const template = dictionaries[settingsStore.locale][key] ?? dictionaries['en-US'][key] ?? key
   return interpolate(template, params)
 }
 
 function formatSessionCount(count: number): string {
-  if (locale.value === 'en-US') {
+  const settingsStore = useSettingsStore()
+
+  if (settingsStore.locale === 'en-US') {
     return t(count === 1 ? 'app.session.one' : 'app.session.other', { count })
   }
 
@@ -74,9 +36,11 @@ function formatSessionCount(count: number): string {
 }
 
 export function useI18n() {
+  const settingsStore = useSettingsStore()
+
   return {
-    locale: computed(() => locale.value),
-    setLocale,
+    locale: computed(() => settingsStore.locale),
+    setLocale: settingsStore.setLocale,
     t,
     formatSessionCount,
   }

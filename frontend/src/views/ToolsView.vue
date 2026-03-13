@@ -1,70 +1,55 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
 import ToolList from '../components/ToolList.vue'
-import { useToolHub } from '../composables/useToolHub'
-import type { AddToolPayload, ToolItem } from '../types'
+import { useToolsStore } from '../stores/tools'
+import type { ToolItem } from '../types'
 
-const hub = useToolHub()
-const tools = hub.tools
-const loadingTools = hub.loadingTools
 const router = useRouter()
+const toolsStore = useToolsStore()
+const {
+  tools,
+  loadingTools,
+  updatingTool,
+  deletingTools,
+  editToolPathSelection,
+  editToolPythonSelection,
+} = storeToRefs(toolsStore)
 
 onMounted(() => {
-  if (!hub.loadingTools.value && hub.tools.value.length === 0) {
-    hub.fetchTools()
+  if (!loadingTools.value && tools.value.length === 0) {
+    toolsStore.fetchTools()
   }
 })
 
 function runToolDirect(tool: ToolItem): void {
-  hub.handleRun({
+  toolsStore.runToolInTerminal({
     toolId: tool.id,
     args: {},
     python: tool.type === 'python' ? tool.python : undefined,
   })
 }
-
-function updateTool(payload: AddToolPayload): void {
-  hub.updateTool(payload)
-}
-
-function deleteTools(toolIds: string[]): void {
-  hub.deleteTools(toolIds)
-}
-
-function openAddTool(): void {
-  router.push('/tools/new')
-}
 </script>
 
 <template>
-  <section class="tools-view">
+  <section class="h-full min-h-0 overflow-hidden p-3">
     <ToolList
       :tools="tools"
       :loading="loadingTools"
-      :updating="hub.updatingTool.value"
-      :deleting="hub.deletingTools.value"
-      :edit-tool-path-selection="hub.editToolPathSelection.value"
-      :edit-tool-python-selection="hub.editToolPythonSelection.value"
-      @create-tool="openAddTool"
-      @refresh="hub.fetchTools"
-      @open-tool="hub.openTool"
+      :updating="updatingTool"
+      :deleting="deletingTools"
+      :edit-tool-path-selection="editToolPathSelection"
+      :edit-tool-python-selection="editToolPythonSelection"
+      @create-tool="router.push('/tools/new')"
+      @refresh="toolsStore.fetchTools"
+      @open-tool="(tool) => toolsStore.openTool(tool)"
       @run-tool="runToolDirect"
-      @update-tool="updateTool"
-      @delete-tools="deleteTools"
-      @pick-edit-tool-path="({ defaultPath, toolType }) => hub.pickEditToolPath(defaultPath, toolType)"
-      @pick-edit-tool-python="({ defaultPath }) => hub.pickEditToolPython(defaultPath)"
+      @update-tool="toolsStore.updateTool"
+      @delete-tools="toolsStore.deleteTools"
+      @pick-edit-tool-path="({ defaultPath, toolType }) => toolsStore.pickEditToolPath(defaultPath, toolType)"
+      @pick-edit-tool-python="({ defaultPath }) => toolsStore.pickEditToolPython(defaultPath)"
     />
   </section>
 </template>
-
-<style scoped>
-.tools-view {
-  height: 100%;
-  min-height: 0;
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-editor-bg);
-  overflow: hidden;
-}
-</style>

@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 
 import PythonPackagePanel from '../components/PythonPackagePanel.vue'
-import { useToolHub } from '../composables/useToolHub'
+import { usePythonStore } from '../stores/python'
 
-const hub = useToolHub()
-const packagePythonPath = hub.packagePythonPath
-const pythonPackages = hub.pythonPackages
-const loadingPythonPackages = hub.loadingPythonPackages
-const pythonOperationBusy = hub.pythonOperationBusy
-const pythonOperationPackage = hub.pythonOperationPackage
-const pythonOperationAction = hub.pythonOperationAction
-const pythonPackageStatus = hub.pythonPackageStatus
+const pythonStore = usePythonStore()
+const {
+  packagePythonPath,
+  pythonPackages,
+  loadingPythonPackages,
+  pythonOperationBusy,
+  pythonOperationPackage,
+  pythonOperationAction,
+  pythonPackageStatus,
+} = storeToRefs(pythonStore)
 
 onMounted(() => {
-  if (!hub.loadingPythonPackages.value && hub.pythonPackages.value.length === 0) {
-    hub.refreshPythonPackages()
+  if (!loadingPythonPackages.value && pythonPackages.value.length === 0) {
+    pythonStore.refreshPythonPackages()
   }
 })
 </script>
 
 <template>
-  <section class="workspace-view">
+  <section class="flex h-full min-h-0 flex-col overflow-hidden p-3">
     <PythonPackagePanel
       :python-path="packagePythonPath"
       :packages="pythonPackages"
@@ -30,29 +33,16 @@ onMounted(() => {
       :processing-package="pythonOperationPackage"
       :processing-action="pythonOperationAction"
       :status-text="pythonPackageStatus"
-      @browse-python="hub.pickPythonForPackages"
-      @use-system-python="hub.useSystemPythonForPackages"
-      @refresh-packages="hub.refreshPythonPackages"
-      @install-package="hub.installPythonPackage"
-      @uninstall-package="hub.uninstallPythonPackage"
+      @browse-python="pythonStore.pickPythonForPackages"
+      @use-system-python="
+        () => {
+          pythonStore.useSystemPythonPath()
+          pythonStore.refreshPythonPackages()
+        }
+      "
+      @refresh-packages="pythonStore.refreshPythonPackages"
+      @install-package="pythonStore.installPythonPackage"
+      @uninstall-package="pythonStore.uninstallPythonPackage"
     />
   </section>
 </template>
-
-<style scoped>
-.workspace-view {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--vscode-border-color);
-  background: var(--vscode-editor-bg);
-  overflow: hidden;
-}
-
-@media (max-width: 1100px) {
-  .workspace-view {
-    overflow: auto;
-  }
-}
-</style>

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 
+import { bridge } from '../services/bridge'
 import type {
   TerminalInfo,
   TerminalOutputMessage,
@@ -149,6 +150,22 @@ export const useTerminalsStore = defineStore('terminals', () => {
     terminalCreateInFlight = false
   }
 
+  function fetchTerminals(): void {
+    bridge.send({ type: 'getTerminals' })
+  }
+
+  function createTerminal(payload: { shell?: string; cwd?: string } = {}): void {
+    if (!beginCreateRequest()) {
+      return
+    }
+
+    bridge.send({
+      type: 'startTerminal',
+      shell: payload.shell,
+      cwd: payload.cwd,
+    })
+  }
+
   function clearTerminalOutput(terminalId: string): void {
     terminalBuffers[terminalId] = []
   }
@@ -162,7 +179,44 @@ export const useTerminalsStore = defineStore('terminals', () => {
     setActiveTerminalId(terminalId)
   }
 
-  function handleTerminalsMessage(message: TerminalsMessage, createTerminal: () => void): void {
+  function stopTerminal(terminalId: string): void {
+    bridge.send({
+      type: 'stopTerminal',
+      terminalId,
+    })
+  }
+
+  function stopAllTerminals(): void {
+    terminals.value.forEach((terminal) => stopTerminal(terminal.terminalId))
+    setActiveTerminalId('')
+  }
+
+  function sendTerminalInput(payload: { terminalId: string; data: string }): void {
+    if (!payload.terminalId) {
+      return
+    }
+
+    bridge.send({
+      type: 'terminalInput',
+      terminalId: payload.terminalId,
+      data: payload.data,
+    })
+  }
+
+  function resizeTerminal(payload: { terminalId: string; cols: number; rows: number }): void {
+    if (!payload.terminalId || payload.cols <= 0 || payload.rows <= 0) {
+      return
+    }
+
+    bridge.send({
+      type: 'terminalResize',
+      terminalId: payload.terminalId,
+      cols: payload.cols,
+      rows: payload.rows,
+    })
+  }
+
+  function handleTerminalsMessage(message: TerminalsMessage): void {
     terminals.value = normalizeTerminals(message.terminals)
     pruneTerminalBuffers()
     ensureActiveTerminal()
@@ -212,6 +266,12 @@ export const useTerminalsStore = defineStore('terminals', () => {
     setActiveTerminalId,
     beginCreateRequest,
     handleTerminalStartFailed,
+    fetchTerminals,
+    createTerminal,
+    stopTerminal,
+    stopAllTerminals,
+    sendTerminalInput,
+    resizeTerminal,
     clearTerminalOutput,
     selectTerminal,
     handleTerminalsMessage,
