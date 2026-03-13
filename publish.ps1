@@ -26,6 +26,77 @@ function Run-Step([string]$name, [scriptblock]$action) {
     & $action
 }
 
+function Write-Info([string]$message) {
+    Write-Host "[INFO] $message" -ForegroundColor DarkGray
+}
+
+function Write-Warn([string]$message) {
+    Write-Host "[WARN] $message" -ForegroundColor Yellow
+}
+
+function Assert-LastExitCode([string]$context) {
+    if ($LASTEXITCODE -ne 0) {
+        throw "$context failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Invoke-FrontendInstall([string]$frontendDir) {
+    try {
+        if (Test-Path (Join-Path $frontendDir "package-lock.json")) {
+            Run-Step "Install frontend dependencies (npm ci)" {
+                npm ci
+                Assert-LastExitCode "npm ci"
+            }
+        }
+        else {
+            Run-Step "Install frontend dependencies (npm install)" {
+                npm install
+                Assert-LastExitCode "npm install"
+            }
+        }
+    }
+    catch {
+        $message = @"
+Frontend dependency installation failed.
+
+Common causes:
+- frontend/node_modules contains files locked by Vite, VS Code, antivirus, or another Node process
+- the current shell profile prints unrelated errors before/after npm runs
+
+Recommended retries:
+1. Close running frontend dev servers and editors using this repo
+2. Re-run with a clean shell:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+3. If dependencies are already installed, skip reinstall:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendInstall
+"@
+        throw "$message`n$($_.Exception.Message)"
+    }
+}
+
+function Assert-FrontendDependenciesAvailable([string]$frontendDir) {
+    $requiredBins = @(
+        (Join-Path $frontendDir "node_modules\.bin\vue-tsc.cmd"),
+        (Join-Path $frontendDir "node_modules\.bin\vite.cmd")
+    )
+
+    $missing = $requiredBins | Where-Object { -not (Test-Path $_) }
+    if ($missing.Count -gt 0) {
+        $message = @"
+Frontend dependencies look incomplete.
+
+Missing local tools:
+$($missing -join "`n")
+
+You used -NoFrontendInstall, but the frontend toolchain is not fully available.
+Re-run one of these commands:
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendBuild
+"@
+        throw $message
+    }
+}
+
 function Get-PortablePythonArch([string]$runtime) {
     $normalized = $runtime.Trim().ToLowerInvariant()
     if ($normalized.Contains("arm64")) {
@@ -143,19 +214,27 @@ function Install-PortablePip(
 
 Set-Location $projectRoot
 
+Write-Info "Project root: $projectRoot"
+Write-Info "Output directory: $outputDir"
+if ($env:CONDA_PREFIX) {
+    Write-Warn "Conda environment detected: $($env:CONDA_PREFIX)"
+    Write-Warn "If you see unrelated PowerShell/conda Unicode errors, re-run this script with -NoProfile."
+}
+
 if (-not $NoFrontendBuild) {
     Push-Location $frontendDir
     try {
         if (-not $NoFrontendInstall) {
-            if (Test-Path (Join-Path $frontendDir "package-lock.json")) {
-                Run-Step "Install frontend dependencies (npm ci)" { npm ci }
-            }
-            else {
-                Run-Step "Install frontend dependencies (npm install)" { npm install }
-            }
+            Invoke-FrontendInstall $frontendDir
+        }
+        else {
+            Assert-FrontendDependenciesAvailable $frontendDir
         }
 
-        Run-Step "Build frontend (npm run build)" { npm run build }
+        Run-Step "Build frontend (npm run build)" {
+            npm run build
+            Assert-LastExitCode "npm run build"
+        }
     }
     finally {
         Pop-Location
@@ -178,7 +257,10 @@ $publishArgs = @(
     "-p:EnableCompressionInSingleFile=true"
 )
 
-Run-Step "Publish backend (dotnet publish)" { dotnet @publishArgs }
+Run-Step "Publish backend (dotnet publish)" {
+    dotnet @publishArgs
+    Assert-LastExitCode "dotnet publish"
+}
 
 if ($BundlePortablePython) {
     $portablePythonDir = Join-Path $outputDir "python"
