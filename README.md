@@ -1,13 +1,12 @@
 # ToolHub - 本地工具管理平台 (Photino.NET + Vue3)
 
-一个本地桌面工具管理平台：在一个窗口中展示并运行本机工具（Python 脚本 / EXE），支持动态参数输入、停止运行、并发运行，以及交互式终端。
+一个本地桌面工具管理平台：在一个窗口中展示并运行本机工具，当前支持 `python`、`node`、`command`、`executable`、`url` 五类工具，支持动态参数输入、并发运行，以及交互式终端。
 
 ## 技术栈
 
 - .NET 8
 - Photino.NET（WebView 桌面壳，不启动本地 HTTP 端口）
 - Vue 3 + Vite + TypeScript
-- Element Plus
 - JS <-> C# 通信：Photino WebMessage
 
 ## 项目结构
@@ -108,39 +107,71 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
       "name": "示例 Python 工具",
       "type": "python",
       "path": "D:/tools/demo.py",
-      "python": "D:/tools/venv/Scripts/python.exe",
+      "runtimePath": "D:/tools/venv/Scripts/python.exe",
       "cwd": "D:/tools",
       "argsTemplate": "--date {date} --mode {mode}",
       "tags": ["数据"]
     },
     {
+      "id": "demo_node",
+      "name": "示例 Node 工具",
+      "type": "node",
+      "path": "D:/tools/server.mjs",
+      "runtimePath": "C:/Program Files/nodejs/node.exe",
+      "cwd": "D:/tools",
+      "argsTemplate": "--port {port}",
+      "tags": ["服务"]
+    },
+    {
+      "id": "demo_cmd",
+      "name": "示例命令工具",
+      "type": "command",
+      "path": "npm",
+      "cwd": "D:/project/frontend",
+      "argsTemplate": "run dev",
+      "tags": ["前端"]
+    },
+    {
       "id": "demo_exe",
-      "name": "示例 EXE 工具",
-      "type": "exe",
+      "name": "示例可执行工具",
+      "type": "executable",
       "path": "D:/tools/demo.exe",
       "cwd": "D:/tools",
       "argsTemplate": "",
       "tags": ["系统"]
+    },
+    {
+      "id": "docs",
+      "name": "项目文档",
+      "type": "url",
+      "path": "https://example.com/docs",
+      "tags": ["文档"]
     }
   ]
 }
 ```
 
 说明：
-- `type=python`：优先使用 `python` 字段指定解释器，缺省时使用系统 `python`
+- `type=python|node`：`runtimePath` 可选；留空时回退到工具默认、应用默认或系统运行时
+- `type=command`：`path` 填命令名，例如 `git`、`npm`、`docker`
+- `type=executable`：`path` 填本地可执行文件路径
+- `type=url`：`path` 仅支持 `http://` 或 `https://`，运行时会交给系统默认浏览器
 - `argsTemplate`：支持 `{placeholder}` 占位符，前端自动生成动态表单
-- `cwd`：进程工作目录
-- 运行时可在界面中临时指定 Python 解释器路径（仅本次运行生效，不修改 `tools.json`）
+- `cwd`：`python` / `node` / `command` / `executable` 可使用；`url` 不需要
+- 旧配置中的 `type=exe` 与 `python` 字段会自动兼容读取，并在保存后写回新 schema
 
 ## 通信协议
 
 ### 前端 -> 后端
 
 - `{ "type": "getTools" }`
-- `{ "type": "runTool", "toolId": "...", "args": { "key": "value" }, "python": "C:/path/python.exe" }`（`python` 可选，仅 `type=python` 时生效）
+- `{ "type": "runTool", "toolId": "...", "args": { "key": "value" }, "runtimePath": "C:/path/runtime.exe" }`
+- `{ "type": "runToolInTerminal", "toolId": "...", "args": { "key": "value" }, "runtimePath": "C:/path/runtime.exe", "terminalId": "..." }`
+- `{ "type": "openUrlTool", "toolId": "docs" }`
 - `{ "type": "stopRun", "runId": "..." }`
 - `{ "type": "getRuns" }`
-- `{ "type": "browsePython", "defaultPath": "C:/any/folder/or/file", "purpose": "toolRunner|packageManager" }`
+- `{ "type": "browsePython", "defaultPath": "C:/any/folder/or/file", "purpose": "toolRunnerRuntime|addToolRuntime|editToolRuntime|packageManager|settingsDefaultPython" }`
+- `{ "type": "browseFile", "defaultPath": "C:/any/folder/or/file", "filter": "js,mjs,cjs", "purpose": "addToolPath|addToolRuntime|editToolPath|editToolRuntime|toolRunnerRuntime|settingsDefaultNode" }`
 - `{ "type": "getPythonPackages", "pythonPath": "C:/path/python.exe" }`
 - `{ "type": "installPythonPackage", "pythonPath": "C:/path/python.exe", "packageName": "requests" }`
 - `{ "type": "getTerminals" }`
@@ -155,7 +186,8 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
 - `{ "type": "log", "runId": "...", "channel": "stdout|stderr", "line": "...", "ts": "..." }`
 - `{ "type": "runStatus", "run": {...} }`
 - `{ "type": "runs", "runs": [...] }`
-- `{ "type": "pythonSelected", "path": "C:/path/python.exe", "purpose": "toolRunner|packageManager" }`
+- `{ "type": "pythonSelected", "path": "C:/path/python.exe", "purpose": "toolRunnerRuntime|addToolRuntime|editToolRuntime|packageManager|settingsDefaultPython" }`
+- `{ "type": "fileSelected", "path": "C:/path/node.exe", "purpose": "addToolPath|addToolRuntime|editToolPath|editToolRuntime|toolRunnerRuntime|settingsDefaultNode" }`
 - `{ "type": "pythonPackages", "pythonPath": "...", "packages": [{ "name": "pip", "version": "24.3.1" }] }`
 - `{ "type": "pythonPackageInstallStatus", "packageName": "requests", "status": "running|succeeded|failed", "pythonPath": "...", "message": "..." }`
 - `{ "type": "terminals", "terminals": [...] }`
@@ -172,7 +204,7 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
 - 支持并发运行多个工具（`ConcurrentDictionary<runId, RunContext>`）
 - Windows 停止运行使用 `taskkill /PID {pid} /T /F`
 - 其他系统使用 `proc.Kill(entireProcessTree: true)`（为未来扩展保留）
-- 新增 Python 包管理：可选择解释器、读取已安装包、搜索已安装包、安装新包
+- Python 包管理独立保留；Node 这次只提供默认运行时和运行覆盖，不包含包管理页
 
 ## 常见问题
 
@@ -188,7 +220,7 @@ npm run build
 
 ### 2) 工具显示“路径异常”
 
-检查 `tools.json` 中的 `path` / `cwd` / `python` 是否存在且可访问。
+检查 `tools.json` 中的 `path` / `cwd` / `runtimePath` 是否存在且可访问。
 
 ### 3) 停止运行后状态显示 failed
 

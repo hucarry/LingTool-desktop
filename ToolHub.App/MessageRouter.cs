@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using ToolHub.App.Models;
 using ToolHub.App.Utils;
 
@@ -95,10 +96,10 @@ public static class MessageRouter
                 return;
             }
 
-            var pythonOverride = Program.ResolvePythonOverride(request.Python, tool);
+            var runtimeOverride = Program.ResolveRuntimeOverride(request.RuntimePath ?? request.Python, tool);
             if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
             {
-                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python);
+                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
                 if (string.IsNullOrWhiteSpace(resolvedInterpreter))
                 {
                     ctx.SendMessage(new ErrorMessage(
@@ -108,13 +109,28 @@ public static class MessageRouter
                     return;
                 }
 
-                pythonOverride = resolvedInterpreter;
+                runtimeOverride = resolvedInterpreter;
+            }
+
+            if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+            {
+                var resolvedRuntime = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
+                if (string.IsNullOrWhiteSpace(resolvedRuntime))
+                {
+                    ctx.SendMessage(new ErrorMessage(
+                        "未找到可用 Node.js 运行时。",
+                        "请安装 Node.js，或在工具详情里手动选择可用的 node.exe。"
+                    ));
+                    return;
+                }
+
+                runtimeOverride = resolvedRuntime;
             }
 
             ctx.ProcessManager.StartRun(
                 tool,
                 request.Args ?? new Dictionary<string, string?>(),
-                pythonOverride
+                runtimeOverride
             );
             return;
         },
@@ -141,10 +157,10 @@ public static class MessageRouter
                 return;
             }
 
-            var pythonOverride = Program.ResolvePythonOverride(request.Python, tool);
+            var runtimeOverride = Program.ResolveRuntimeOverride(request.RuntimePath ?? request.Python, tool);
             if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
             {
-                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python);
+                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
                 if (string.IsNullOrWhiteSpace(resolvedInterpreter))
                 {
                     ctx.SendMessage(new ErrorMessage(
@@ -154,7 +170,22 @@ public static class MessageRouter
                     return;
                 }
 
-                pythonOverride = resolvedInterpreter;
+                runtimeOverride = resolvedInterpreter;
+            }
+
+            if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+            {
+                var resolvedRuntime = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
+                if (string.IsNullOrWhiteSpace(resolvedRuntime))
+                {
+                    ctx.SendMessage(new ErrorMessage(
+                        "未找到可用 Node.js 运行时。",
+                        "请安装 Node.js，或在工具详情里手动选择可用的 node.exe。"
+                    ));
+                    return;
+                }
+
+                runtimeOverride = resolvedRuntime;
             }
 
             _ = Task.Run(async () =>
@@ -165,7 +196,7 @@ public static class MessageRouter
                         request.TerminalId,
                         tool,
                         request.Args ?? new Dictionary<string, string?>(),
-                        pythonOverride
+                        runtimeOverride
                     );
                 }
                 catch (Exception ex)
@@ -173,6 +204,44 @@ public static class MessageRouter
                     ctx.SendMessage(new ErrorMessage("Failed to run tool in terminal.", ex.Message));
                 }
             });
+            return;
+        },
+
+        [BridgeMessageTypes.OpenUrlTool] = (ctx, raw) =>
+        {
+            var request = JsonSerializer.Deserialize<OpenUrlToolRequest>(raw, ctx.JsonOptions);
+            if (request is null || string.IsNullOrWhiteSpace(request.ToolId))
+            {
+                ctx.SendMessage(new ErrorMessage("openUrlTool request is missing toolId."));
+                return;
+            }
+
+            var tool = ctx.Registry.GetToolById(request.ToolId);
+            if (tool is null)
+            {
+                ctx.SendMessage(new ErrorMessage($"Tool not found: {request.ToolId}"));
+                return;
+            }
+
+            if (!tool.Valid || !string.Equals(tool.Type, "url", StringComparison.OrdinalIgnoreCase))
+            {
+                ctx.SendMessage(new ErrorMessage($"Tool cannot be opened as URL: {tool.Name}", tool.ValidationMessage));
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = tool.Path,
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                ctx.SendMessage(new ErrorMessage("Failed to open URL tool.", ex.Message));
+            }
+
             return;
         },
 

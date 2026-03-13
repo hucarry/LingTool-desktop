@@ -19,6 +19,27 @@ public static class PathUtils
         return System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDirectory, path));
     }
 
+    public static string ResolvePathOrCommand(string value, string baseDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var trimmed = value.Trim().Trim('"');
+        if (System.IO.Path.IsPathRooted(trimmed))
+        {
+            return System.IO.Path.GetFullPath(trimmed);
+        }
+
+        if (trimmed.Contains('\\') || trimmed.Contains('/'))
+        {
+            return System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDirectory, trimmed));
+        }
+
+        return trimmed;
+    }
+
     public static string ResolveProjectRoot()
     {
         var candidates = new[]

@@ -5,7 +5,10 @@ defineProps<{
   themeLabel: string
   defaultPythonLabel: string
   defaultPythonTitle: string
+  defaultNodeLabel: string
+  defaultNodeTitle: string
   pythonTitle: string
+  nodeTitle: string
 }>()
 </script>
 
@@ -22,6 +25,9 @@ defineProps<{
       <span class="ui-badge">{{ themeLabel }}</span>
       <span class="ui-badge" :title="defaultPythonTitle">
         {{ pythonTitle }}: {{ defaultPythonLabel }}
+      </span>
+      <span class="ui-badge" :title="defaultNodeTitle">
+        {{ nodeTitle }}: {{ defaultNodeLabel }}
       </span>
     </div>
   </header>

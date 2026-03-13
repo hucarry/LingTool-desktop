@@ -23,14 +23,16 @@ describe('settings store', () => {
     expect(window.localStorage.getItem('toolhub.theme')).toBe('light')
   })
 
-  it('persists locale and default python path', async () => {
+  it('persists locale and default runtime paths', async () => {
     const store = useSettingsStore()
 
     store.setLocale('en-US')
     store.setDefaultPythonPath('C:/Python/python.exe')
+    store.setDefaultNodePath('C:/Node/node.exe')
     await nextTick()
 
     expect(window.localStorage.getItem('toolhub.locale')).toBe('en-US')
     expect(window.localStorage.getItem('toolhub.defaultPythonPath')).toBe('C:/Python/python.exe')
+    expect(window.localStorage.getItem('toolhub.defaultNodePath')).toBe('C:/Node/node.exe')
   })
 })

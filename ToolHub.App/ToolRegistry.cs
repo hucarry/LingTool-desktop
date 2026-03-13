@@ -266,9 +266,12 @@ public sealed class ToolRegistry
         {
             Id = source.Id.Trim(),
             Name = source.Name.Trim(),
-            Type = source.Type.Trim().ToLowerInvariant(),
+            Type = NormalizeToolType(source.Type),
             Path = source.Path.Trim(),
-            Python = string.IsNullOrWhiteSpace(source.Python) ? null : source.Python.Trim(),
+            RuntimePath = string.IsNullOrWhiteSpace(source.RuntimePath)
+                ? (string.IsNullOrWhiteSpace(source.Python) ? null : source.Python.Trim())
+                : source.RuntimePath.Trim(),
+            Python = null,
             Cwd = string.IsNullOrWhiteSpace(source.Cwd) ? null : source.Cwd.Trim(),
             ArgsTemplate = source.ArgsTemplate?.Trim() ?? string.Empty,
             Tags = (source.Tags ?? new List<string>())
@@ -286,9 +289,10 @@ public sealed class ToolRegistry
         {
             Id = source.Id ?? string.Empty,
             Name = source.Name ?? string.Empty,
-            Type = source.Type ?? string.Empty,
+            Type = NormalizeToolType(source.Type),
             Path = source.Path ?? string.Empty,
-            Python = source.Python,
+            RuntimePath = source.RuntimePath ?? source.Python,
+            Python = null,
             Cwd = source.Cwd,
             ArgsTemplate = source.ArgsTemplate ?? string.Empty,
             Tags = source.Tags?.ToList() ?? new List<string>(),
@@ -301,7 +305,11 @@ public sealed class ToolRegistry
         var tool = CloneTool(source);
         tool.Id = tool.Id.Trim();
         tool.Name = string.IsNullOrWhiteSpace(tool.Name) ? tool.Id : tool.Name.Trim();
-        tool.Type = tool.Type.Trim().ToLowerInvariant();
+        tool.Type = NormalizeToolType(tool.Type);
+        tool.RuntimePath = string.IsNullOrWhiteSpace(tool.RuntimePath)
+            ? (string.IsNullOrWhiteSpace(tool.Python) ? null : tool.Python.Trim())
+            : tool.RuntimePath.Trim();
+        tool.Python = null;
         tool.ArgsTemplate ??= string.Empty;
         tool.Tags = (tool.Tags ?? new List<string>())
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
@@ -316,16 +324,31 @@ public sealed class ToolRegistry
             errors.Add("id 不能为空");
         }
 
-        if (tool.Type is not ("python" or "exe"))
+        if (tool.Type is not ("python" or "node" or "command" or "executable" or "url"))
         {
-            errors.Add("type 只支持 python 或 exe");
+            errors.Add("type 只支持 python、node、command、executable 或 url");
         }
 
         if (string.IsNullOrWhiteSpace(tool.Path))
         {
             errors.Add("path 不能为空");
         }
-        else
+
+        if (tool.Type == "url")
+        {
+            tool.Path = tool.Path.Trim();
+            tool.PathExists = IsSupportedUrl(tool.Path);
+            if (!tool.PathExists)
+            {
+                errors.Add($"链接无效: {tool.Path}");
+            }
+        }
+        else if (tool.Type == "command")
+        {
+            tool.Path = tool.Path.Trim();
+            tool.PathExists = true;
+        }
+        else if (!string.IsNullOrWhiteSpace(tool.Path))
         {
             tool.Path = PathUtils.ResolvePath(tool.Path, baseDirectory);
             tool.PathExists = File.Exists(tool.Path);
@@ -335,31 +358,44 @@ public sealed class ToolRegistry
             }
         }
 
-        if (string.IsNullOrWhiteSpace(tool.Cwd))
+        if (tool.Type == "url")
         {
-            tool.Cwd = tool.PathExists
-                ? Path.GetDirectoryName(tool.Path)
-                : baseDirectory;
+            tool.Cwd = null;
         }
         else
         {
-            tool.Cwd = PathUtils.ResolvePath(tool.Cwd, baseDirectory);
-        }
-
-        if (string.IsNullOrWhiteSpace(tool.Cwd) || !Directory.Exists(tool.Cwd))
-        {
-            errors.Add($"工作目录不存在: {tool.Cwd}");
-        }
-
-        if (tool.Type == "python" && !string.IsNullOrWhiteSpace(tool.Python))
-        {
-            tool.Python = PathUtils.ResolvePath(tool.Python, baseDirectory);
-            if (!PythonInterpreterProbe.IsUsable(tool.Python))
+            if (string.IsNullOrWhiteSpace(tool.Cwd))
             {
-                // Missing configured interpreter should not make the tool unusable.
-                // Runtime will fall back to system python or user override.
-                tool.Python = null;
+                tool.Cwd = tool.PathExists
+                    ? Path.GetDirectoryName(tool.Path)
+                    : baseDirectory;
             }
+            else
+            {
+                tool.Cwd = PathUtils.ResolvePath(tool.Cwd, baseDirectory);
+            }
+
+            if (string.IsNullOrWhiteSpace(tool.Cwd) || !Directory.Exists(tool.Cwd))
+            {
+                errors.Add($"工作目录不存在: {tool.Cwd}");
+            }
+        }
+
+        if ((tool.Type == "python" || tool.Type == "node") && !string.IsNullOrWhiteSpace(tool.RuntimePath))
+        {
+            tool.RuntimePath = PathUtils.ResolvePathOrCommand(tool.RuntimePath, baseDirectory);
+            var runtimeUsable = tool.Type == "python"
+                ? PythonInterpreterProbe.IsUsable(tool.RuntimePath)
+                : NodeRuntimeProbe.IsUsable(tool.RuntimePath);
+
+            if (!runtimeUsable)
+            {
+                tool.RuntimePath = null;
+            }
+        }
+        else
+        {
+            tool.RuntimePath = null;
         }
 
         tool.Valid = errors.Count == 0;
@@ -376,6 +412,7 @@ public sealed class ToolRegistry
             Name = source.Name,
             Type = source.Type,
             Path = source.Path,
+            RuntimePath = source.RuntimePath,
             Python = source.Python,
             Cwd = source.Cwd,
             ArgsTemplate = source.ArgsTemplate,
@@ -431,6 +468,9 @@ public sealed class ToolRegistry
 
         public string Path { get; set; } = string.Empty;
 
+        public string? RuntimePath { get; set; }
+
+        // Legacy field for backwards-compatible tools.json reads.
         public string? Python { get; set; }
 
         public string? Cwd { get; set; }
@@ -440,5 +480,21 @@ public sealed class ToolRegistry
         public List<string> Tags { get; set; } = new();
 
         public string? Description { get; set; }
+    }
+
+    private static string NormalizeToolType(string? rawType)
+    {
+        var normalized = rawType?.Trim().ToLowerInvariant() ?? string.Empty;
+        return normalized switch
+        {
+            "exe" => "executable",
+            _ => normalized
+        };
+    }
+
+    private static bool IsSupportedUrl(string path)
+    {
+        return Uri.TryCreate(path, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 }

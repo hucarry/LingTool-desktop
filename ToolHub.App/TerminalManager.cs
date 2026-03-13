@@ -313,7 +313,7 @@ public sealed class TerminalManager : IDisposable
         string shell,
         ToolItem tool,
         IReadOnlyDictionary<string, string?> args,
-        string? pythonPath)
+        string? runtimePath)
     {
         var shellKind = GetShellKind(shell);
         var resolvedArgs = ArgTemplate.BuildArguments(tool.ArgsTemplate, args);
@@ -321,7 +321,14 @@ public sealed class TerminalManager : IDisposable
         var parts = new List<string>();
         if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
         {
-            var interpreter = PythonInterpreterProbe.ResolvePreferred(pythonPath, tool.Python) ?? "python";
+            var interpreter = PythonInterpreterProbe.ResolvePreferred(runtimePath, tool.RuntimePath) ?? "python";
+
+            parts.Add(interpreter);
+            parts.Add(tool.Path);
+        }
+        else if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+        {
+            var interpreter = NodeRuntimeProbe.ResolvePreferred(runtimePath, tool.RuntimePath) ?? "node";
 
             parts.Add(interpreter);
             parts.Add(tool.Path);

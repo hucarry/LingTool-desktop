@@ -4,6 +4,13 @@ import { ref, watch } from 'vue'
 
 import { bridge } from '../services/bridge'
 import { useI18n } from '../composables/useI18n'
+import {
+  getDefaultRuntimeForTool,
+  getRuntimeBrowseFilter,
+  getToolPathFilter,
+  isScriptToolType,
+  normalizeToolType,
+} from '../utils/toolTypes'
 import { useNotificationsStore } from './notifications'
 import { useSettingsStore } from './settings'
 import { useTerminalsStore } from './terminals'
@@ -24,29 +31,39 @@ export const useToolsStore = defineStore('tools', () => {
   const updatingTool = ref(false)
   const deletingTools = ref(false)
   const addToolPathSelection = ref('')
-  const addToolPythonSelection = ref('')
+  const addToolRuntimeSelection = ref('')
   const editToolPathSelection = ref('')
-  const editToolPythonSelection = ref('')
+  const editToolRuntimeSelection = ref('')
   const lastAddedToolId = ref('')
   const lastUpdatedToolId = ref('')
 
   const activeTool = ref<ToolItem | null>(null)
   const runnerVisible = ref(false)
-  const pythonOverride = ref('')
+  const runtimeOverride = ref('')
 
   const { t } = useI18n()
   const notifications = useNotificationsStore()
   const settingsStore = useSettingsStore()
   const terminalsStore = useTerminalsStore()
-  const { defaultPythonPath } = storeToRefs(settingsStore)
+  const { defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
 
   watch(defaultPythonPath, (nextPath, previousPath) => {
     if (
       activeTool.value?.type === 'python'
-      && !activeTool.value.python
-      && pythonOverride.value === (previousPath ?? '')
+      && !activeTool.value.runtimePath
+      && runtimeOverride.value === (previousPath ?? '')
     ) {
-      pythonOverride.value = nextPath
+      runtimeOverride.value = nextPath
+    }
+  })
+
+  watch(defaultNodePath, (nextPath, previousPath) => {
+    if (
+      activeTool.value?.type === 'node'
+      && !activeTool.value.runtimePath
+      && runtimeOverride.value === (previousPath ?? '')
+    ) {
+      runtimeOverride.value = nextPath
     }
   })
 
@@ -76,15 +93,20 @@ export const useToolsStore = defineStore('tools', () => {
   }
 
   function openTool(tool: ToolItem, appDefaultPythonPath = defaultPythonPath.value): void {
+    const normalizedTool = {
+      ...tool,
+      type: normalizeToolType(tool.type),
+    }
     activeTool.value = tool
-    pythonOverride.value = tool.type === 'python'
-      ? (tool.python ?? appDefaultPythonPath)
-      : ''
+    runtimeOverride.value = getDefaultRuntimeForTool(normalizedTool, {
+      defaultPythonPath: appDefaultPythonPath,
+      defaultNodePath: defaultNodePath.value,
+    })
     runnerVisible.value = true
   }
 
-  function setPythonOverride(path: string): void {
-    pythonOverride.value = path.trim()
+  function setRuntimeOverride(path: string): void {
+    runtimeOverride.value = path.trim()
   }
 
   function closeRunner(): void {
@@ -129,70 +151,136 @@ export const useToolsStore = defineStore('tools', () => {
   }
 
   function pickAddToolPath(defaultPath?: string, toolType?: string): void {
-    bridge.send({
-      type: 'browseFile',
-      defaultPath,
-      filter: toolType === 'python' ? '*.py' : '*.exe',
-      purpose: 'addToolPath',
-    })
-  }
-
-  function pickAddToolPython(defaultPath?: string): void {
-    bridge.send({
-      type: 'browseFile',
-      defaultPath,
-      filter: '*.exe',
-      purpose: 'addToolPython',
-    })
-  }
-
-  function pickEditToolPath(defaultPath?: string, toolType?: string): void {
-    bridge.send({
-      type: 'browseFile',
-      defaultPath,
-      filter: toolType === 'python' ? '*.py' : '*.exe',
-      purpose: 'editToolPath',
-    })
-  }
-
-  function pickEditToolPython(defaultPath?: string): void {
-    bridge.send({
-      type: 'browseFile',
-      defaultPath,
-      filter: '*.exe',
-      purpose: 'editToolPython',
-    })
-  }
-
-  function pickPythonInterpreter(): void {
-    const tool = activeTool.value
-    if (tool?.type !== 'python') {
+    const filter = getToolPathFilter(toolType ?? '')
+    if (!filter) {
       return
     }
 
     bridge.send({
-      type: 'browsePython',
-      defaultPath: pythonOverride.value
-        || tool.python
-        || defaultPythonPath.value
-        || tool.cwd
-        || tool.path,
-      purpose: 'toolRunner',
+      type: 'browseFile',
+      defaultPath,
+      filter,
+      purpose: 'addToolPath',
     })
   }
 
-  function runToolInTerminal(payload: { toolId: string; args: Record<string, string>; python?: string }): void {
+  function pickAddToolRuntime(defaultPath?: string, toolType?: string): void {
+    const normalizedType = normalizeToolType(toolType ?? '')
+    if (normalizedType === 'python') {
+      bridge.send({
+        type: 'browsePython',
+        defaultPath,
+        purpose: 'addToolRuntime',
+      })
+      return
+    }
+
+    const filter = getRuntimeBrowseFilter(normalizedType)
+    if (!filter) {
+      return
+    }
+
+    bridge.send({
+      type: 'browseFile',
+      defaultPath,
+      filter,
+      purpose: 'addToolRuntime',
+    })
+  }
+
+  function pickEditToolPath(defaultPath?: string, toolType?: string): void {
+    const filter = getToolPathFilter(toolType ?? '')
+    if (!filter) {
+      return
+    }
+
+    bridge.send({
+      type: 'browseFile',
+      defaultPath,
+      filter,
+      purpose: 'editToolPath',
+    })
+  }
+
+  function pickEditToolRuntime(defaultPath?: string, toolType?: string): void {
+    const normalizedType = normalizeToolType(toolType ?? '')
+    if (normalizedType === 'python') {
+      bridge.send({
+        type: 'browsePython',
+        defaultPath,
+        purpose: 'editToolRuntime',
+      })
+      return
+    }
+
+    const filter = getRuntimeBrowseFilter(normalizedType)
+    if (!filter) {
+      return
+    }
+
+    bridge.send({
+      type: 'browseFile',
+      defaultPath,
+      filter,
+      purpose: 'editToolRuntime',
+    })
+  }
+
+  function pickRuntimePath(): void {
+    const tool = activeTool.value
+    if (!tool || !isScriptToolType(tool.type)) {
+      return
+    }
+
+    const defaultPath = runtimeOverride.value
+      || tool.runtimePath
+      || getDefaultRuntimeForTool(tool, {
+        defaultPythonPath: defaultPythonPath.value,
+        defaultNodePath: defaultNodePath.value,
+      })
+      || tool.cwd
+      || tool.path
+
+    if (tool.type === 'python') {
+      bridge.send({
+        type: 'browsePython',
+        defaultPath,
+        purpose: 'toolRunnerRuntime',
+      })
+      return
+    }
+
+    bridge.send({
+      type: 'browseFile',
+      defaultPath,
+      filter: getRuntimeBrowseFilter(tool.type),
+      purpose: 'toolRunnerRuntime',
+    })
+  }
+
+  function openUrlTool(toolId: string): void {
+    bridge.send({
+      type: 'openUrlTool',
+      toolId,
+    })
+  }
+
+  function runToolInTerminal(payload: { toolId: string; args: Record<string, string>; runtimePath?: string }): void {
     const tool = tools.value.find((item) => item.id === payload.toolId)
-    const effectivePython = payload.python?.trim()
-      || (tool?.type === 'python'
-        ? (tool.python?.trim() || defaultPythonPath.value.trim() || undefined)
-        : undefined)
+    const effectiveRuntime = tool && isScriptToolType(tool.type)
+      ? (payload.runtimePath?.trim()
+        || getDefaultRuntimeForTool(tool, {
+          defaultPythonPath: defaultPythonPath.value,
+          defaultNodePath: defaultNodePath.value,
+        })
+        || undefined)
+      : undefined
 
     bridge.send({
       type: 'runToolInTerminal',
       toolId: payload.toolId,
       args: payload.args,
-      python: effectivePython,
+      runtimePath: effectiveRuntime,
       terminalId: terminalsStore.activeTerminalId || undefined,
     })
   }
@@ -212,8 +300,8 @@ export const useToolsStore = defineStore('tools', () => {
       return
     }
 
-    if (message.purpose === 'addToolPython') {
-      addToolPythonSelection.value = message.path
+    if (message.purpose === 'addToolRuntime') {
+      addToolRuntimeSelection.value = message.path
       return
     }
 
@@ -222,8 +310,13 @@ export const useToolsStore = defineStore('tools', () => {
       return
     }
 
-    if (message.purpose === 'editToolPython') {
-      editToolPythonSelection.value = message.path
+    if (message.purpose === 'editToolRuntime') {
+      editToolRuntimeSelection.value = message.path
+      return
+    }
+
+    if (message.purpose === 'toolRunnerRuntime') {
+      runtimeOverride.value = message.path
     }
   }
 
@@ -253,12 +346,12 @@ export const useToolsStore = defineStore('tools', () => {
     })
   }
 
-  function handlePythonSelected(path?: string): void {
+  function handleRuntimeSelected(path?: string): void {
     if (!path?.trim()) {
       return
     }
 
-    pythonOverride.value = path
+    runtimeOverride.value = path
   }
 
   return {
@@ -268,14 +361,14 @@ export const useToolsStore = defineStore('tools', () => {
     updatingTool,
     deletingTools,
     addToolPathSelection,
-    addToolPythonSelection,
+    addToolRuntimeSelection,
     editToolPathSelection,
-    editToolPythonSelection,
+    editToolRuntimeSelection,
     lastAddedToolId,
     lastUpdatedToolId,
     activeTool,
     runnerVisible,
-    pythonOverride,
+    runtimeOverride,
     closeRunner,
     beginLoadingTools,
     beginAddTool,
@@ -287,18 +380,19 @@ export const useToolsStore = defineStore('tools', () => {
     updateTool,
     deleteTools,
     pickAddToolPath,
-    pickAddToolPython,
+    pickAddToolRuntime,
     pickEditToolPath,
-    pickEditToolPython,
+    pickEditToolRuntime,
     openTool,
-    setPythonOverride,
-    pickPythonInterpreter,
+    setRuntimeOverride,
+    pickRuntimePath,
+    openUrlTool,
     runToolInTerminal,
     handleToolsMessage,
     handleFileSelectedMessage,
     handleToolAddedMessage,
     handleToolUpdatedMessage,
     handleToolsDeletedMessage,
-    handlePythonSelected,
+    handleRuntimeSelected,
   }
 })

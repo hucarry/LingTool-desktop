@@ -21,7 +21,7 @@ const tools: ToolItem[] = [
   {
     id: 'broken',
     name: 'Broken Tool',
-    type: 'exe',
+    type: 'executable',
     path: 'C:/missing.exe',
     argsTemplate: '',
     tags: ['broken'],

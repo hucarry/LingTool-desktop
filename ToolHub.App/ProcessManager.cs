@@ -209,7 +209,7 @@ public sealed class ProcessManager : IDisposable
     private static ProcessStartInfo BuildStartInfo(
         ToolItem tool,
         IReadOnlyDictionary<string, string?> args,
-        string? pythonOverride
+        string? runtimeOverride
     )
     {
         var resolvedArgs = ArgTemplate.BuildArguments(tool.ArgsTemplate, args);
@@ -225,7 +225,7 @@ public sealed class ProcessManager : IDisposable
 
         if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
         {
-            startInfo.FileName = PythonInterpreterProbe.ResolvePreferred(pythonOverride, tool.Python) ?? "python";
+            startInfo.FileName = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath) ?? "python";
             startInfo.ArgumentList.Add(tool.Path);
 
             foreach (var arg in resolvedArgs)
@@ -236,7 +236,32 @@ public sealed class ProcessManager : IDisposable
             return startInfo;
         }
 
-        if (string.Equals(tool.Type, "exe", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath) ?? "node";
+            startInfo.ArgumentList.Add(tool.Path);
+
+            foreach (var arg in resolvedArgs)
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+
+            return startInfo;
+        }
+
+        if (string.Equals(tool.Type, "command", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.FileName = tool.Path;
+
+            foreach (var arg in resolvedArgs)
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+
+            return startInfo;
+        }
+
+        if (string.Equals(tool.Type, "executable", StringComparison.OrdinalIgnoreCase))
         {
             startInfo.FileName = tool.Path;
 

@@ -65,12 +65,30 @@ export function useBridgeBootstrap() {
           break
         }
 
-        toolsStore.handlePythonSelected(message.path)
+        if (message.purpose === 'addToolRuntime') {
+          toolsStore.addToolRuntimeSelection = message.path ?? ''
+          break
+        }
+
+        if (message.purpose === 'editToolRuntime') {
+          toolsStore.editToolRuntimeSelection = message.path ?? ''
+          break
+        }
+
+        toolsStore.handleRuntimeSelected(message.path)
         break
       case 'pythonPackages':
         pythonStore.handlePythonPackagesMessage(message)
         break
       case 'fileSelected':
+        if (message.purpose === 'settingsDefaultNode') {
+          if (message.path?.trim()) {
+            settingsStore.setDefaultNodePath(message.path)
+            notifications.success(t('app.defaultNodeUpdated'))
+          }
+          break
+        }
+
         toolsStore.handleFileSelectedMessage(message)
         break
       case 'toolAdded':

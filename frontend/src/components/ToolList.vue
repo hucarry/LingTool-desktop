@@ -15,7 +15,7 @@ const props = defineProps<{
   updating?: boolean
   deleting?: boolean
   editToolPathSelection?: string
-  editToolPythonSelection?: string
+  editToolRuntimeSelection?: string
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   (e: 'updateTool', payload: AddToolPayload): void
   (e: 'deleteTools', toolIds: string[]): void
   (e: 'pickEditToolPath', payload: { defaultPath?: string; toolType?: string }): void
-  (e: 'pickEditToolPython', payload: { defaultPath?: string }): void
+  (e: 'pickEditToolRuntime', payload: { defaultPath?: string; toolType?: string }): void
 }>()
 
 const keyword = ref('')
@@ -248,10 +248,10 @@ function deleteSelected(): void {
       :tool="editingTool"
       :updating="updating"
       :edit-tool-path-selection="editToolPathSelection"
-      :edit-tool-python-selection="editToolPythonSelection"
+      :edit-tool-runtime-selection="editToolRuntimeSelection"
       @save="(payload: AddToolPayload) => emit('updateTool', payload)"
       @pick-tool-path="(payload) => emit('pickEditToolPath', payload)"
-      @pick-tool-python="(payload) => emit('pickEditToolPython', payload)"
+      @pick-tool-runtime="(payload) => emit('pickEditToolRuntime', payload)"
     />
   </section>
 </template>

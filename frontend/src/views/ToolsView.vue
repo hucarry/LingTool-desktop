@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import ToolList from '../components/ToolList.vue'
 import { useToolsStore } from '../stores/tools'
 import type { ToolItem } from '../types'
+import { isUrlToolType } from '../utils/toolTypes'
 
 const router = useRouter()
 const toolsStore = useToolsStore()
@@ -15,7 +16,7 @@ const {
   updatingTool,
   deletingTools,
   editToolPathSelection,
-  editToolPythonSelection,
+  editToolRuntimeSelection,
 } = storeToRefs(toolsStore)
 
 onMounted(() => {
@@ -25,10 +26,15 @@ onMounted(() => {
 })
 
 function runToolDirect(tool: ToolItem): void {
+  if (isUrlToolType(tool.type)) {
+    toolsStore.openUrlTool(tool.id)
+    return
+  }
+
   toolsStore.runToolInTerminal({
     toolId: tool.id,
     args: {},
-    python: tool.type === 'python' ? tool.python : undefined,
+    runtimePath: tool.runtimePath,
   })
 }
 </script>
@@ -41,7 +47,7 @@ function runToolDirect(tool: ToolItem): void {
       :updating="updatingTool"
       :deleting="deletingTools"
       :edit-tool-path-selection="editToolPathSelection"
-      :edit-tool-python-selection="editToolPythonSelection"
+      :edit-tool-runtime-selection="editToolRuntimeSelection"
       @create-tool="router.push('/tools/new')"
       @refresh="toolsStore.fetchTools"
       @open-tool="(tool) => toolsStore.openTool(tool)"
@@ -49,7 +55,7 @@ function runToolDirect(tool: ToolItem): void {
       @update-tool="toolsStore.updateTool"
       @delete-tools="toolsStore.deleteTools"
       @pick-edit-tool-path="({ defaultPath, toolType }) => toolsStore.pickEditToolPath(defaultPath, toolType)"
-      @pick-edit-tool-python="({ defaultPath }) => toolsStore.pickEditToolPython(defaultPath)"
+      @pick-edit-tool-runtime="({ defaultPath, toolType }) => toolsStore.pickEditToolRuntime(defaultPath, toolType)"
     />
   </section>
 </template>

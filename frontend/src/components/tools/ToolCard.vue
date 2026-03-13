@@ -59,6 +59,47 @@ const { t } = useI18n()
             <circle cx="14" cy="16.5" r=".75" fill="currentColor" stroke="none" />
           </svg>
           <svg
+            v-else-if="tool.type === 'node'"
+            viewBox="0 0 24 24"
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path d="M12 3.5l7 4v9l-7 4-7-4v-9l7-4z" />
+            <path d="M9.5 9.5v5M14.5 9.5v5M9.5 12h5" />
+          </svg>
+          <svg
+            v-else-if="tool.type === 'command'"
+            viewBox="0 0 24 24"
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path d="M6 8l4 4-4 4M13 16h5" />
+          </svg>
+          <svg
+            v-else-if="tool.type === 'url'"
+            viewBox="0 0 24 24"
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path d="M10 14a3 3 0 0 0 4.24 0l3.18-3.18a3 3 0 0 0-4.24-4.24L11 8.5" />
+            <path d="M14 10a3 3 0 0 0-4.24 0L6.58 13.18a3 3 0 0 0 4.24 4.24L13 15.5" />
+          </svg>
+          <svg
             v-else
             viewBox="0 0 24 24"
             class="h-3.5 w-3.5"
@@ -105,7 +146,7 @@ const { t } = useI18n()
           :disabled="busy"
           @click="tool.valid ? emit('run') : emit('edit')"
         >
-          {{ tool.valid ? t('tools.run') : t('tools.fixPath') }}
+          {{ tool.valid ? (tool.type === 'url' ? t('runner.openLink') : t('tools.run')) : t('tools.fixPath') }}
         </UiButton>
       </div>
     </footer>

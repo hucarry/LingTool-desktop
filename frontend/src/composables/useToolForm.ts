@@ -2,13 +2,21 @@ import { computed, reactive, ref } from 'vue'
 
 import { useI18n } from './useI18n'
 import type { AddToolPayload, ToolItem, ToolType } from '../types'
+import {
+  isCommandToolType,
+  isScriptToolType,
+  isUrlToolType,
+  normalizeToolType,
+  supportsPathBrowse,
+  isValidHttpUrl,
+} from '../utils/toolTypes'
 
 export interface ToolFormState {
   id: string
   name: string
   type: ToolType
   path: string
-  python: string
+  runtimePath: string
   cwd: string
   argsTemplate: string
   tagsText: string
@@ -22,7 +30,7 @@ export function useToolForm(defaultType: ToolType = 'python') {
     name: '',
     type: defaultType,
     path: '',
-    python: '',
+    runtimePath: '',
     cwd: '',
     argsTemplate: '',
     tagsText: '',
@@ -32,20 +40,30 @@ export function useToolForm(defaultType: ToolType = 'python') {
     id: false,
     name: false,
     path: false,
-    python: false,
+    runtimePath: false,
   })
   const submitAttempted = ref(false)
 
-  const isPythonTool = computed(() => form.type === 'python')
+  const isScriptTool = computed(() => isScriptToolType(form.type))
+  const needsRuntimePath = computed(() => isScriptTool.value)
+  const isUrlTool = computed(() => isUrlToolType(form.type))
+  const isCommandTool = computed(() => isCommandToolType(form.type))
   const validationErrors = computed(() => {
     const id = form.id.trim()
     const name = form.name.trim()
     const path = form.path.trim()
 
+    let pathError = ''
+    if (!path) {
+      pathError = t('addTool.validationPath')
+    } else if (isUrlTool.value && !isValidHttpUrl(path)) {
+      pathError = t('addTool.validationUrl')
+    }
+
     return {
       id: !id ? t('addTool.validationId') : /^[a-zA-Z0-9._-]+$/.test(id) ? '' : t('addTool.validationIdFormat'),
       name: name ? '' : t('addTool.validationName'),
-      path: path ? '' : t('addTool.validationPath'),
+      path: pathError,
     }
   })
   const firstValidationMessage = computed(() => {
@@ -56,10 +74,36 @@ export function useToolForm(defaultType: ToolType = 'python') {
       return validationErrors.value.path
     }
 
-    return isPythonTool.value ? t('addTool.pyHint') : t('addTool.exeHint')
+    if (form.type === 'python') {
+      return t('addTool.pyHint')
+    }
+
+    if (form.type === 'node') {
+      return t('addTool.nodeScriptHint')
+    }
+
+    if (form.type === 'executable') {
+      return t('addTool.exeHint')
+    }
+
+    if (form.type === 'command') {
+      return t('addTool.commandHint')
+    }
+
+    return t('addTool.urlHint')
   })
-  const pythonHint = computed(() => {
-    return form.python.trim() ? t('addTool.pythonOverrideHint') : t('addTool.pythonHelp')
+  const runtimeHint = computed(() => {
+    if (!needsRuntimePath.value) {
+      return ''
+    }
+
+    if (form.runtimePath.trim()) {
+      return t('addTool.runtimeOverrideHint')
+    }
+
+    return form.type === 'python'
+      ? t('addTool.pythonHelp')
+      : t('addTool.nodeRuntimeHelp')
   })
 
   function fillWorkingDirectory(path: string): void {
@@ -70,16 +114,31 @@ export function useToolForm(defaultType: ToolType = 'python') {
     }
   }
 
-  function createNameFromPath(path: string): string {
-    const normalized = path.replace(/\\/g, '/')
+  function createNameFromInput(input: string): string {
+    if (isUrlTool.value) {
+      try {
+        const url = new URL(input)
+        const segment = url.pathname.split('/').filter(Boolean).pop()
+        return segment || url.hostname || 'new_tool'
+      } catch {
+        return 'new_tool'
+      }
+    }
+
+    if (isCommandTool.value) {
+      const [command] = input.trim().split(/\s+/, 1)
+      return command || 'new_tool'
+    }
+
+    const normalized = input.replace(/\\/g, '/')
     const filename = normalized.slice(normalized.lastIndexOf('/') + 1)
     const dot = filename.lastIndexOf('.')
     const stem = dot > 0 ? filename.slice(0, dot) : filename
     return stem || 'new_tool'
   }
 
-  function createIdFromPath(path: string): string {
-    const name = createNameFromPath(path)
+  function createIdFromInput(input: string): string {
+    const name = createNameFromInput(input)
     const normalized = name
       .trim()
       .toLowerCase()
@@ -93,7 +152,7 @@ export function useToolForm(defaultType: ToolType = 'python') {
     touchedFields.id = false
     touchedFields.name = false
     touchedFields.path = false
-    touchedFields.python = false
+    touchedFields.runtimePath = false
     submitAttempted.value = false
   }
 
@@ -102,7 +161,7 @@ export function useToolForm(defaultType: ToolType = 'python') {
     form.name = ''
     form.type = defaultType
     form.path = ''
-    form.python = ''
+    form.runtimePath = ''
     form.cwd = ''
     form.argsTemplate = ''
     form.tagsText = ''
@@ -113,9 +172,9 @@ export function useToolForm(defaultType: ToolType = 'python') {
   function setFromTool(tool: ToolItem): void {
     form.id = tool.id
     form.name = tool.name
-    form.type = tool.type === 'python' ? 'python' : 'exe'
+    form.type = normalizeToolType(tool.type)
     form.path = tool.path
-    form.python = tool.python ?? ''
+    form.runtimePath = tool.runtimePath ?? ''
     form.cwd = tool.cwd ?? ''
     form.argsTemplate = tool.argsTemplate ?? ''
     form.tagsText = tool.tags.join(', ')
@@ -129,23 +188,23 @@ export function useToolForm(defaultType: ToolType = 'python') {
     }
 
     form.path = path
-    if (autoFill && !form.cwd.trim()) {
+    if (autoFill && supportsPathBrowse(form.type) && !form.cwd.trim()) {
       fillWorkingDirectory(path)
     }
     if (autoFill && !form.id.trim()) {
-      form.id = createIdFromPath(path)
+      form.id = createIdFromInput(path)
     }
     if (autoFill && !form.name.trim()) {
-      form.name = createNameFromPath(path)
+      form.name = createNameFromInput(path)
     }
   }
 
-  function applyPythonSuggestion(path: string): void {
+  function applyRuntimeSuggestion(path: string): void {
     if (!path.trim()) {
       return
     }
 
-    form.python = path
+    form.runtimePath = path
   }
 
   function parseTags(tagsText: string): string[] {
@@ -159,11 +218,11 @@ export function useToolForm(defaultType: ToolType = 'python') {
     return {
       id: form.id.trim(),
       name: form.name.trim(),
-      type: form.type,
+      type: normalizeToolType(form.type),
       path: form.path.trim(),
-      python: isPythonTool.value ? form.python.trim() || undefined : undefined,
-      cwd: form.cwd.trim() || undefined,
-      argsTemplate: form.argsTemplate.trim(),
+      runtimePath: needsRuntimePath.value ? form.runtimePath.trim() || undefined : undefined,
+      cwd: isUrlTool.value ? undefined : form.cwd.trim() || undefined,
+      argsTemplate: isUrlTool.value ? '' : form.argsTemplate.trim(),
       tags: parseTags(form.tagsText),
       description: form.description.trim() || undefined,
     }
@@ -182,19 +241,22 @@ export function useToolForm(defaultType: ToolType = 'python') {
     form,
     touchedFields,
     submitAttempted,
-    isPythonTool,
+    isScriptTool,
+    needsRuntimePath,
+    isUrlTool,
+    isCommandTool,
     validationErrors,
     firstValidationMessage,
     pathHint,
-    pythonHint,
+    runtimeHint,
     fillWorkingDirectory,
-    createNameFromPath,
-    createIdFromPath,
+    createNameFromInput,
+    createIdFromInput,
     resetValidationState,
     resetForm,
     setFromTool,
     applyPathSuggestion,
-    applyPythonSuggestion,
+    applyRuntimeSuggestion,
     parseTags,
     createPayload,
     markTouched,

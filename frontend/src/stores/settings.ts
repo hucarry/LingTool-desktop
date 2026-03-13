@@ -9,6 +9,7 @@ export type AppLocale = 'zh-CN' | 'en-US'
 const THEME_KEY = 'toolhub.theme'
 const LOCALE_KEY = 'toolhub.locale'
 const PYTHON_PATH_KEY = 'toolhub.defaultPythonPath'
+const NODE_PATH_KEY = 'toolhub.defaultNodePath'
 
 function loadTheme(): Theme {
   if (typeof window === 'undefined') {
@@ -48,6 +49,18 @@ function loadPythonPath(): string {
   }
 }
 
+function loadNodePath(): string {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  try {
+    return window.localStorage.getItem(NODE_PATH_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
 function applyTheme(theme: Theme): void {
   if (typeof document === 'undefined') {
     return
@@ -60,6 +73,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const theme = ref<Theme>(loadTheme())
   const locale = ref<AppLocale>(loadLocale())
   const defaultPythonPath = ref(loadPythonPath())
+  const defaultNodePath = ref(loadNodePath())
 
   watch(
     theme,
@@ -103,6 +117,18 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   })
 
+  watch(defaultNodePath, (nextPath) => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      window.localStorage.setItem(NODE_PATH_KEY, nextPath)
+    } catch {
+      // ignore
+    }
+  })
+
   function setTheme(nextTheme: Theme): void {
     theme.value = nextTheme
   }
@@ -119,6 +145,14 @@ export const useSettingsStore = defineStore('settings', () => {
     defaultPythonPath.value = ''
   }
 
+  function setDefaultNodePath(path: string): void {
+    defaultNodePath.value = path.trim()
+  }
+
+  function clearDefaultNodePath(): void {
+    defaultNodePath.value = ''
+  }
+
   function pickDefaultPython(): void {
     bridge.send({
       type: 'browsePython',
@@ -127,14 +161,27 @@ export const useSettingsStore = defineStore('settings', () => {
     })
   }
 
+  function pickDefaultNode(): void {
+    bridge.send({
+      type: 'browseFile',
+      defaultPath: defaultNodePath.value || undefined,
+      filter: 'exe,cmd,bat',
+      purpose: 'settingsDefaultNode',
+    })
+  }
+
   return {
     theme,
     locale,
     defaultPythonPath,
+    defaultNodePath,
     setTheme,
     setLocale,
     setDefaultPythonPath,
     clearDefaultPythonPath,
+    setDefaultNodePath,
+    clearDefaultNodePath,
     pickDefaultPython,
+    pickDefaultNode,
   }
 })

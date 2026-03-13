@@ -21,12 +21,12 @@ export function useToolHub() {
     updateTool: (tool: AddToolPayload) => toolsStore.updateTool(tool),
     deleteTools: (toolIds: string[]) => toolsStore.deleteTools(toolIds),
     pickAddToolPath: (defaultPath?: string, toolType?: string) => toolsStore.pickAddToolPath(defaultPath, toolType),
-    pickAddToolPython: (defaultPath?: string) => toolsStore.pickAddToolPython(defaultPath),
+    pickAddToolRuntime: (defaultPath?: string, toolType?: string) => toolsStore.pickAddToolRuntime(defaultPath, toolType),
     pickEditToolPath: (defaultPath?: string, toolType?: string) => toolsStore.pickEditToolPath(defaultPath, toolType),
-    pickEditToolPython: (defaultPath?: string) => toolsStore.pickEditToolPython(defaultPath),
+    pickEditToolRuntime: (defaultPath?: string, toolType?: string) => toolsStore.pickEditToolRuntime(defaultPath, toolType),
     openTool: (tool: ToolItem) => toolsStore.openTool(tool, settingsStore.defaultPythonPath),
-    handleRun: (payload: { toolId: string; args: Record<string, string>; python?: string }) => toolsStore.runToolInTerminal(payload),
-    pickPythonInterpreter: toolsStore.pickPythonInterpreter,
+    handleRun: (payload: { toolId: string; args: Record<string, string>; runtimePath?: string }) => toolsStore.runToolInTerminal(payload),
+    pickRuntimePath: toolsStore.pickRuntimePath,
     pickPythonForPackages: pythonStore.pickPythonForPackages,
     useSystemPythonForPackages: () => {
       pythonStore.useSystemPythonPath()

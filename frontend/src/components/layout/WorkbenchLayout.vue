@@ -36,7 +36,7 @@ const pythonStore = usePythonStore()
 const terminalsStore = useTerminalsStore()
 const workbenchStore = useWorkbenchStore()
 
-const { defaultPythonPath, theme } = storeToRefs(settingsStore)
+const { defaultPythonPath, defaultNodePath, theme } = storeToRefs(settingsStore)
 const { tools } = storeToRefs(toolsStore)
 const { pythonPackages } = storeToRefs(pythonStore)
 const { terminals, activeTerminalId, terminalOutputsById } = storeToRefs(terminalsStore)
@@ -84,6 +84,14 @@ const defaultPythonLabel = computed(() => {
   const raw = defaultPythonPath.value.trim()
   if (!raw) {
     return t('app.python.systemDefault')
+  }
+
+  return raw.split(/[\\/]/).pop() || raw
+})
+const defaultNodeLabel = computed(() => {
+  const raw = defaultNodePath.value.trim()
+  if (!raw) {
+    return t('app.node.systemDefault')
   }
 
   return raw.split(/[\\/]/).pop() || raw
@@ -138,6 +146,7 @@ const statusRightItems = computed(() => {
   return [
     { label: `${t('settings.themeTitle')}: ${themeLabel.value}` },
     { label: `${t('settings.pythonTitle')}: ${defaultPythonLabel.value}`, title: defaultPythonPath.value || t('app.python.systemDefault') },
+    { label: `${t('settings.nodeTitle')}: ${defaultNodeLabel.value}`, title: defaultNodePath.value || t('app.node.systemDefault') },
     { label: activeTerminalStatus.value },
   ]
 })
@@ -318,7 +327,10 @@ onBeforeUnmount(() => {
             :theme-label="themeLabel"
             :default-python-label="defaultPythonLabel"
             :default-python-title="defaultPythonPath || t('app.python.systemDefault')"
+            :default-node-label="defaultNodeLabel"
+            :default-node-title="defaultNodePath || t('app.node.systemDefault')"
             :python-title="t('settings.pythonTitle')"
+            :node-title="t('settings.nodeTitle')"
           />
 
           <main class="min-h-0 flex-1">

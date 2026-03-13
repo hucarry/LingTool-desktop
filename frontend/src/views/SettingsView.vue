@@ -9,7 +9,7 @@ import { useSettingsStore } from '../stores/settings'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
-const { theme, defaultPythonPath } = storeToRefs(settingsStore)
+const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
 </script>
 
 <template>
@@ -46,6 +46,19 @@ const { theme, defaultPythonPath } = storeToRefs(settingsStore)
           <UiInput :model-value="defaultPythonPath" readonly :placeholder="t('settings.placeholder')" />
           <UiButton @click="settingsStore.pickDefaultPython">{{ t('python.browse') }}</UiButton>
           <UiButton @click="settingsStore.clearDefaultPythonPath">{{ t('settings.clear') }}</UiButton>
+        </div>
+      </UiPanel>
+
+      <UiPanel class="flex flex-col gap-4">
+        <div class="space-y-1">
+          <h3 class="text-sm font-semibold text-foreground">{{ t('settings.nodeTitle') }}</h3>
+          <p class="text-xs leading-5 text-muted">{{ t('settings.nodeDesc') }}</p>
+        </div>
+
+        <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <UiInput :model-value="defaultNodePath" readonly :placeholder="t('settings.nodePlaceholder')" />
+          <UiButton @click="settingsStore.pickDefaultNode">{{ t('python.browse') }}</UiButton>
+          <UiButton @click="settingsStore.clearDefaultNodePath">{{ t('settings.clear') }}</UiButton>
         </div>
       </UiPanel>
     </div>

@@ -10,7 +10,7 @@ describe('useToolForm', () => {
     useSettingsStore()
   })
 
-  it('derives id, name, and cwd from a selected path', () => {
+  it('derives id, name, and cwd from a selected script path', () => {
     const form = useToolForm('python')
 
     form.applyPathSuggestion('C:/Tools/demo-script.py', true)
@@ -20,14 +20,53 @@ describe('useToolForm', () => {
     expect(form.form.cwd).toBe('C:/Tools')
   })
 
-  it('deduplicates tags and builds a payload', () => {
-    const form = useToolForm('python')
+  it('derives id and name from a command input', () => {
+    const form = useToolForm('command')
 
-    form.form.id = 'demo'
-    form.form.name = 'Demo'
-    form.form.path = 'C:/Tools/demo.py'
+    form.applyPathSuggestion('npm', true)
+
+    expect(form.form.id).toBe('npm')
+    expect(form.form.name).toBe('npm')
+    expect(form.form.cwd).toBe('')
+  })
+
+  it('builds a script payload with runtimePath and deduplicated tags', () => {
+    const form = useToolForm('node')
+
+    form.form.id = 'demo-node'
+    form.form.name = 'Demo Node'
+    form.form.path = 'C:/Tools/demo.mjs'
+    form.form.runtimePath = 'C:/Node/node.exe'
     form.form.tagsText = 'alpha, beta, alpha'
 
-    expect(form.createPayload().tags).toEqual(['alpha', 'beta'])
+    expect(form.createPayload()).toMatchObject({
+      id: 'demo-node',
+      name: 'Demo Node',
+      type: 'node',
+      path: 'C:/Tools/demo.mjs',
+      runtimePath: 'C:/Node/node.exe',
+      tags: ['alpha', 'beta'],
+    })
+  })
+
+  it('validates url tools and omits cwd/args from the payload', () => {
+    const form = useToolForm('url')
+
+    form.form.id = 'docs'
+    form.form.name = 'Docs'
+    form.form.path = 'not-a-url'
+
+    expect(form.validationErrors.value.path).toBeTruthy()
+
+    form.form.path = 'https://example.com/docs'
+    form.form.cwd = 'C:/ignored'
+    form.form.argsTemplate = '--ignored'
+
+    expect(form.createPayload()).toMatchObject({
+      type: 'url',
+      path: 'https://example.com/docs',
+      cwd: undefined,
+      argsTemplate: '',
+    })
   })
 })

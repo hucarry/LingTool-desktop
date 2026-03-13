@@ -10,6 +10,9 @@ public sealed class ToolItem
 
     public string Path { get; set; } = string.Empty;
 
+    public string? RuntimePath { get; set; }
+
+    // Legacy field for older tools.json entries and clients.
     public string? Python { get; set; }
 
     public string? Cwd { get; set; }

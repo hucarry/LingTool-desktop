@@ -12,8 +12,8 @@ import { useToolsStore } from './stores/tools'
 const bootstrap = useBridgeBootstrap()
 const toolsStore = useToolsStore()
 const settingsStore = useSettingsStore()
-const { runnerVisible, pythonOverride, activeTool } = storeToRefs(toolsStore)
-const { defaultPythonPath } = storeToRefs(settingsStore)
+const { runnerVisible, runtimeOverride, activeTool } = storeToRefs(toolsStore)
+const { defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
 
 onMounted(() => {
   bootstrap.init()
@@ -29,11 +29,13 @@ onBeforeUnmount(() => {
 
   <ToolRunner
     v-model:visible="runnerVisible"
-    v-model:python-override="pythonOverride"
+    v-model:runtime-override="runtimeOverride"
     :tool="activeTool"
     :default-python-path="defaultPythonPath"
-    @pick-python="toolsStore.pickPythonInterpreter"
+    :default-node-path="defaultNodePath"
+    @pick-runtime="toolsStore.pickRuntimePath"
     @run="toolsStore.runToolInTerminal"
+    @open-url="toolsStore.openUrlTool"
   />
 
   <NotificationViewport />

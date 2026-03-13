@@ -12,20 +12,21 @@ import { useI18n } from '../composables/useI18n'
 import { useNotify } from '../composables/useNotify'
 import { useToolForm } from '../composables/useToolForm'
 import type { AddToolPayload, ToolItem } from '../types'
+import { supportsPathBrowse } from '../utils/toolTypes'
 
 const props = defineProps<{
   visible: boolean
   tool: ToolItem | null
   updating?: boolean
   editToolPathSelection?: string
-  editToolPythonSelection?: string
+  editToolRuntimeSelection?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
   (e: 'save', payload: AddToolPayload): void
   (e: 'pickToolPath', payload: { defaultPath?: string; toolType?: string }): void
-  (e: 'pickToolPython', payload: { defaultPath?: string }): void
+  (e: 'pickToolRuntime', payload: { defaultPath?: string; toolType?: string }): void
 }>()
 
 const { t } = useI18n()
@@ -33,13 +34,14 @@ const notify = useNotify()
 const {
   form,
   submitAttempted,
-  isPythonTool,
+  needsRuntimePath,
+  isUrlTool,
   validationErrors,
   pathHint,
-  pythonHint,
+  runtimeHint,
   setFromTool,
   applyPathSuggestion,
-  applyPythonSuggestion,
+  applyRuntimeSuggestion,
   createPayload,
   markTouched,
   resetValidationState,
@@ -52,6 +54,24 @@ const invalidToolSummary = computed(() => {
   }
 
   return props.tool.validationMessage?.trim() || t('tools.invalidHint')
+})
+
+const toolPathLabel = computed(() => {
+  if (form.type === 'command') {
+    return t('addTool.commandPath')
+  }
+
+  if (form.type === 'url') {
+    return t('addTool.urlPath')
+  }
+
+  return t('tools.path')
+})
+
+const runtimeLabel = computed(() => {
+  return form.type === 'python'
+    ? t('addTool.pythonPath')
+    : t('addTool.nodeRuntimePath')
 })
 
 watch(
@@ -74,10 +94,10 @@ watch(
 )
 
 watch(
-  () => props.editToolPythonSelection,
+  () => props.editToolRuntimeSelection,
   (path) => {
     if (props.visible && path?.trim()) {
-      applyPythonSuggestion(path)
+      applyRuntimeSuggestion(path)
     }
   },
 )
@@ -85,8 +105,13 @@ watch(
 watch(
   () => form.type,
   (nextType) => {
-    if (nextType !== 'python') {
-      form.python = ''
+    if (!needsRuntimePath.value) {
+      form.runtimePath = ''
+    }
+
+    if (nextType === 'url') {
+      form.cwd = ''
+      form.argsTemplate = ''
     }
   },
 )
@@ -103,9 +128,10 @@ function browseEditToolPath(): void {
   })
 }
 
-function browseEditToolPython(): void {
-  emit('pickToolPython', {
-    defaultPath: form.python || form.cwd || form.path || undefined,
+function browseEditToolRuntime(): void {
+  emit('pickToolRuntime', {
+    defaultPath: form.runtimePath || form.cwd || form.path || undefined,
+    toolType: form.type,
   })
 }
 
@@ -114,7 +140,7 @@ function saveEdit(): void {
   markTouched('id')
   markTouched('name')
   markTouched('path')
-  markTouched('python')
+  markTouched('runtimePath')
 
   if (!/^[a-zA-Z0-9._-]+$/.test(form.id.trim())) {
     notify.warning(t('tools.validationIdFormat'), {
@@ -134,6 +160,14 @@ function saveEdit(): void {
 
   if (!form.path.trim()) {
     notify.warning(t('tools.validationPath'), {
+      groupKey: 'tools.edit.validation',
+      mergeMode: 'replace',
+    })
+    return
+  }
+
+  if (isUrlTool.value && validationErrors.value.path) {
+    notify.warning(validationErrors.value.path, {
       groupKey: 'tools.edit.validation',
       mergeMode: 'replace',
     })
@@ -179,33 +213,36 @@ function saveEdit(): void {
           <UiField :label="t('tools.type')">
             <UiSelect v-model="form.type">
               <option value="python">python</option>
-              <option value="exe">exe</option>
+              <option value="node">node</option>
+              <option value="command">command</option>
+              <option value="executable">executable</option>
+              <option value="url">url</option>
             </UiSelect>
           </UiField>
 
           <div class="xl:col-span-2">
-            <UiField :label="t('tools.path')" :error="shouldShowError('path') ? validationErrors.path : ''" :hint="pathHint">
-              <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+            <UiField :label="toolPathLabel" :error="shouldShowError('path') ? validationErrors.path : ''" :hint="pathHint">
+              <div class="grid gap-2" :class="supportsPathBrowse(form.type) ? 'md:grid-cols-[minmax(0,1fr)_auto]' : ''">
                 <UiInput v-model="form.path" :invalid="shouldShowError('path')" @blur="markTouched('path')" />
-                <UiButton @click="browseEditToolPath">{{ t('tools.browse') }}</UiButton>
+                <UiButton v-if="supportsPathBrowse(form.type)" @click="browseEditToolPath">{{ t('tools.browse') }}</UiButton>
               </div>
             </UiField>
           </div>
 
-          <div v-if="isPythonTool" class="xl:col-span-2">
-            <UiField :label="t('tools.python')" :hint="pythonHint">
+          <div v-if="needsRuntimePath" class="xl:col-span-2">
+            <UiField :label="runtimeLabel" :hint="runtimeHint">
               <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-                <UiInput v-model="form.python" @blur="markTouched('python')" />
-                <UiButton @click="browseEditToolPython">{{ t('tools.browse') }}</UiButton>
+                <UiInput v-model="form.runtimePath" @blur="markTouched('runtimePath')" />
+                <UiButton @click="browseEditToolRuntime">{{ t('tools.browse') }}</UiButton>
               </div>
             </UiField>
           </div>
 
-          <UiField :label="t('tools.cwd')" :hint="t('tools.cwdInlineHint')">
+          <UiField v-if="!isUrlTool" :label="t('tools.cwd')" :hint="t('tools.cwdInlineHint')">
             <UiInput v-model="form.cwd" />
           </UiField>
 
-          <UiField :label="t('tools.argsTemplate')">
+          <UiField v-if="!isUrlTool" :label="t('tools.argsTemplate')">
             <UiInput v-model="form.argsTemplate" />
           </UiField>
 

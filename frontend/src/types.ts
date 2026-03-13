@@ -1,4 +1,4 @@
-export type ToolType = 'python' | 'exe' | string
+export type ToolType = 'python' | 'node' | 'command' | 'executable' | 'url'
 export type RunState = 'running' | 'exited' | 'stopped' | 'failed'
 export type TerminalState = 'running' | 'exited' | 'stopped' | 'failed'
 
@@ -7,7 +7,7 @@ export interface ToolItem {
   name: string
   type: ToolType
   path: string
-  python?: string
+  runtimePath?: string
   cwd?: string
   argsTemplate: string
   tags: string[]
@@ -44,7 +44,7 @@ export interface AddToolPayload {
   name: string
   type: ToolType
   path: string
-  python?: string
+  runtimePath?: string
   cwd?: string
   argsTemplate?: string
   tags?: string[]
@@ -70,15 +70,20 @@ export interface RunToolRequest {
   type: 'runTool'
   toolId: string
   args: Record<string, string>
-  python?: string
+  runtimePath?: string
 }
 
 export interface RunToolInTerminalRequest {
   type: 'runToolInTerminal'
   toolId: string
   args: Record<string, string>
-  python?: string
+  runtimePath?: string
   terminalId?: string
+}
+
+export interface OpenUrlToolRequest {
+  type: 'openUrlTool'
+  toolId: string
 }
 
 export interface StopRunRequest {
@@ -93,14 +98,14 @@ export interface GetRunsRequest {
 export interface BrowsePythonRequest {
   type: 'browsePython'
   defaultPath?: string
-  purpose?: 'toolRunner' | 'packageManager' | 'settingsDefaultPython'
+  purpose?: 'toolRunnerRuntime' | 'addToolRuntime' | 'editToolRuntime' | 'packageManager' | 'settingsDefaultPython'
 }
 
 export interface BrowseFileRequest {
   type: 'browseFile'
   defaultPath?: string
   filter?: string
-  purpose?: 'addToolPath' | 'addToolPython' | 'editToolPath' | 'editToolPython'
+  purpose?: 'addToolPath' | 'addToolRuntime' | 'editToolPath' | 'editToolRuntime' | 'toolRunnerRuntime' | 'settingsDefaultNode'
 }
 
 export interface GetPythonPackagesRequest {
@@ -155,6 +160,7 @@ export type FrontMessage =
   | DeleteToolsRequest
   | RunToolRequest
   | RunToolInTerminalRequest
+  | OpenUrlToolRequest
   | StopRunRequest
   | GetRunsRequest
   | BrowsePythonRequest
@@ -205,13 +211,13 @@ export interface ErrorMessage {
 export interface PythonSelectedMessage {
   type: 'pythonSelected'
   path?: string
-  purpose?: 'toolRunner' | 'packageManager' | 'settingsDefaultPython'
+  purpose?: 'toolRunnerRuntime' | 'addToolRuntime' | 'editToolRuntime' | 'packageManager' | 'settingsDefaultPython'
 }
 
 export interface FileSelectedMessage {
   type: 'fileSelected'
   path?: string
-  purpose?: 'addToolPath' | 'addToolPython' | 'editToolPath' | 'editToolPython'
+  purpose?: 'addToolPath' | 'addToolRuntime' | 'editToolPath' | 'editToolRuntime' | 'toolRunnerRuntime' | 'settingsDefaultNode'
 }
 
 export interface ToolAddedMessage {

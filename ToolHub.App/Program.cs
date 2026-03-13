@@ -161,24 +161,18 @@ internal static class Program
         return fromProjectFolder;
     }
 
-    internal static string? ResolvePythonOverride(string? python, ToolItem tool)
+    internal static string? ResolveRuntimeOverride(string? runtimePath, ToolItem tool)
     {
-        if (string.IsNullOrWhiteSpace(python))
+        if (string.IsNullOrWhiteSpace(runtimePath))
         {
             return null;
-        }
-
-        var raw = python.Trim();
-        if (Path.IsPathRooted(raw))
-        {
-            return Path.GetFullPath(raw);
         }
 
         var baseDirectory = !string.IsNullOrWhiteSpace(tool.Cwd)
             ? tool.Cwd
             : Directory.GetCurrentDirectory();
 
-        return Path.GetFullPath(Path.Combine(baseDirectory, raw));
+        return PathUtils.ResolvePathOrCommand(runtimePath, baseDirectory);
     }
 
     private static string? ShowPythonPicker(PhotinoWindow window, string? defaultPath)

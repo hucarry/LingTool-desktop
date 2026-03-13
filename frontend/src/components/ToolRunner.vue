@@ -9,29 +9,70 @@ import UiInput from './ui/UiInput.vue'
 import UiOverlay from './ui/UiOverlay.vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolItem } from '../types'
+import { getDefaultRuntimeCommand, getDefaultRuntimeForTool, isScriptToolType, isUrlToolType } from '../utils/toolTypes'
 
 const props = defineProps<{
   visible: boolean
   tool: ToolItem | null
-  pythonOverride?: string
+  runtimeOverride?: string
   defaultPythonPath?: string
+  defaultNodePath?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
-  (e: 'update:pythonOverride', value: string): void
-  (e: 'pickPython'): void
-  (e: 'run', payload: { toolId: string; args: Record<string, string>; python?: string }): void
+  (e: 'update:runtimeOverride', value: string): void
+  (e: 'pickRuntime'): void
+  (e: 'run', payload: { toolId: string; args: Record<string, string>; runtimePath?: string }): void
+  (e: 'openUrl', toolId: string): void
 }>()
 
 const { t } = useI18n()
 const formState = reactive<Record<string, string>>({})
-const canUseAppDefault = computed(() => Boolean(props.defaultPythonPath?.trim()))
 
-const pythonFallbackText = computed(() => {
-  return props.defaultPythonPath?.trim()
-    ? t('runner.pythonFallbackWithAppDefault')
-    : t('runner.pythonFallback')
+const isScriptTool = computed(() => (props.tool ? isScriptToolType(props.tool.type) : false))
+const isUrlTool = computed(() => (props.tool ? isUrlToolType(props.tool.type) : false))
+const appDefaultRuntimePath = computed(() => {
+  if (!props.tool) {
+    return ''
+  }
+
+  if (props.tool.type === 'python') {
+    return props.defaultPythonPath?.trim() ?? ''
+  }
+
+  if (props.tool.type === 'node') {
+    return props.defaultNodePath?.trim() ?? ''
+  }
+
+  return ''
+})
+const canUseAppDefault = computed(() => Boolean(appDefaultRuntimePath.value))
+
+const runtimeFallbackText = computed(() => {
+  if (!props.tool || !isScriptTool.value) {
+    return ''
+  }
+
+  if (props.tool.type === 'python') {
+    return appDefaultRuntimePath.value
+      ? t('runner.pythonFallbackWithAppDefault')
+      : t('runner.pythonFallback')
+  }
+
+  return appDefaultRuntimePath.value
+    ? t('runner.nodeFallbackWithAppDefault')
+    : t('runner.nodeFallback')
+})
+
+const runtimeFieldLabel = computed(() => {
+  if (!props.tool || !isScriptTool.value) {
+    return ''
+  }
+
+  return props.tool.type === 'python'
+    ? t('runner.pythonInterpreter')
+    : t('runner.nodeRuntime')
 })
 
 const placeholders = computed(() => {
@@ -55,25 +96,33 @@ const filledPlaceholderCount = computed(() => {
   return placeholders.value.filter((field) => formState[field]?.trim()).length
 })
 
-const currentPythonSource = computed(() => {
-  if (props.tool?.type !== 'python') {
+const currentRuntimeSource = computed(() => {
+  if (!props.tool || !isScriptTool.value) {
     return null
   }
 
-  const override = props.pythonOverride?.trim() ?? ''
+  const override = props.runtimeOverride?.trim() ?? ''
   if (!override) {
-    return t('runner.pythonSourceSystem')
+    return props.tool.type === 'python'
+      ? t('runner.pythonSourceSystem')
+      : t('runner.nodeSourceSystem')
   }
 
-  if (override === (props.tool.python ?? '').trim()) {
-    return t('runner.pythonSourceTool')
+  if (override === (props.tool.runtimePath ?? '').trim()) {
+    return props.tool.type === 'python'
+      ? t('runner.pythonSourceTool')
+      : t('runner.nodeSourceTool')
   }
 
-  if (override === (props.defaultPythonPath ?? '').trim()) {
-    return t('runner.pythonSourceApp')
+  if (override === appDefaultRuntimePath.value) {
+    return props.tool.type === 'python'
+      ? t('runner.pythonSourceApp')
+      : t('runner.nodeSourceApp')
   }
 
-  return t('runner.pythonSourceCustom')
+  return props.tool.type === 'python'
+    ? t('runner.pythonSourceCustom')
+    : t('runner.nodeSourceCustom')
 })
 
 const runnerSummaryText = computed(() => {
@@ -83,6 +132,10 @@ const runnerSummaryText = computed(() => {
 
   if (!props.tool.valid) {
     return t('runner.summaryBlocked')
+  }
+
+  if (isUrlTool.value) {
+    return t('runner.summaryUrlReady')
   }
 
   if (placeholders.value.length === 0) {
@@ -100,16 +153,59 @@ const commandPreview = computed(() => {
     return ''
   }
 
-  if (!props.tool.argsTemplate.trim()) {
-    return props.tool.path
-  }
-
   const renderedArgs = props.tool.argsTemplate.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_, key: string) => {
     const value = formState[key]?.trim()
     return value ? value : `{${key}}`
   })
 
+  if (isUrlTool.value) {
+    return props.tool.path
+  }
+
+  if (isScriptTool.value) {
+    const runtime = props.runtimeOverride?.trim()
+      || getDefaultRuntimeForTool(props.tool, {
+        defaultPythonPath: props.defaultPythonPath,
+        defaultNodePath: props.defaultNodePath,
+      })
+      || getDefaultRuntimeCommand(props.tool.type)
+
+    return `${runtime} ${props.tool.path} ${renderedArgs}`.trim()
+  }
+
+  if (!props.tool.argsTemplate.trim()) {
+    return props.tool.path
+  }
+
   return `${props.tool.path} ${renderedArgs}`.trim()
+})
+
+const infoRows = computed(() => {
+  if (!props.tool) {
+    return []
+  }
+
+  const rows: Array<[string, string]> = [
+    [t('runner.name'), props.tool.name],
+    [t('runner.id'), props.tool.id],
+    [t('runner.type'), props.tool.type],
+    [t('runner.path'), props.tool.path],
+  ]
+
+  if (!isUrlTool.value) {
+    rows.push([t('runner.cwd'), props.tool.cwd || '-'])
+  }
+
+  if (isScriptTool.value) {
+    rows.push([runtimeFieldLabel.value, props.tool.runtimePath || t(props.tool.type === 'python' ? 'runner.systemPython' : 'runner.systemNode')])
+  }
+
+  if (!isUrlTool.value) {
+    rows.push([t('runner.argsTemplate'), props.tool.argsTemplate || t('runner.none')])
+  }
+
+  rows.push([t('runner.description'), props.tool.description || '-'])
+  return rows
 })
 
 watch(
@@ -120,10 +216,13 @@ watch(
       formState[key] = ''
     })
 
-    if (props.tool?.type === 'python') {
-      emit('update:pythonOverride', props.tool.python ?? props.defaultPythonPath ?? '')
+    if (props.tool && isScriptToolType(props.tool.type)) {
+      emit('update:runtimeOverride', getDefaultRuntimeForTool(props.tool, {
+        defaultPythonPath: props.defaultPythonPath,
+        defaultNodePath: props.defaultNodePath,
+      }))
     } else {
-      emit('update:pythonOverride', '')
+      emit('update:runtimeOverride', '')
     }
   },
   { immediate: true },
@@ -138,10 +237,16 @@ function runTool(): void {
     return
   }
 
+  if (isUrlTool.value) {
+    emit('openUrl', props.tool.id)
+    closeDrawer()
+    return
+  }
+
   emit('run', {
     toolId: props.tool.id,
     args: { ...formState },
-    python: props.tool.type === 'python' ? (props.pythonOverride?.trim() || undefined) : undefined,
+    runtimePath: isScriptTool.value ? (props.runtimeOverride?.trim() || undefined) : undefined,
   })
 
   closeDrawer()
@@ -163,7 +268,7 @@ function runTool(): void {
             <div class="space-y-1">
               <strong class="block text-sm text-foreground">{{ runnerSummaryText }}</strong>
               <span class="text-xs leading-5 text-muted">
-                {{ tool.valid ? t('runner.commandPreviewHint') : t('runner.runDisabledHint') }}
+                {{ tool.valid ? (isUrlTool ? t('runner.openLinkHint') : t('runner.commandPreviewHint')) : t('runner.runDisabledHint') }}
               </span>
             </div>
           </div>
@@ -174,16 +279,7 @@ function runTool(): void {
 
           <div class="overflow-hidden rounded-panel border border-border text-sm">
             <div
-              v-for="row in [
-                [t('runner.name'), tool.name],
-                [t('runner.id'), tool.id],
-                [t('runner.type'), tool.type],
-                [t('runner.path'), tool.path],
-                [t('runner.cwd'), tool.cwd || '-'],
-                [t('runner.python'), tool.python || t('runner.systemPython')],
-                [t('runner.argsTemplate'), tool.argsTemplate || t('runner.none')],
-                [t('runner.description'), tool.description || '-'],
-              ]"
+              v-for="row in infoRows"
               :key="row[0]"
               class="grid grid-cols-[130px_minmax(0,1fr)] border-b border-border last:border-b-0"
             >
@@ -193,22 +289,24 @@ function runTool(): void {
           </div>
 
           <div class="mt-5 space-y-4">
-            <div v-if="tool.type === 'python'" class="space-y-3">
-              <UiField :label="t('runner.pythonInterpreter')" :hint="canUseAppDefault ? t('runner.pythonExample') : t('runner.appDefaultUnavailable')">
+            <div v-if="isScriptTool" class="space-y-3">
+              <UiField :label="runtimeFieldLabel" :hint="props.tool?.type === 'python' ? t('runner.pythonExample') : t('runner.nodeExample')">
                 <div class="mb-2 flex flex-wrap items-center gap-2">
-                  <span class="text-xs text-muted">{{ t('runner.pythonSource') }}</span>
-                  <UiBadge tone="accent">{{ currentPythonSource }}</UiBadge>
+                  <span class="text-xs text-muted">{{ t('runner.runtimeSource') }}</span>
+                  <UiBadge tone="accent">{{ currentRuntimeSource }}</UiBadge>
                 </div>
-                <UiInput :model-value="pythonOverride || ''" readonly :placeholder="pythonFallbackText" />
+                <UiInput :model-value="runtimeOverride || ''" readonly :placeholder="runtimeFallbackText" />
               </UiField>
 
               <div class="flex flex-wrap gap-2">
-                <UiButton @click="emit('pickPython')">{{ t('python.browse') }}</UiButton>
-                <UiButton @click="emit('update:pythonOverride', tool.python || '')">{{ t('runner.useToolDefault') }}</UiButton>
-                <UiButton :disabled="!canUseAppDefault" @click="emit('update:pythonOverride', defaultPythonPath || '')">
+                <UiButton @click="emit('pickRuntime')">{{ t('python.browse') }}</UiButton>
+                <UiButton @click="emit('update:runtimeOverride', tool.runtimePath || '')">{{ t('runner.useToolDefault') }}</UiButton>
+                <UiButton :disabled="!canUseAppDefault" @click="emit('update:runtimeOverride', appDefaultRuntimePath || '')">
                   {{ t('runner.useAppDefault') }}
                 </UiButton>
-                <UiButton @click="emit('update:pythonOverride', '')">{{ t('runner.useSystemPython') }}</UiButton>
+                <UiButton @click="emit('update:runtimeOverride', '')">
+                  {{ tool.type === 'python' ? t('runner.useSystemPython') : t('runner.useSystemNode') }}
+                </UiButton>
               </div>
             </div>
 
@@ -220,13 +318,13 @@ function runTool(): void {
               <UiInput v-model="formState[field]" :placeholder="t('runner.enterArgument', { field })" />
             </UiField>
 
-            <UiField :label="t('runner.commandPreview')">
+            <UiField :label="isUrlTool ? t('runner.linkPreview') : t('runner.commandPreview')">
               <code class="block rounded-field border border-border bg-editor px-3 py-3 font-mono text-xs leading-6 text-foreground">
                 {{ commandPreview }}
               </code>
             </UiField>
 
-            <div v-if="placeholders.length === 0" class="flex flex-col items-center gap-3 py-8 text-muted">
+            <div v-if="placeholders.length === 0 && !isUrlTool" class="flex flex-col items-center gap-3 py-8 text-muted">
               <span class="flex h-14 w-14 items-center justify-center rounded-full border border-border text-xs font-bold tracking-[0.14em]">
                 RUN
               </span>
@@ -237,7 +335,9 @@ function runTool(): void {
           <div class="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
             <span v-if="!tool.valid" class="mr-auto text-xs text-danger">{{ t('runner.runDisabledHint') }}</span>
             <UiButton @click="closeDrawer">{{ t('runner.cancel') }}</UiButton>
-            <UiButton variant="primary" :disabled="!tool.valid" @click="runTool">{{ t('runner.runInTerminal') }}</UiButton>
+            <UiButton variant="primary" :disabled="!tool.valid" @click="runTool">
+              {{ isUrlTool ? t('runner.openLink') : t('runner.runInTerminal') }}
+            </UiButton>
           </div>
         </div>
       </UiDrawer>

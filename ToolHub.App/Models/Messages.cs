@@ -8,6 +8,7 @@ public static class BridgeMessageTypes
     public const string DeleteTools = "deleteTools";
     public const string RunTool = "runTool";
     public const string RunToolInTerminal = "runToolInTerminal";
+    public const string OpenUrlTool = "openUrlTool";
     public const string StopRun = "stopRun";
     public const string GetRuns = "getRuns";
     public const string BrowsePython = "browsePython";
@@ -57,6 +58,9 @@ public sealed class RunToolRequest : IncomingMessage
 
     public Dictionary<string, string?>? Args { get; set; }
 
+    public string? RuntimePath { get; set; }
+
+    // Legacy field from older frontend versions.
     public string? Python { get; set; }
 }
 
@@ -81,9 +85,17 @@ public sealed class RunToolInTerminalRequest : IncomingMessage
 
     public Dictionary<string, string?>? Args { get; set; }
 
+    public string? RuntimePath { get; set; }
+
+    // Legacy field from older frontend versions.
     public string? Python { get; set; }
 
     public string? TerminalId { get; set; }
+}
+
+public sealed class OpenUrlToolRequest : IncomingMessage
+{
+    public string ToolId { get; set; } = string.Empty;
 }
 
 public sealed class StopRunRequest : IncomingMessage
