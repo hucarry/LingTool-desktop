@@ -14,7 +14,7 @@
 ```text
 .
 ├─ ToolHub.sln
-├─ tools.json
+├─ tools.example.json
 ├─ build.ps1
 ├─ README.md
 ├─ frontend/
@@ -76,6 +76,16 @@ cd ..
 dotnet run --project ToolHub.App/ToolHub.App.csproj
 ```
 
+### 3) 初始化本地工具配置
+
+仓库提交的是 `tools.example.json`，首次使用前请复制一份为本地私有的 `tools.json`：
+
+```powershell
+Copy-Item tools.example.json tools.json
+```
+
+`tools.json` 已加入 `.gitignore`，适合保存你自己的本机路径、解释器路径和命令参数，不会上传到 GitHub。
+
 ## 一键脚本
 
 根目录提供 `build.ps1`：
@@ -97,7 +107,13 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
 
 ## tools.json 配置
 
-根目录 `tools.json` 是工具注册表。示例：
+仓库提供 `tools.example.json` 作为公开示例；应用运行时读取根目录 `tools.json` 作为工具注册表。首次使用时请先复制示例文件：
+
+```powershell
+Copy-Item tools.example.json tools.json
+```
+
+然后按你的本机环境修改 `tools.json`。示例：
 
 ```json
 {
@@ -230,4 +246,4 @@ npm run build
 
 - 先执行 `npm run build` 生成 `ToolHub.App/wwwroot`
 - 再执行 `dotnet publish ToolHub.App -c Release`
-- 发布目录中保留 `tools.json`（可与 exe 同目录或项目根路径）
+- 发布目录中保留你自己的 `tools.json`（可由 `tools.example.json` 复制后修改得到）

@@ -212,18 +212,22 @@ public sealed class ToolRegistry
             return;
         }
 
+        var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+        Directory.CreateDirectory(baseDirectory);
+
+        var exampleFilePath = Path.Combine(baseDirectory, "tools.example.json");
+        if (File.Exists(exampleFilePath))
+        {
+            File.Copy(exampleFilePath, _toolsFilePath);
+            return;
+        }
+
         // Keep initial config portable for published builds on any drive.
         var template = """
 {
   "tools": []
 }
 """;
-
-        var directory = Path.GetDirectoryName(_toolsFilePath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
 
         File.WriteAllText(_toolsFilePath, template);
     }

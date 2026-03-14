@@ -7,17 +7,23 @@ publish/
 # Temporary build folders
 .tmp_build/
 .tmp_photino/
+ToolHub.App/.tmp_build/
 
 # Local environments
 .venv/
 node_modules/
 dist/
 dist-ssr/
+tools.json
+tools.local.json
+run_error.txt
 
 # IDE and local tooling
 .idea/
+.vs/
 .vscode/
 .tools/
+*.user
 
 # OS artifacts
 .DS_Store

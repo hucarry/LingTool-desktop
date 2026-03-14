@@ -1,0 +1,30 @@
+{
+  "tools": [
+    {
+      "id": "demo_py",
+      "name": "项目内 Python 示例",
+      "type": "python",
+      "path": "Tools/testdemo.py",
+      "cwd": "Tools",
+      "argsTemplate": "",
+      "tags": [
+        "示例",
+        "Python"
+      ],
+      "description": "运行仓库里的 testdemo.py"
+    },
+    {
+      "id": "frontend_dev",
+      "name": "前端开发服务器",
+      "type": "command",
+      "path": "npm",
+      "cwd": "frontend",
+      "argsTemplate": "run dev",
+      "tags": [
+        "前端",
+        "开发"
+      ],
+      "description": "在 frontend 目录启动 Vite 开发服务"
+    }
+  ]
+}
