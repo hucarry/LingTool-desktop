@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/hucarry/LingTool-desktop"><img src="https://img.shields.io/github/stars/hucarry/LingTool-desktop?style=flat-square" alt="GitHub stars" /></a>
-  <img src="https://img.shields.io/badge/license-unlicensed-lightgrey?style=flat-square" alt="License" />
+  <a href="https://github.com/hucarry/LingTool-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License" /></a>
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square" alt="Platform Windows" />
   <img src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square" alt=".NET 8" />
   <img src="https://img.shields.io/badge/Vue-3-42B883?style=flat-square" alt="Vue 3" />
