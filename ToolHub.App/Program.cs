@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -18,10 +19,34 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        // 注册完整编码支持（项目已引用 System.Text.Encoding.CodePages），确保中文等字符正确处理
+        try
+        {
+            RunApp(args);
+        }
+        catch (Exception ex)
+        {
+            ReportStartupFailure(ex);
+        }
+    }
+
+    private static void RunApp(string[] args)
+    {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        Console.OutputEncoding = Encoding.UTF8;
-        Console.InputEncoding = Encoding.UTF8;
+        TryConfigureConsoleEncoding();
+
+        AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
+        {
+            if (eventArgs.ExceptionObject is Exception exception)
+            {
+                ReportStartupFailure(exception);
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, eventArgs) =>
+        {
+            ReportStartupFailure(eventArgs.Exception);
+            eventArgs.SetObserved();
+        };
 
         var appRoot = PathUtils.ResolveProjectRoot();
         var toolsFilePath = Path.Combine(appRoot, "tools.json");
@@ -116,6 +141,117 @@ internal static class Program
         window.Load(indexPath);
         window.WaitForClose();
         ShutdownManagers();
+    }
+
+    private static void ReportStartupFailure(Exception exception)
+    {
+        try
+        {
+            var logPath = WriteStartupErrorLog(exception);
+            var detail = BuildFriendlyStartupMessage(exception, logPath);
+            MessageBoxW(
+                hWnd: 0,
+                text: detail,
+                caption: "ToolHub 启动失败",
+                type: 0x00000010
+            );
+        }
+        catch
+        {
+            // Avoid secondary crashes while reporting startup errors.
+        }
+    }
+
+    private static void TryConfigureConsoleEncoding()
+    {
+        try
+        {
+            _ = Console.IsOutputRedirected;
+            Console.OutputEncoding = Encoding.UTF8;
+        }
+        catch (IOException)
+        {
+            // WinExe started without a console can have invalid std handles.
+        }
+        catch (InvalidOperationException)
+        {
+            // Some hosts do not expose a writable console stream.
+        }
+
+        try
+        {
+            _ = Console.IsInputRedirected;
+            Console.InputEncoding = Encoding.UTF8;
+        }
+        catch (IOException)
+        {
+            // WinExe started without a console can have invalid std handles.
+        }
+        catch (InvalidOperationException)
+        {
+            // Some hosts do not expose a readable console stream.
+        }
+    }
+
+    private static string WriteStartupErrorLog(Exception exception)
+    {
+        var logPath = Path.Combine(AppContext.BaseDirectory, "startup-error.log");
+        var lines = new[]
+        {
+            $"Time: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}",
+            $"BaseDirectory: {AppContext.BaseDirectory}",
+            $"CurrentDirectory: {Directory.GetCurrentDirectory()}",
+            $"OSVersion: {Environment.OSVersion}",
+            $"ProcessArchitecture: {RuntimeInformation.ProcessArchitecture}",
+            $"Framework: {RuntimeInformation.FrameworkDescription}",
+            "Exception:",
+            exception.ToString(),
+            string.Empty
+        };
+
+        File.WriteAllLines(logPath, lines, Encoding.UTF8);
+        return logPath;
+    }
+
+    private static string BuildFriendlyStartupMessage(Exception exception, string logPath)
+    {
+        var hints = new List<string>();
+        var flattened = exception.ToString();
+
+        if (exception is FileNotFoundException)
+        {
+            hints.Add("发布目录可能不完整，请确认 wwwroot 等文件已随程序一起分发。");
+        }
+
+        if (flattened.Contains("WebView2", StringComparison.OrdinalIgnoreCase))
+        {
+            hints.Add("当前系统可能缺少或损坏 Microsoft Edge WebView2 Runtime。");
+        }
+
+        if (flattened.Contains("Photino", StringComparison.OrdinalIgnoreCase))
+        {
+            hints.Add("桌面壳窗口初始化失败，通常与 WebView2 运行环境或本机系统组件有关。");
+        }
+
+        if (hints.Count == 0)
+        {
+            hints.Add("这是一个 .NET 启动期未处理异常，需要查看日志定位具体根因。");
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            [
+                "程序启动失败。",
+                string.Empty,
+                $"异常类型: {exception.GetType().FullName}",
+                $"异常信息: {exception.Message}",
+                string.Empty,
+                "可能原因:",
+                ..hints.Select(static hint => $"- {hint}"),
+                string.Empty,
+                $"详细日志: {logPath}"
+            ]
+        );
     }
 
     private static void HandleMessage(
@@ -310,4 +446,7 @@ internal static class Program
             return null;
         }
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBoxW(nint hWnd, string text, string caption, uint type);
 }
