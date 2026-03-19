@@ -131,7 +131,7 @@ public sealed class TerminalManager : IDisposable
         {
             var started = await StartTerminalAsync(cwd: tool.Cwd);
             targetTerminalId = started.TerminalId;
-            await Task.Delay(200);
+            await Task.Delay(500); // 等待 PTY 完成初始化，避免命令丢失
         }
         else
         {
@@ -303,7 +303,8 @@ public sealed class TerminalManager : IDisposable
 
         if (OperatingSystem.IsWindows())
         {
-            return "cmd.exe";
+            // 优先使用 PowerShell，兼容中文路径且支持现代语法
+            return "powershell.exe";
         }
 
         return "/bin/bash";

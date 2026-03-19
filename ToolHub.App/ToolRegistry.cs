@@ -428,6 +428,7 @@ public sealed class ToolRegistry
         };
     }
 
+    /// <summary>检测 tools.json 是否包含旧版固定路径模板（仅匹配已知的精确旧模板值）。</summary>
     private static bool IsLegacyFixedPathTemplate(ToolRegistryFile file)
     {
         if (file.Tools.Count != 2)
@@ -445,15 +446,22 @@ public sealed class ToolRegistry
             return false;
         }
 
+        // 只有所有工具的路径都指向已知旧模板路径（不含相对路径）才视为遗留模板
         return file.Tools.All(tool =>
         {
             var normalizedPath = (tool.Path ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
             var normalizedCwd = (tool.Cwd ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
-            var normalizedPython = (tool.Python ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
+            var normalizedRuntime = (tool.RuntimePath ?? tool.Python ?? string.Empty).Replace('\\', '/').ToLowerInvariant();
 
-            return normalizedPath.StartsWith("d:/tools/")
-                || normalizedCwd.StartsWith("d:/tools")
-                || normalizedPython.StartsWith("d:/tools/");
+            // 必须同时满足：路径是硬编码的绝对路径，且指向旧版默认模板目录
+            var hasFixedAbsPath = normalizedPath.StartsWith("d:/tools/")
+                || normalizedPath.StartsWith("c:/tools/");
+            var hasFixedAbsCwd = normalizedCwd.StartsWith("d:/tools")
+                || normalizedCwd.StartsWith("c:/tools");
+            var hasFixedAbsRuntime = normalizedRuntime.StartsWith("d:/tools/")
+                || normalizedRuntime.StartsWith("c:/tools/");
+
+            return hasFixedAbsPath || hasFixedAbsCwd || hasFixedAbsRuntime;
         });
     }
 

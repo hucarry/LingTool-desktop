@@ -96,35 +96,10 @@ public static class MessageRouter
                 return;
             }
 
-            var runtimeOverride = Program.ResolveRuntimeOverride(request.RuntimePath ?? request.Python, tool);
-            if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
+            var runtimeOverride = ResolveToolRuntime(ctx, tool, request.RuntimePath ?? request.Python);
+            if (runtimeOverride == ResolveRuntimeFailed)
             {
-                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-                if (string.IsNullOrWhiteSpace(resolvedInterpreter))
-                {
-                    ctx.SendMessage(new ErrorMessage(
-                        "未找到可用 Python 解释器",
-                        "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
-                    ));
-                    return;
-                }
-
-                runtimeOverride = resolvedInterpreter;
-            }
-
-            if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
-            {
-                var resolvedRuntime = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-                if (string.IsNullOrWhiteSpace(resolvedRuntime))
-                {
-                    ctx.SendMessage(new ErrorMessage(
-                        "未找到可用 Node.js 运行时。",
-                        "请安装 Node.js，或在工具详情里手动选择可用的 node.exe。"
-                    ));
-                    return;
-                }
-
-                runtimeOverride = resolvedRuntime;
+                return; // 错误消息已在 ResolveToolRuntime 中发送
             }
 
             ctx.ProcessManager.StartRun(
@@ -157,35 +132,10 @@ public static class MessageRouter
                 return;
             }
 
-            var runtimeOverride = Program.ResolveRuntimeOverride(request.RuntimePath ?? request.Python, tool);
-            if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
+            var runtimeOverride = ResolveToolRuntime(ctx, tool, request.RuntimePath ?? request.Python);
+            if (runtimeOverride == ResolveRuntimeFailed)
             {
-                var resolvedInterpreter = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-                if (string.IsNullOrWhiteSpace(resolvedInterpreter))
-                {
-                    ctx.SendMessage(new ErrorMessage(
-                        "未找到可用 Python 解释器",
-                        "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
-                    ));
-                    return;
-                }
-
-                runtimeOverride = resolvedInterpreter;
-            }
-
-            if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
-            {
-                var resolvedRuntime = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-                if (string.IsNullOrWhiteSpace(resolvedRuntime))
-                {
-                    ctx.SendMessage(new ErrorMessage(
-                        "未找到可用 Node.js 运行时。",
-                        "请安装 Node.js，或在工具详情里手动选择可用的 node.exe。"
-                    ));
-                    return;
-                }
-
-                runtimeOverride = resolvedRuntime;
+                return; // 错误消息已在 ResolveToolRuntime 中发送
             }
 
             _ = Task.Run(async () =>
@@ -487,17 +437,14 @@ public static class MessageRouter
                 return;
             }
 
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    ctx.TerminalManager.StopTerminal(request.TerminalId);
-                }
-                catch (Exception ex)
-                {
-                    ctx.SendMessage(new ErrorMessage("Failed to stop terminal.", ex.Message));
-                }
-            });
+                ctx.TerminalManager.StopTerminal(request.TerminalId);
+            }
+            catch (Exception ex)
+            {
+                ctx.SendMessage(new ErrorMessage("Failed to stop terminal.", ex.Message));
+            }
             return;
         }
     };
@@ -519,5 +466,46 @@ public static class MessageRouter
         {
             context.SendMessage(new ErrorMessage($"Unsupported message type: {baseMessage.Type}"));
         }
+    }
+
+    /// <summary>运行时解析失败时返回的哨兵值。</summary>
+    private static readonly string ResolveRuntimeFailed = "\x00__RESOLVE_FAILED__";
+
+    /// <summary>统一解析工具运行时路径，解析失败时自动发送错误消息并返回哨兵值。</summary>
+    private static string? ResolveToolRuntime(MessageContext ctx, ToolItem tool, string? rawRuntimePath)
+    {
+        var runtimeOverride = Program.ResolveRuntimeOverride(rawRuntimePath, tool);
+
+        if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
+        {
+            var resolved = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
+            if (string.IsNullOrWhiteSpace(resolved))
+            {
+                ctx.SendMessage(new ErrorMessage(
+                    "未找到可用 Python 解释器",
+                    "请在沙盒内安装 Python，或在工具详情里手动选择可用 python.exe。"
+                ));
+                return ResolveRuntimeFailed;
+            }
+
+            return resolved;
+        }
+
+        if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+        {
+            var resolved = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
+            if (string.IsNullOrWhiteSpace(resolved))
+            {
+                ctx.SendMessage(new ErrorMessage(
+                    "未找到可用 Node.js 运行时。",
+                    "请安装 Node.js，或在工具详情里手动选择可用的 node.exe。"
+                ));
+                return ResolveRuntimeFailed;
+            }
+
+            return resolved;
+        }
+
+        return runtimeOverride;
     }
 }

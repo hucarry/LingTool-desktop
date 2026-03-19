@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text;
 using ToolHub.App.Models;
 using ToolHub.App.Utils;
 
@@ -123,7 +124,9 @@ public sealed class ProcessManager : IDisposable
                 if (IsProcessRunning(context.Process))
                 {
                     context.RequestStop();
-                    ProcessKiller.KillProcessTreeAsync(context.Process).GetAwaiter().GetResult();
+                    // 使用带超时的 Wait 避免死锁，最多等 3 秒
+                    ProcessKiller.KillProcessTreeAsync(context.Process)
+                        .Wait(TimeSpan.FromSeconds(3));
                 }
             }
             catch
@@ -218,6 +221,8 @@ public sealed class ProcessManager : IDisposable
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true,
             WorkingDirectory = tool.Cwd ?? Directory.GetCurrentDirectory()
@@ -249,19 +254,8 @@ public sealed class ProcessManager : IDisposable
             return startInfo;
         }
 
-        if (string.Equals(tool.Type, "command", StringComparison.OrdinalIgnoreCase))
-        {
-            startInfo.FileName = tool.Path;
-
-            foreach (var arg in resolvedArgs)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            return startInfo;
-        }
-
-        if (string.Equals(tool.Type, "executable", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(tool.Type, "command", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(tool.Type, "executable", StringComparison.OrdinalIgnoreCase))
         {
             startInfo.FileName = tool.Path;
 

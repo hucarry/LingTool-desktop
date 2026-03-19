@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Photino.NET;
@@ -17,6 +18,11 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        // 注册完整编码支持（项目已引用 System.Text.Encoding.CodePages），确保中文等字符正确处理
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
+
         var appRoot = PathUtils.ResolveProjectRoot();
         var toolsFilePath = Path.Combine(appRoot, "tools.json");
         var registry = new ToolRegistry(toolsFilePath, JsonOptions);

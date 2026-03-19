@@ -127,10 +127,14 @@ public sealed class PythonPackageManager
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
             CreateNoWindow = true
         };
 
         startInfo.Environment["PIP_DISABLE_PIP_VERSION_CHECK"] = "1";
+        // 确保 pip 输出使用 UTF-8 编码
+        startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
         return startInfo;
     }
 
