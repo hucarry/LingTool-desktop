@@ -153,6 +153,7 @@ function isRowBusy(name: string): boolean {
             <tr
               v-for="item in filteredPackages"
               :key="item.name"
+              v-memo="[item.name, item.version, processing && processingAction === 'uninstall' && processingPackage === item.name]"
               class="odd:bg-transparent even:bg-white/3 hover:bg-hovered/60"
             >
               <td class="border-b border-border px-4 py-3 font-mono text-[0.95rem] text-foreground">{{ item.name }}</td>

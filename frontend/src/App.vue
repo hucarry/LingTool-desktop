@@ -3,8 +3,10 @@ import { onBeforeUnmount, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import NotificationViewport from './components/NotificationViewport.vue'
-import ToolRunner from './components/ToolRunner.vue'
 import WorkbenchLayout from './components/layout/WorkbenchLayout.vue'
+import { defineAsyncComponent } from 'vue'
+
+const ToolRunner = defineAsyncComponent(() => import('./components/ToolRunner.vue'))
 import { useBridgeBootstrap } from './composables/useBridgeBootstrap'
 import { useSettingsStore } from './stores/settings'
 import { useToolsStore } from './stores/tools'

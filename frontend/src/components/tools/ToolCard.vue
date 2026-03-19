@@ -22,7 +22,7 @@ const { t } = useI18n()
 
 <template>
   <article
-    class="flex min-h-36 cursor-pointer flex-col rounded-panel border border-border bg-sidebar p-3 transition-transform transition-colors hover:-translate-y-0.5 hover:border-accent"
+    class="flex min-h-20 cursor-pointer flex-col rounded-panel border border-border bg-sidebar p-2.5 transition hover:-translate-y-0.5 hover:border-accent"
     @click="emit('open')"
   >
     <header class="flex items-start justify-between gap-2">
@@ -124,7 +124,7 @@ const { t } = useI18n()
       </div>
     </header>
 
-    <div class="mt-3 flex flex-1 flex-col gap-2">
+    <div class="mt-2 flex flex-1 flex-col gap-2">
       <div v-if="!tool.valid" class="rounded-field border border-warning/40 bg-warning-soft p-2">
         <UiBadge tone="warning">{{ t('tools.invalidPath') }}</UiBadge>
         <p class="mt-1.5 text-[11px] leading-4 text-foreground">{{ t('tools.invalidHint') }}</p>
@@ -132,7 +132,7 @@ const { t } = useI18n()
 
     </div>
 
-    <footer class="mt-3 flex items-end justify-between gap-2" @click.stop>
+    <footer class="mt-2.5 flex items-end justify-between gap-2" @click.stop>
       <div class="flex min-w-0 flex-wrap gap-1">
         <UiBadge v-for="tag in tool.tags" :key="tag" tone="accent">{{ tag }}</UiBadge>
       </div>

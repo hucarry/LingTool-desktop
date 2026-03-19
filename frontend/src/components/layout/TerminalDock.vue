@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 
 import type { TerminalInfo } from '../../types'
 import {
@@ -35,6 +35,17 @@ const emit = defineEmits<{
 const panelHeight = computed(() => {
   return props.expanded ? `${props.height}px` : `${COLLAPSED_TERMINAL_HEIGHT}px`
 })
+
+const hasBeenExpanded = ref(props.expanded)
+watch(
+  () => props.expanded,
+  (expanded) => {
+    if (expanded) {
+      hasBeenExpanded.value = true
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -62,6 +73,7 @@ const panelHeight = computed(() => {
 
     <div v-show="expanded" class="min-h-0 flex-1">
       <TerminalPanel
+        v-if="hasBeenExpanded"
         :visible="expanded"
         :terminals="terminals"
         :active-terminal-id="activeTerminalId"

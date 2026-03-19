@@ -197,10 +197,11 @@ function deleteSelected(): void {
     />
 
     <div class="relative min-h-0 flex-1 overflow-auto">
-      <div class="grid grid-cols-1 gap-4 p-1 sm:grid-cols-4">
+      <div class="grid grid-cols-1 items-start gap-4 p-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         <ToolCard
           v-for="tool in visibleTools"
           :key="tool.id"
+          v-memo="[tool, selectedSet.has(tool.id), updating && editingToolId === tool.id]"
           :tool="tool"
           :selected="selectedSet.has(tool.id)"
           :busy="updating && editingToolId === tool.id"
