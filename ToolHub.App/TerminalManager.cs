@@ -12,8 +12,7 @@ public sealed class TerminalManager : IDisposable
     private const int DefaultRows = 30;
     private static readonly string TerminalScriptDirectory = Path.Combine(
         Path.GetTempPath(),
-        "ToolHub",
-        "terminal-scripts"
+        "th"
     );
 
     private readonly Action<object> _sendMessage;
@@ -844,7 +843,8 @@ public sealed class TerminalManager : IDisposable
 
     private static string BuildPowerShellScriptInvocation(IReadOnlyList<string> lines)
     {
-        var allLines = lines
+        var allLines = BuildPowerShellInvocationPrelude()
+            .Concat(lines)
             .Concat(
             [
                 "Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue"
@@ -852,12 +852,13 @@ public sealed class TerminalManager : IDisposable
             .ToArray();
 
         var scriptPath = CreateTerminalScriptFile(".ps1", allLines);
-        return $". {ToPowerShellLiteral(scriptPath)}\r\n";
+        return $". \"$env:TEMP\\th\\{Path.GetFileName(scriptPath)}\"\r\n";
     }
 
     private static string BuildCmdScriptInvocation(IReadOnlyList<string> lines)
     {
-        var allLines = lines
+        var allLines = BuildCmdInvocationPrelude()
+            .Concat(lines)
             .Concat(
             [
                 "del \"%~f0\" >nul 2>nul"
@@ -865,7 +866,7 @@ public sealed class TerminalManager : IDisposable
             .ToArray();
 
         var scriptPath = CreateTerminalScriptFile(".cmd", allLines);
-        return $"call {ToCmdQuoted(scriptPath)}\r\n";
+        return $"call \"%TEMP%\\th\\{Path.GetFileName(scriptPath)}\"\r\n";
     }
 
     private static string CreateTerminalScriptFile(string extension, IReadOnlyList<string> lines)
@@ -875,11 +876,28 @@ public sealed class TerminalManager : IDisposable
 
         var scriptPath = Path.Combine(
             TerminalScriptDirectory,
-            $"toolhub-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}{extension}"
+            $"th-{Guid.NewGuid():N}".Substring(0, 11) + extension
         );
 
         File.WriteAllLines(scriptPath, lines, ResolveTerminalScriptEncoding(extension));
         return scriptPath;
+    }
+
+    private static IEnumerable<string> BuildPowerShellInvocationPrelude()
+    {
+        return
+        [
+            "[Console]::Write(\"$([char]27)[1A$([char]27)[2K$([char]27)[1B$([char]27)[1G\")"
+        ];
+    }
+
+    private static IEnumerable<string> BuildCmdInvocationPrelude()
+    {
+        return
+        [
+            "for /f %%a in ('echo prompt $E^| cmd') do set \"TOOLHUB_ESC=%%a\"",
+            "<nul set /p \"=%TOOLHUB_ESC%[1A%TOOLHUB_ESC%[2K%TOOLHUB_ESC%[1B%TOOLHUB_ESC%[1G\""
+        ];
     }
 
     private static Encoding ResolveTerminalScriptEncoding(string extension)
@@ -902,7 +920,7 @@ public sealed class TerminalManager : IDisposable
             }
 
             var threshold = DateTime.UtcNow.AddHours(-12);
-            foreach (var file in Directory.EnumerateFiles(TerminalScriptDirectory, "toolhub-*.*"))
+            foreach (var file in Directory.EnumerateFiles(TerminalScriptDirectory, "th-*.*"))
             {
                 try
                 {
@@ -914,6 +932,25 @@ public sealed class TerminalManager : IDisposable
                 catch
                 {
                     // Ignore locked or already deleted temp script files.
+                }
+            }
+
+            var legacyDirectory = Path.Combine(Path.GetTempPath(), "ToolHub", "terminal-scripts");
+            if (Directory.Exists(legacyDirectory))
+            {
+                foreach (var file in Directory.EnumerateFiles(legacyDirectory, "toolhub-*.*"))
+                {
+                    try
+                    {
+                        if (File.GetLastWriteTimeUtc(file) < threshold)
+                        {
+                            File.Delete(file);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore locked or already deleted legacy temp script files.
+                    }
                 }
             }
         }
