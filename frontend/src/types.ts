@@ -135,8 +135,11 @@ export interface GetTerminalsRequest {
 
 export interface StartTerminalRequest {
   type: 'startTerminal'
+  title?: string
   shell?: string
   cwd?: string
+  toolType?: ToolType
+  runtimePath?: string
 }
 
 export interface TerminalInputRequest {
@@ -262,6 +265,7 @@ export interface PythonPackageInstallStatusMessage {
 
 export interface TerminalInfo {
   terminalId: string
+  title?: string
   shell: string
   cwd: string
   status: TerminalState

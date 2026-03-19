@@ -4,6 +4,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useTerminalsStore } from '../terminals'
 import type { TerminalOutputMessage, TerminalsMessage } from '../../types'
 
+function setExternalSender(spy: ReturnType<typeof vi.fn>) {
+  Object.defineProperty(window, 'external', {
+    value: { sendMessage: spy },
+    configurable: true,
+    writable: true,
+  })
+}
+
 describe('terminals store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -43,5 +51,29 @@ describe('terminals store', () => {
 
     expect(store.terminalOutputsById[terminalId]).toHaveLength(10000)
     expect(store.terminalOutputsById[terminalId]?.[0]).toBe('chunk-50')
+  })
+
+  it('sends tool runtime context when creating a terminal', () => {
+    const sendSpy = vi.fn()
+    setExternalSender(sendSpy)
+
+    const store = useTerminalsStore()
+    store.createTerminal({
+      title: '测试脚本',
+      shell: 'powershell.exe',
+      cwd: 'D:/Tools',
+      toolType: 'python',
+      runtimePath: 'D:/Tools/.venv/Scripts/python.exe',
+    })
+
+    expect(sendSpy).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(sendSpy.mock.calls[0]![0]!)).toEqual({
+      type: 'startTerminal',
+      title: '测试脚本',
+      shell: 'powershell.exe',
+      cwd: 'D:/Tools',
+      toolType: 'python',
+      runtimePath: 'D:/Tools/.venv/Scripts/python.exe',
+    })
   })
 })

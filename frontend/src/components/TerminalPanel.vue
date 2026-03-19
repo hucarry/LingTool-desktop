@@ -96,13 +96,31 @@ const contextMenu = reactive<ContextMenuState>({
   terminalId: '',
 })
 
+function getTerminalBaseLabel(terminal: TerminalInfo): string {
+  const title = terminal.title?.trim()
+  if (title) {
+    return title
+  }
+
+  return terminal.shell.split(/[\\/]/).pop() || terminal.shell || t('terminal.shellFallback')
+}
+
+const terminalLabelCounts = computed(() => {
+  const counts = new Map<string, number>()
+  props.terminals.forEach((terminal) => {
+    const baseLabel = getTerminalBaseLabel(terminal)
+    counts.set(baseLabel, (counts.get(baseLabel) ?? 0) + 1)
+  })
+  return counts
+})
+
 const terminalTabs = computed(() => {
   return props.terminals.map((terminal, index) => {
-    const shellName = terminal.shell.split(/[\\/]/).pop() || terminal.shell || t('terminal.shellFallback')
+    const baseLabel = getTerminalBaseLabel(terminal)
     const order = props.terminals.length - index
     return {
       ...terminal,
-      label: `${shellName} ${order}`,
+      label: (terminalLabelCounts.value.get(baseLabel) ?? 0) > 1 ? `${baseLabel} ${order}` : baseLabel,
       isCommandTarget: terminal.terminalId === commandTerminalId.value,
     }
   })

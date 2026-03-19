@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 
 import { bridge } from '../services/bridge'
 import type {
+  ToolType,
   TerminalInfo,
   TerminalOutputMessage,
   TerminalStartedMessage,
@@ -154,15 +155,18 @@ export const useTerminalsStore = defineStore('terminals', () => {
     bridge.send({ type: 'getTerminals' })
   }
 
-  function createTerminal(payload: { shell?: string; cwd?: string } = {}): void {
+  function createTerminal(payload: { title?: string; shell?: string; cwd?: string; toolType?: ToolType; runtimePath?: string } = {}): void {
     if (!beginCreateRequest()) {
       return
     }
 
     bridge.send({
       type: 'startTerminal',
+      title: payload.title,
       shell: payload.shell,
       cwd: payload.cwd,
+      toolType: payload.toolType,
+      runtimePath: payload.runtimePath,
     })
   }
 

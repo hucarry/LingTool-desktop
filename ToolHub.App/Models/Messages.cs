@@ -142,9 +142,15 @@ public sealed class UninstallPythonPackageRequest : IncomingMessage
 
 public sealed class StartTerminalRequest : IncomingMessage
 {
+    public string? Title { get; set; }
+
     public string? Shell { get; set; }
 
     public string? Cwd { get; set; }
+
+    public string? ToolType { get; set; }
+
+    public string? RuntimePath { get; set; }
 }
 
 public sealed class TerminalInputRequest : IncomingMessage

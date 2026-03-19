@@ -267,6 +267,10 @@ export const useToolsStore = defineStore('tools', () => {
 
   function runToolInTerminal(payload: { toolId: string; args: Record<string, string>; runtimePath?: string }): void {
     const tool = tools.value.find((item) => item.id === payload.toolId)
+    if (tool) {
+      activeTool.value = tool
+    }
+
     const effectiveRuntime = tool && isScriptToolType(tool.type)
       ? (payload.runtimePath?.trim()
         || getDefaultRuntimeForTool(tool, {

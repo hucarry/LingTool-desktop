@@ -384,7 +384,13 @@ public static class MessageRouter
             {
                 try
                 {
-                    await ctx.TerminalManager.StartTerminalAsync(request?.Shell, request?.Cwd);
+                    await ctx.TerminalManager.StartTerminalAsync(
+                        request?.Title,
+                        request?.Shell,
+                        request?.Cwd,
+                        request?.ToolType,
+                        request?.RuntimePath
+                    );
                 }
                 catch (Exception ex)
                 {

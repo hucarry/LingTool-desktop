@@ -12,6 +12,8 @@ public sealed class TerminalInfo
 {
     public string TerminalId { get; set; } = string.Empty;
 
+    public string? Title { get; set; }
+
     public string Shell { get; set; } = string.Empty;
 
     public string Cwd { get; set; } = string.Empty;
@@ -26,4 +28,3 @@ public sealed class TerminalInfo
 
     public int? Pid { get; set; }
 }
-

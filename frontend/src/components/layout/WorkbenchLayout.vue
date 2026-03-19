@@ -9,6 +9,7 @@ import ExplorerSidebar from './ExplorerSidebar.vue'
 import StatusBar from './StatusBar.vue'
 import TerminalDock from './TerminalDock.vue'
 import { useI18n } from '../../composables/useI18n'
+import { getDefaultRuntimeForTool, isScriptToolType } from '../../utils/toolTypes'
 import {
   ACTIVITY_BAR_WIDTH,
   MAX_SIDEBAR_WIDTH,
@@ -37,7 +38,7 @@ const terminalsStore = useTerminalsStore()
 const workbenchStore = useWorkbenchStore()
 
 const { defaultPythonPath, defaultNodePath, theme } = storeToRefs(settingsStore)
-const { tools } = storeToRefs(toolsStore)
+const { tools, activeTool } = storeToRefs(toolsStore)
 const { pythonPackages } = storeToRefs(pythonStore)
 const { terminals, activeTerminalId, terminalOutputsById } = storeToRefs(terminalsStore)
 const { sidebarWidth, sidebarVisible, terminalHeight, terminalExpanded } = storeToRefs(workbenchStore)
@@ -178,6 +179,27 @@ function navigate(path: MenuPath): void {
   }
 
   workbenchStore.setSidebarVisible(true)
+}
+
+function createTerminalWithContext(payload: { shell?: string; cwd?: string } = {}): void {
+  const tool = activeTool.value
+  if (!tool || !isScriptToolType(tool.type)) {
+    terminalsStore.createTerminal(payload)
+    return
+  }
+
+  const runtimePath = getDefaultRuntimeForTool(tool, {
+    defaultPythonPath: defaultPythonPath.value,
+    defaultNodePath: defaultNodePath.value,
+  })
+
+  terminalsStore.createTerminal({
+    ...payload,
+    title: tool.name,
+    cwd: payload.cwd ?? tool.cwd ?? undefined,
+    toolType: tool.type,
+    runtimePath: runtimePath || undefined,
+  })
 }
 
 function getSidebarMaxWidth(): number {
@@ -363,7 +385,7 @@ onBeforeUnmount(() => {
             @expand="workbenchStore.setTerminalExpanded(true)"
             @drag-start="beginDrag('terminal', 'ns-resize')"
             @select-terminal="terminalsStore.selectTerminal"
-            @create-terminal="terminalsStore.createTerminal"
+            @create-terminal="createTerminalWithContext"
             @stop-terminal="terminalsStore.stopTerminal"
             @stop-all-terminals="terminalsStore.stopAllTerminals"
             @input="terminalsStore.sendTerminalInput"
