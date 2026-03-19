@@ -7,6 +7,10 @@ param(
     [string]$PortablePythonVersion = "3.12.10",
     [string]$PortablePythonZipPath = "",
     [string]$GetPipScriptPath = "",
+    [string]$PortablePipIndexUrl = "",
+    [string[]]$PortablePipArgs = @(),
+    [switch]$NoBundlePortablePython,
+    [switch]$NoBundlePortablePip,
     [switch]$NoFrontendInstall,
     [switch]$NoFrontendBuild,
     [switch]$NoClean,
@@ -15,6 +19,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if ($NoBundlePortablePython) {
+    $BundlePortablePython = $false
+}
+
+if ($NoBundlePortablePip) {
+    $BundlePortablePip = $false
+}
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $frontendDir = Join-Path $projectRoot "frontend"
@@ -80,7 +92,7 @@ function Assert-FrontendDependenciesAvailable([string]$frontendDir) {
         (Join-Path $frontendDir "node_modules\.bin\vite.cmd")
     )
 
-    $missing = $requiredBins | Where-Object { -not (Test-Path $_) }
+    $missing = @($requiredBins | Where-Object { -not (Test-Path $_) })
     if ($missing.Count -gt 0) {
         $message = @"
 Frontend dependencies look incomplete.
@@ -164,7 +176,24 @@ function Bundle-PortablePython(
 
         if (-not (Test-Path $resolvedZip)) {
             Write-Host "Downloading portable Python: $url" -ForegroundColor DarkGray
-            Invoke-WebRequest -Uri $url -OutFile $resolvedZip
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $resolvedZip
+            }
+            catch {
+                $message = @"
+Failed to download portable Python from:
+  $url
+
+Recommended retries:
+1. Re-run in a clean shell:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+2. If your network is unstable, download the embed package manually and pass:
+   -PortablePythonZipPath C:\path\to\python-$version-embed-$arch.zip
+3. If you do not need bundled Python, skip it:
+   -NoBundlePortablePython
+"@
+                throw "$message`n$($_.Exception.Message)"
+            }
         }
     }
 
@@ -184,7 +213,24 @@ function Resolve-GetPipScript([string]$manualPath) {
     if (-not (Test-Path $target)) {
         $url = "https://bootstrap.pypa.io/get-pip.py"
         Write-Host "Downloading get-pip.py: $url" -ForegroundColor DarkGray
-        Invoke-WebRequest -Uri $url -OutFile $target
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $target
+        }
+        catch {
+            $message = @"
+Failed to download get-pip.py from:
+  $url
+
+Recommended retries:
+1. Re-run in a clean shell:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+2. Download get-pip.py manually and pass:
+   -GetPipScriptPath C:\path\to\get-pip.py
+3. If you can publish without bundled pip, skip it:
+   -NoBundlePortablePip
+"@
+            throw "$message`n$($_.Exception.Message)"
+        }
     }
 
     return $target
@@ -192,7 +238,9 @@ function Resolve-GetPipScript([string]$manualPath) {
 
 function Install-PortablePip(
     [string]$pythonDir,
-    [string]$getPipScriptPath
+    [string]$getPipScriptPath,
+    [string]$pipIndexUrl,
+    [string[]]$pipArgs
 ) {
     $pythonExe = Join-Path $pythonDir "python.exe"
     if (-not (Test-Path $pythonExe)) {
@@ -200,10 +248,60 @@ function Install-PortablePip(
     }
 
     $script = Resolve-GetPipScript $getPipScriptPath
-    & $pythonExe $script "--disable-pip-version-check" "--no-warn-script-location"
+    $commandArgs = @(
+        $script,
+        "--disable-pip-version-check",
+        "--no-warn-script-location"
+    )
+
+    $pipArgs = @($pipArgs)
+
+    if (-not [string]::IsNullOrWhiteSpace($pipIndexUrl)) {
+        $commandArgs += @("--index-url", $pipIndexUrl.Trim())
+    }
+
+    if ($pipArgs.Count -gt 0) {
+        $commandArgs += $pipArgs
+    }
+
+    try {
+        & $pythonExe @commandArgs
+    }
+    catch {
+        $message = @"
+Portable pip bootstrap failed.
+
+Recommended retries:
+1. Re-run in a clean shell:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+2. If your network to PyPI is unstable, pass a mirror explicitly:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
+3. If you only need the desktop app and can skip packaged pip:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
+"@
+        throw "$message`n$($_.Exception.Message)"
+    }
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to install pip into portable Python."
+        $mirrorHint = ""
+        if ($pipArgs.Count -eq 0) {
+            $mirrorHint = @"
+2. If your network to PyPI is unstable, retry with a mirror:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
+"@
+        }
+
+        $message = @"
+Failed to install pip into portable Python.
+
+Recommended retries:
+1. Re-run in a clean shell:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+$mirrorHint
+3. If you only need the desktop app and can skip packaged pip:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
+"@
+        throw $message
     }
 
     & $pythonExe -m pip --version
@@ -270,7 +368,7 @@ if ($BundlePortablePython) {
 
     if ($BundlePortablePip) {
         Run-Step "Install pip into portable Python" {
-            Install-PortablePip -pythonDir $portablePythonDir -getPipScriptPath $GetPipScriptPath
+            Install-PortablePip -pythonDir $portablePythonDir -getPipScriptPath $GetPipScriptPath -pipIndexUrl $PortablePipIndexUrl -pipArgs $PortablePipArgs
         }
     }
 }

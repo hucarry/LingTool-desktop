@@ -309,6 +309,8 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
 ./publish.ps1 -NoFrontendInstall
 ./publish.ps1 -NoFrontendBuild
 ./publish.ps1 -OpenOutput
+./publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
+./publish.ps1 -NoBundlePortablePip
 ```
 
 ### 发布说明
@@ -317,6 +319,24 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
 - 脚本会优先构建前端，再执行 `dotnet publish`
 - 可选打包便携版 Python 和 pip
 - 发布目录中请保留你自己的 `tools.json`
+
+如果在安装便携版 pip 时遇到网络相关错误（例如只看到 `ERROR: Operation cancelled by user`），优先尝试以下命令：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+```
+
+如果仍然失败，可显式指定 PyPI 镜像：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+如果当前只需要完成应用发布、不要求内置 pip，可临时跳过：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
+```
 
 ## 常见问题
 
