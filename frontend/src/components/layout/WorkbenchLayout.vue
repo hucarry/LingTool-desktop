@@ -58,6 +58,19 @@ const menuItems = computed(() => [
   { path: '/settings' as const, glyph: 'ST', title: t('app.settings') },
 ])
 
+function formatRuntimePathLabel(raw: string): string {
+  const segments = raw.split(/[\\/]+/).filter(Boolean)
+  if (segments.length === 0) {
+    return raw
+  }
+
+  if (segments.length === 1) {
+    return segments[0] || raw
+  }
+
+  return `${segments[segments.length - 2]}\\${segments[segments.length - 1]}`
+}
+
 const activeMenu = computed<MenuPath>(() => {
   if (route.path.startsWith('/settings')) {
     return '/settings'
@@ -86,7 +99,7 @@ const defaultPythonLabel = computed(() => {
     return t('app.python.systemDefault')
   }
 
-  return raw.split(/[\\/]/).pop() || raw
+  return formatRuntimePathLabel(raw)
 })
 const defaultNodeLabel = computed(() => {
   const raw = defaultNodePath.value.trim()
@@ -94,7 +107,7 @@ const defaultNodeLabel = computed(() => {
     return t('app.node.systemDefault')
   }
 
-  return raw.split(/[\\/]/).pop() || raw
+  return formatRuntimePathLabel(raw)
 })
 const currentViewSummary = computed(() => {
   if (activeMenu.value === '/python') {

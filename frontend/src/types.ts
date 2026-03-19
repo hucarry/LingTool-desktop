@@ -39,6 +39,10 @@ export interface GetToolsRequest {
   type: 'getTools'
 }
 
+export interface GetAppDefaultsRequest {
+  type: 'getAppDefaults'
+}
+
 export interface AddToolPayload {
   id: string
   name: string
@@ -154,6 +158,7 @@ export interface StopTerminalRequest {
 }
 
 export type FrontMessage =
+  | GetAppDefaultsRequest
   | GetToolsRequest
   | AddToolRequest
   | UpdateToolRequest
@@ -289,7 +294,13 @@ export interface TerminalStatusMessage {
   terminal: TerminalInfo
 }
 
+export interface AppDefaultsMessage {
+  type: 'appDefaults'
+  pythonPath?: string
+}
+
 export type BackMessage =
+  | AppDefaultsMessage
   | ToolsMessage
   | ToolAddedMessage
   | ToolUpdatedMessage

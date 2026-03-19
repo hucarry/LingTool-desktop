@@ -35,4 +35,21 @@ describe('settings store', () => {
     expect(window.localStorage.getItem('toolhub.defaultPythonPath')).toBe('C:/Python/python.exe')
     expect(window.localStorage.getItem('toolhub.defaultNodePath')).toBe('C:/Node/node.exe')
   })
+
+  it('falls back to the app bundled Python when no manual path is set', async () => {
+    const store = useSettingsStore()
+
+    store.setAppDefaultPythonPath('D:/Apps/ToolHub/python/python.exe')
+    await nextTick()
+
+    expect(store.defaultPythonPath).toBe('D:/Apps/ToolHub/python/python.exe')
+
+    store.setDefaultPythonPath('C:/Python/python.exe')
+    await nextTick()
+    expect(store.defaultPythonPath).toBe('C:/Python/python.exe')
+
+    store.clearDefaultPythonPath()
+    await nextTick()
+    expect(store.defaultPythonPath).toBe('D:/Apps/ToolHub/python/python.exe')
+  })
 })

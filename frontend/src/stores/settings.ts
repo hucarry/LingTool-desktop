@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { bridge } from '../services/bridge'
 
@@ -37,7 +37,7 @@ function loadLocale(): AppLocale {
   }
 }
 
-function loadPythonPath(): string {
+function loadStoredPythonPath(): string {
   if (typeof window === 'undefined') {
     return ''
   }
@@ -72,7 +72,9 @@ function applyTheme(theme: Theme): void {
 export const useSettingsStore = defineStore('settings', () => {
   const theme = ref<Theme>(loadTheme())
   const locale = ref<AppLocale>(loadLocale())
-  const defaultPythonPath = ref(loadPythonPath())
+  const storedDefaultPythonPath = ref(loadStoredPythonPath())
+  const appDefaultPythonPath = ref('')
+  const defaultPythonPath = computed(() => storedDefaultPythonPath.value || appDefaultPythonPath.value)
   const defaultNodePath = ref(loadNodePath())
 
   watch(
@@ -105,7 +107,7 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   })
 
-  watch(defaultPythonPath, (nextPath) => {
+  watch(storedDefaultPythonPath, (nextPath) => {
     if (typeof window === 'undefined') {
       return
     }
@@ -138,11 +140,15 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function setDefaultPythonPath(path: string): void {
-    defaultPythonPath.value = path.trim()
+    storedDefaultPythonPath.value = path.trim()
   }
 
   function clearDefaultPythonPath(): void {
-    defaultPythonPath.value = ''
+    storedDefaultPythonPath.value = ''
+  }
+
+  function setAppDefaultPythonPath(path?: string): void {
+    appDefaultPythonPath.value = path?.trim() ?? ''
   }
 
   function setDefaultNodePath(path: string): void {
@@ -174,11 +180,13 @@ export const useSettingsStore = defineStore('settings', () => {
     theme,
     locale,
     defaultPythonPath,
+    appDefaultPythonPath,
     defaultNodePath,
     setTheme,
     setLocale,
     setDefaultPythonPath,
     clearDefaultPythonPath,
+    setAppDefaultPythonPath,
     setDefaultNodePath,
     clearDefaultNodePath,
     pickDefaultPython,

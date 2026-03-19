@@ -21,6 +21,7 @@ public static class BridgeMessageTypes
     public const string TerminalInput = "terminalInput";
     public const string TerminalResize = "terminalResize";
     public const string StopTerminal = "stopTerminal";
+    public const string GetAppDefaults = "getAppDefaults";
 
     public const string Tools = "tools";
     public const string RunStarted = "runStarted";
@@ -38,6 +39,7 @@ public static class BridgeMessageTypes
     public const string TerminalStarted = "terminalStarted";
     public const string TerminalOutput = "terminalOutput";
     public const string TerminalStatus = "terminalStatus";
+    public const string AppDefaults = "appDefaults";
     public const string Error = "error";
 }
 
@@ -164,6 +166,10 @@ public sealed class TerminalResizeRequest : IncomingMessage
 public sealed class StopTerminalRequest : IncomingMessage
 {
     public string TerminalId { get; set; } = string.Empty;
+}
+
+public sealed class GetAppDefaultsRequest : IncomingMessage
+{
 }
 
 public sealed class ToolsMessage
@@ -401,6 +407,18 @@ public sealed class TerminalStatusMessage
     public string Type { get; } = BridgeMessageTypes.TerminalStatus;
 
     public TerminalInfo Terminal { get; }
+}
+
+public sealed class AppDefaultsMessage
+{
+    public AppDefaultsMessage(string? pythonPath)
+    {
+        PythonPath = pythonPath;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.AppDefaults;
+
+    public string? PythonPath { get; }
 }
 
 public sealed class ErrorMessage

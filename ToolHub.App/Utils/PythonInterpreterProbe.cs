@@ -84,6 +84,19 @@ public static class PythonInterpreterProbe
         return null;
     }
 
+    public static string? ResolveBundled()
+    {
+        foreach (var candidate in GetBundledPythonCandidates())
+        {
+            if (IsUsable(candidate))
+            {
+                return Normalize(candidate);
+            }
+        }
+
+        return null;
+    }
+
     private static string Normalize(string value)
     {
         return value.Trim().Trim('"');

@@ -20,6 +20,9 @@ export function useBridgeBootstrap() {
 
   function handleBackendMessage(message: BackMessage): void {
     switch (message.type) {
+      case 'appDefaults':
+        settingsStore.setAppDefaultPythonPath(message.pythonPath)
+        break
       case 'tools':
         toolsStore.handleToolsMessage(message)
         break
@@ -133,6 +136,7 @@ export function useBridgeBootstrap() {
 
     initialized = true
     unsubscribe = bridge.onMessage(handleBackendMessage)
+    bridge.send({ type: 'getAppDefaults' })
     terminalsStore.fetchTerminals()
   }
 

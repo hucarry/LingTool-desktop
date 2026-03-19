@@ -28,6 +28,12 @@ public static class MessageRouter
             return;
         },
 
+        [BridgeMessageTypes.GetAppDefaults] = (ctx, _) =>
+        {
+            ctx.SendMessage(new AppDefaultsMessage(PythonInterpreterProbe.ResolveBundled()));
+            return;
+        },
+
         [BridgeMessageTypes.AddTool] = (ctx, raw) =>
         {
             var request = JsonSerializer.Deserialize<AddToolRequest>(raw, ctx.JsonOptions);
