@@ -68,6 +68,20 @@ function Invoke-FrontendInstall([string]$frontendDir) {
         }
     }
     catch {
+        $installExitCode = $LASTEXITCODE
+        $hasLockFile = Test-Path (Join-Path $frontendDir "package-lock.json")
+        if ($hasLockFile -and $installExitCode -eq -4048) {
+            Write-Warn "npm ci failed with EPERM (-4048). A file in node_modules is likely locked by VS Code, antivirus, or the OS."
+            Write-Warn "Falling back to npm install without removing the whole dependency tree."
+
+            Run-Step "Retry frontend dependencies (npm install fallback)" {
+                npm install
+                Assert-LastExitCode "npm install fallback"
+            }
+
+            return
+        }
+
         $message = @"
 Frontend dependency installation failed.
 
