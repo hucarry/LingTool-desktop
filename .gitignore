@@ -8,6 +8,8 @@ publish/
 !scripts/
 !scripts/publish/
 !scripts/publish/*.ps1
+!scripts/publish/python/
+!scripts/publish/python/*.ps1
 
 # Temporary build folders
 .tmp_build/
