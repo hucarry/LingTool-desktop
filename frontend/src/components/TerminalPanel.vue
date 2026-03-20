@@ -414,7 +414,7 @@ function clearOutput(): void {
     return
   }
 
-  emit('clearOutput', commandTerminalId.value)
+  emit('input', { terminalId: commandTerminalId.value, data: 'clear\r' })
 }
 
 function openTabContextMenu(event: MouseEvent, terminalId: string): void {

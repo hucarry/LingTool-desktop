@@ -503,7 +503,7 @@ public sealed class TerminalManager : IDisposable
         }
 
         sb.Append(string.Join(" ", parts.Select(ToGenericQuoted)));
-        sb.Append("\n");
+        sb.Append("\r");
 
         return sb.ToString();
     }
@@ -527,7 +527,7 @@ public sealed class TerminalManager : IDisposable
             return null;
         }
 
-        return string.Join(" && ", parts) + "\n";
+        return string.Join(" && ", parts) + "\r";
     }
 
     private static string? BuildSessionSetupCommand(ShellKind shellKind, string toolType, string runtimePath)
@@ -548,7 +548,13 @@ public sealed class TerminalManager : IDisposable
 
     private static string? BuildPowerShellSessionSetup(string toolType, string runtimePath)
     {
-        var commands = new List<string>();
+        var commands = new List<string>
+        {
+            "$env:VIRTUAL_ENV_DISABLE_PROMPT = '1'",
+            "$env:CONDA_CHANGEPS1 = 'false'",
+            "if (-not (Test-Path Function:_ToolHub_Old_Prompt)) { Rename-Item Function:prompt _ToolHub_Old_Prompt -ErrorAction SilentlyContinue }",
+            $"function global:prompt {{ Write-Host -NoNewline -ForegroundColor Green {ToPowerShellLiteral($"({runtimePath}) ")}; if (Test-Path Function:_ToolHub_Old_Prompt) {{ & Function:_ToolHub_Old_Prompt }} else {{ \"PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) \" }} }}"
+        };
 
         if (string.Equals(toolType, "python", StringComparison.OrdinalIgnoreCase))
         {
@@ -575,18 +581,16 @@ public sealed class TerminalManager : IDisposable
                 return string.Join("; ", commands);
             }
 
-            return commands.Count > 0 ? string.Join("; ", commands) : null;
+            return commands.Count > 4 ? string.Join("; ", commands) : null;
         }
 
         if (string.Equals(toolType, "node", StringComparison.OrdinalIgnoreCase)
             && TryGetRuntimeDirectory(runtimePath, out var nodeRuntimeDirectory))
         {
-            return string.Join("; ",
-            [
-                BuildPowerShellRuntimeFunctionResetCommand(),
-                BuildPowerShellPathPrependCommand(nodeRuntimeDirectory),
-                $"function global:node {{ & {ToPowerShellLiteral(runtimePath)} @args }}"
-            ]);
+            commands.Add(BuildPowerShellRuntimeFunctionResetCommand());
+            commands.Add(BuildPowerShellPathPrependCommand(nodeRuntimeDirectory));
+            commands.Add($"function global:node {{ & {ToPowerShellLiteral(runtimePath)} @args }}");
+            return string.Join("; ", commands);
         }
 
         return null;
@@ -594,33 +598,42 @@ public sealed class TerminalManager : IDisposable
 
     private static string? BuildCmdSessionSetup(string toolType, string runtimePath)
     {
+        var commands = new List<string>
+        {
+            "set \"VIRTUAL_ENV_DISABLE_PROMPT=1\"",
+            "set \"CONDA_CHANGEPS1=false\"",
+            $"set \"PROMPT=({runtimePath}) $P$G\""
+        };
+
         if (string.Equals(toolType, "python", StringComparison.OrdinalIgnoreCase))
         {
             if (TryGetVirtualEnvActivateBatch(runtimePath, out var activateBatch))
             {
-                return $"call {ToCmdQuoted(activateBatch)}";
+                commands.Add($"call {ToCmdQuoted(activateBatch)}");
+                return string.Join(" && ", commands);
             }
 
             if (TryGetCondaEnvironmentRoot(runtimePath, out var condaRoot))
             {
-                return $"call conda activate {ToCmdQuoted(condaRoot)}";
+                commands.Add($"call conda activate {ToCmdQuoted(condaRoot)}");
+                return string.Join(" && ", commands);
             }
 
             if (TryGetRuntimeDirectory(runtimePath, out var runtimeDirectory))
             {
-                var commands = new List<string>
-                {
-                    $"set \"PATH={runtimeDirectory};%PATH%\""
-                };
+                commands.Add($"set \"PATH={runtimeDirectory};%PATH%\"");
                 commands.AddRange(BuildCmdBundledPythonEnvironmentCommands(runtimePath));
                 return string.Join(" && ", commands);
             }
+            
+            return commands.Count > 3 ? string.Join(" && ", commands) : null;
         }
 
         if (string.Equals(toolType, "node", StringComparison.OrdinalIgnoreCase)
             && TryGetRuntimeDirectory(runtimePath, out var nodeRuntimeDirectory))
         {
-            return $"set \"PATH={nodeRuntimeDirectory};%PATH%\"";
+            commands.Add($"set \"PATH={nodeRuntimeDirectory};%PATH%\"");
+            return string.Join(" && ", commands);
         }
 
         return null;
@@ -852,7 +865,7 @@ public sealed class TerminalManager : IDisposable
             .ToArray();
 
         var scriptPath = CreateTerminalScriptFile(".ps1", allLines);
-        return $". \"$env:TEMP\\th\\{Path.GetFileName(scriptPath)}\"\r\n";
+        return $". \"$env:TEMP\\th\\{Path.GetFileName(scriptPath)}\"\r";
     }
 
     private static string BuildCmdScriptInvocation(IReadOnlyList<string> lines)
@@ -866,7 +879,7 @@ public sealed class TerminalManager : IDisposable
             .ToArray();
 
         var scriptPath = CreateTerminalScriptFile(".cmd", allLines);
-        return $"call \"%TEMP%\\th\\{Path.GetFileName(scriptPath)}\"\r\n";
+        return $"call \"%TEMP%\\th\\{Path.GetFileName(scriptPath)}\"\r";
     }
 
     private static string CreateTerminalScriptFile(string extension, IReadOnlyList<string> lines)
@@ -885,19 +898,12 @@ public sealed class TerminalManager : IDisposable
 
     private static IEnumerable<string> BuildPowerShellInvocationPrelude()
     {
-        return
-        [
-            "[Console]::Write(\"$([char]27)[1A$([char]27)[2K$([char]27)[1B$([char]27)[1G\")"
-        ];
+        return [];
     }
 
     private static IEnumerable<string> BuildCmdInvocationPrelude()
     {
-        return
-        [
-            "for /f %%a in ('echo prompt $E^| cmd') do set \"TOOLHUB_ESC=%%a\"",
-            "<nul set /p \"=%TOOLHUB_ESC%[1A%TOOLHUB_ESC%[2K%TOOLHUB_ESC%[1B%TOOLHUB_ESC%[1G\""
-        ];
+        return [];
     }
 
     private static Encoding ResolveTerminalScriptEncoding(string extension)
