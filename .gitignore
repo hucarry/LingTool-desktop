@@ -2,6 +2,8 @@
 /ToolHub.App/bin/
 /ToolHub.App/obj/
 /ToolHub.App/wwwroot/
+/ToolHub.App.Tests/bin/
+/ToolHub.App.Tests/obj/
 publish/
 
 # Temporary build folders
