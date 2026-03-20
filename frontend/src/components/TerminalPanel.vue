@@ -817,12 +817,12 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--vscode-panel-bg);
+  background: var(--surface-panel);
 }
 
 .terminal-toolbar {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--vscode-border-color);
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -842,19 +842,19 @@ onBeforeUnmount(() => {
 
 .panel-tab {
   font-size: 11px;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   letter-spacing: 0.8px;
   white-space: nowrap;
 }
 
 .panel-tab.is-active {
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
 }
 
 .terminal-instance {
   border: 0;
   background: transparent;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   display: inline-flex;
   align-items: center;
@@ -867,17 +867,17 @@ onBeforeUnmount(() => {
 }
 
 .terminal-instance:hover {
-  background: var(--vscode-hover-bg);
-  color: var(--vscode-text-primary);
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .terminal-instance.active {
-  background: var(--vscode-active-bg);
-  color: var(--vscode-text-primary);
+  background: var(--surface-active);
+  color: var(--text-primary);
 }
 
 .terminal-instance.target {
-  outline: 1px solid color-mix(in srgb, var(--vscode-accent-color) 55%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
   outline-offset: -1px;
 }
 
@@ -896,7 +896,7 @@ onBeforeUnmount(() => {
   padding: 0 4px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--vscode-accent-color);
+  color: var(--accent-color);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -923,7 +923,7 @@ onBeforeUnmount(() => {
 }
 
 .terminal-close:hover {
-  background: var(--vscode-hover-bg);
+  background: var(--surface-hover);
   opacity: 1;
 }
 
@@ -931,7 +931,7 @@ onBeforeUnmount(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--vscode-text-muted);
+  background: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -941,7 +941,7 @@ onBeforeUnmount(() => {
 
 .terminal-state.stopped,
 .terminal-state.exited {
-  background: var(--vscode-text-muted);
+  background: var(--text-muted);
 }
 
 .terminal-state.failed {
@@ -949,7 +949,7 @@ onBeforeUnmount(() => {
 }
 
 .terminal-empty {
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -963,7 +963,7 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-summary {
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -973,9 +973,9 @@ onBeforeUnmount(() => {
   align-items: center;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
   font-size: 11px;
   background: var(--surface-soft);
   white-space: nowrap;
@@ -984,7 +984,7 @@ onBeforeUnmount(() => {
 .toolbar-action {
   border: 1px solid transparent;
   background: transparent;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   height: 22px;
   min-width: 22px;
   padding: 0 8px;
@@ -994,8 +994,8 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-action:hover:not(:disabled) {
-  background: var(--vscode-hover-bg);
-  color: var(--vscode-text-primary);
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .toolbar-action:disabled {
@@ -1008,13 +1008,13 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-action.is-accent {
-  color: var(--vscode-text-primary);
-  border-color: var(--vscode-border-color);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .split-toolbar {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--vscode-border-color);
+  border-bottom: 1px solid var(--border-default);
   background: var(--surface-soft);
   padding: 6px 8px;
   display: flex;
@@ -1024,7 +1024,7 @@ onBeforeUnmount(() => {
 }
 
 .split-status {
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -1036,18 +1036,18 @@ onBeforeUnmount(() => {
 
 .split-target-chip {
   height: 24px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   background: transparent;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   padding: 0 10px;
   font-size: 11px;
   cursor: pointer;
 }
 
 .split-target-chip.active {
-  border-color: var(--vscode-accent-color);
-  color: var(--vscode-text-primary);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
   background: var(--accent-soft);
 }
 
@@ -1055,24 +1055,24 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
 .split-selector select {
   min-width: 180px;
   height: 28px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--vscode-editor-bg);
-  color: var(--vscode-text-primary);
+  background: var(--surface-editor);
+  color: var(--text-primary);
   padding: 0 8px;
 }
 
 .advanced-toolbar {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--vscode-border-color);
-  background: var(--vscode-sidebar-bg);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-sidebar);
   padding: 8px;
   display: grid;
   grid-template-columns: minmax(160px, 220px) 1fr auto;
@@ -1088,26 +1088,26 @@ onBeforeUnmount(() => {
 
 .profile-field span {
   font-size: 11px;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
 }
 
 .profile-field input {
   width: 100%;
   height: 32px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: var(--vscode-editor-bg);
-  color: var(--vscode-text-primary);
+  background: var(--surface-editor);
+  color: var(--text-primary);
   padding: 0 10px;
-  font-family: var(--vscode-font-mono);
+  font-family: var(--font-mono);
 }
 
 .profile-create {
   align-self: end;
   height: 32px;
-  border: 1px solid var(--vscode-accent-color);
+  border: 1px solid var(--accent-color);
   border-radius: 4px;
-  background: var(--vscode-accent-color);
+  background: var(--accent-color);
   color: #ffffff;
   padding: 0 14px;
   cursor: pointer;
@@ -1126,19 +1126,19 @@ onBeforeUnmount(() => {
 
 .profile-shortcut {
   height: 28px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   background: transparent;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   padding: 0 10px;
   font-size: 11px;
   cursor: pointer;
 }
 
 .profile-shortcut:hover {
-  border-color: var(--vscode-accent-color);
-  color: var(--vscode-text-primary);
-  background: var(--vscode-hover-bg);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+  background: var(--surface-hover);
 }
 
 .terminal-layout {
@@ -1146,25 +1146,25 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr;
-  background: var(--vscode-editor-bg);
+  background: var(--surface-editor);
 }
 
 .terminal-layout.is-split {
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: var(--vscode-border-color);
+  background: var(--border-default);
 }
 
 .terminal-pane {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--vscode-editor-bg);
+  background: var(--surface-editor);
   border: 1px solid transparent;
 }
 
 .terminal-pane.focused {
-  border-color: var(--vscode-accent-color);
+  border-color: var(--accent-color);
 }
 
 .pane-header {
@@ -1175,8 +1175,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 0 8px;
-  border-bottom: 1px solid var(--vscode-border-color);
-  background: var(--vscode-sidebar-bg);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-sidebar);
 }
 
 .pane-heading {
@@ -1187,18 +1187,18 @@ onBeforeUnmount(() => {
 }
 
 .pane-title {
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
   font-size: 11px;
 }
 
 .pane-path {
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--vscode-font-mono);
+  font-family: var(--font-mono);
 }
 
 .pane-meta-group {
@@ -1209,7 +1209,7 @@ onBeforeUnmount(() => {
 }
 
 .pane-meta {
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -1221,7 +1221,7 @@ onBeforeUnmount(() => {
   padding: 0 6px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--vscode-accent-color);
+  color: var(--accent-color);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1231,7 +1231,7 @@ onBeforeUnmount(() => {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
 }
 
 .pane-status.running {
@@ -1245,13 +1245,13 @@ onBeforeUnmount(() => {
 .pane-close {
   border: 0;
   background: transparent;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
 }
 
 .pane-close:hover {
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
 }
 
 .pane-body {
@@ -1265,7 +1265,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
   font-size: 12px;
   letter-spacing: 0.3px;
 }
@@ -1281,7 +1281,7 @@ onBeforeUnmount(() => {
   min-width: 220px;
   max-width: 320px;
   padding: 18px 20px;
-  border: 1px dashed var(--vscode-border-color);
+  border: 1px dashed var(--border-default);
   border-radius: 8px;
   background: var(--surface-empty);
   display: flex;
@@ -1292,13 +1292,13 @@ onBeforeUnmount(() => {
 
 .terminal-empty-title {
   font-size: 12px;
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
   letter-spacing: 0.3px;
 }
 
 .terminal-empty-desc {
   font-size: 11px;
-  color: var(--vscode-text-muted);
+  color: var(--text-muted);
 }
 
 .terminal-empty-actions {
@@ -1311,17 +1311,17 @@ onBeforeUnmount(() => {
 
 .empty-action {
   height: 30px;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   background: transparent;
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
   padding: 0 12px;
   cursor: pointer;
 }
 
 .empty-action.primary {
-  border-color: var(--vscode-accent-color);
-  background: var(--vscode-accent-color);
+  border-color: var(--accent-color);
+  background: var(--accent-color);
   color: var(--text-on-accent);
 }
 
@@ -1331,17 +1331,17 @@ onBeforeUnmount(() => {
   min-width: 170px;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--vscode-border-color);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   overflow: hidden;
-  background: var(--vscode-sidebar-bg);
+  background: var(--surface-sidebar);
   box-shadow: var(--shadow-menu);
 }
 
 .menu-item {
   border: 0;
   background: transparent;
-  color: var(--vscode-text-primary);
+  color: var(--text-primary);
   text-align: left;
   font-size: 12px;
   padding: 8px 10px;
@@ -1349,7 +1349,7 @@ onBeforeUnmount(() => {
 }
 
 .menu-item:hover {
-  background: var(--vscode-active-bg);
+  background: var(--surface-active);
 }
 
 .menu-item.danger:hover {

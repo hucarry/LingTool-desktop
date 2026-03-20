@@ -214,7 +214,7 @@ watch(theme, async () => {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: #1e1e1e;
+  background: var(--terminal-bg);
 }
 
 :deep(.xterm) {

@@ -132,6 +132,26 @@ html[data-theme="light"] {
   --scrollbar-thumb: #b4bcc9;
   --scrollbar-thumb-hover: #9ea8b8;
   --statusbar-hover-bg: rgb(255 255 255 / 0.14);
+  --terminal-bg: #ffffff;
+  --terminal-foreground: #333333;
+  --terminal-cursor: #333333;
+  --terminal-selection: #add6ff;
+  --terminal-black: #000000;
+  --terminal-red: #cd3131;
+  --terminal-green: #00bc00;
+  --terminal-yellow: #949800;
+  --terminal-blue: #0451a5;
+  --terminal-magenta: #bc05bc;
+  --terminal-cyan: #0598bc;
+  --terminal-white: #555555;
+  --terminal-bright-black: #666666;
+  --terminal-bright-red: #cd3131;
+  --terminal-bright-green: #14ce14;
+  --terminal-bright-yellow: #b5ba00;
+  --terminal-bright-blue: #0451a5;
+  --terminal-bright-magenta: #bc05bc;
+  --terminal-bright-cyan: #0598bc;
+  --terminal-bright-white: #a5a5a5;
 }
 
 @layer base {

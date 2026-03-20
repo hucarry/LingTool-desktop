@@ -23,10 +23,14 @@ export interface ToolFormState {
   description: string
 }
 
+function generateRandomId(): string {
+  return 'tool_' + Math.random().toString(36).substring(2, 8)
+}
+
 export function useToolForm(defaultType: ToolType = 'python') {
   const { t } = useI18n()
   const form = reactive<ToolFormState>({
-    id: '',
+    id: generateRandomId(),
     name: '',
     type: defaultType,
     path: '',
@@ -157,7 +161,7 @@ export function useToolForm(defaultType: ToolType = 'python') {
   }
 
   function resetForm(): void {
-    form.id = ''
+    form.id = generateRandomId()
     form.name = ''
     form.type = defaultType
     form.path = ''
@@ -191,11 +195,17 @@ export function useToolForm(defaultType: ToolType = 'python') {
     if (autoFill && supportsPathBrowse(form.type) && !form.cwd.trim()) {
       fillWorkingDirectory(path)
     }
-    if (autoFill && !form.id.trim()) {
-      form.id = createIdFromInput(path)
+    if (autoFill && (!form.id.trim() || form.id.startsWith('tool_'))) {
+      const generatedId = createIdFromInput(path)
+      if (generatedId && generatedId !== 'new_tool') {
+        form.id = generatedId
+      }
     }
-    if (autoFill && !form.name.trim()) {
-      form.name = createNameFromInput(path)
+    if (autoFill && (!form.name.trim() || form.name === 'new_tool')) {
+      const generatedName = createNameFromInput(path)
+      if (generatedName && generatedName !== 'new_tool') {
+        form.name = generatedName
+      }
     }
   }
 
