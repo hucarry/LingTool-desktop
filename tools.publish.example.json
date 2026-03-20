@@ -1,0 +1,31 @@
+{
+  "tools": [
+    {
+      "id": "demo_py_portable",
+      "name": "发布包内 Python 示例",
+      "type": "python",
+      "path": "Tools/testdemo.py",
+      "runtimePath": "python\\python.exe",
+      "cwd": "Tools",
+      "argsTemplate": "--date {date}",
+      "tags": [
+        "发布",
+        "Python"
+      ],
+      "description": "发布产物内使用随包分发的 python\\python.exe 运行项目脚本"
+    },
+    {
+      "id": "toolhub_status",
+      "name": "发布包状态检查",
+      "type": "command",
+      "path": "cmd",
+      "cwd": ".",
+      "argsTemplate": "/c echo ToolHub publish package is ready",
+      "tags": [
+        "发布",
+        "检查"
+      ],
+      "description": "用于验证发布目录中的命令类工具仍可基于相对路径运行"
+    }
+  ]
+}

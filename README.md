@@ -208,6 +208,29 @@ npm run generate:bridge-types
 .\publish.ps1 -NoBundlePortablePip
 ```
 
+推荐发布命令：
+
+```powershell
+.\publish.ps1 -Runtime win-x64 -Configuration Release
+.\publish.ps1 -Runtime win-x64 -Configuration Release -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
+.\publish.ps1 -Runtime win-x64 -Configuration Release -NoBundlePortablePython
+```
+
+## 发布规范
+
+当前发布规范以 [`publish.ps1`](./publish.ps1) 为准，核心约束如下：
+
+- 仅支持 Windows 运行时，发布 RID 应使用 `win-*`
+- 发布时必须分发整个输出目录，不能只拷贝单个 `.exe`
+- `tools.json` 应放在发布目录内，与应用一起分发
+- 工具的 `path`、`cwd`、`runtimePath` 优先使用相对路径，基准目录为 `tools.json` 所在目录
+- 若启用便携 Python 打包，推荐 Python 工具写法为 `runtimePath: "python\\python.exe"`
+- 若未打包 Python，则 Python 工具必须依赖目标机器已有解释器，或显式指定其他有效 `runtimePath`
+- `publish.ps1` 不会自动打包 Node.js；Node 工具仍依赖目标机器的 `node.exe` 或显式 `runtimePath`
+- 若启用便携 Python 且启用 pip，pip 仅保证安装到发布目录下的 `.\\python`
+
+发布完成后，输出目录内会生成 `release-manifest.txt`，用于记录本次发布使用的运行时和分发约束。
+
 ## tools.json 配置
 
 应用运行时读取根目录 `tools.json` 作为工具注册表。
@@ -247,6 +270,8 @@ npm run generate:bridge-types
 - 相对路径会按项目根目录或配置基目录解析
 - `url` 类型仅支持 `http://` 和 `https://`
 - `argsTemplate` 中的占位符会在前端自动生成输入项
+- 本地开发建议参考 [`tools.example.json`](./tools.example.json)
+- 发布产物建议参考 [`tools.publish.example.json`](./tools.publish.example.json)
 
 ## 目录结构
 
