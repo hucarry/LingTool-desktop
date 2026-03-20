@@ -46,4 +46,4 @@ jobs:
 
       - name: Run host regression checks
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\ToolHub.App.Tests\run-tests.ps1
+        run: dotnet test ToolHub.App.Tests/ToolHub.App.Tests.csproj -c Debug

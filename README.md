@@ -98,9 +98,12 @@ dotnet run --project .\ToolHub.App\ToolHub.App.csproj
 
 ## 宿主回归测试
 
-项目包含一套零依赖宿主回归入口：[`ToolHub.App.Tests/run-tests.ps1`](./ToolHub.App.Tests/run-tests.ps1)。
+项目现在包含两套宿主测试入口：
 
-该脚本会离线编译当前 `ToolHub.App` 源码并执行回归检查，当前已覆盖：
+- 标准测试工程：[`ToolHub.App.Tests/ToolHub.App.Tests.csproj`](./ToolHub.App.Tests/ToolHub.App.Tests.csproj)
+- 离线回归入口：[`ToolHub.App.Tests/run-tests.ps1`](./ToolHub.App.Tests/run-tests.ps1)
+
+其中离线脚本会编译当前 `ToolHub.App` 源码并执行回归检查，当前已覆盖：
 
 - 协议常量稳定性
 - 运行时覆盖解析
@@ -115,6 +118,11 @@ dotnet run --project .\ToolHub.App\ToolHub.App.csproj
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\ToolHub.App.Tests\run-tests.ps1
+```
+
+标准 `dotnet test`：
+```powershell
+dotnet test .\ToolHub.App.Tests\ToolHub.App.Tests.csproj
 ```
 
 ## 前端开发与验证
@@ -236,6 +244,8 @@ npm run build
 │  └─ wwwroot/
 └─ ToolHub.App.Tests/
    ├─ HostRegressionTests.cs
+   ├─ HostRegressionSuiteTests.cs
+   ├─ ToolHub.App.Tests.csproj
    ├─ ToolHub.GlobalUsings.cs
    └─ run-tests.ps1
 ```
@@ -290,5 +300,7 @@ npm run build
 - 构建脚本门禁
 - 发布脚本门禁
 - GitHub Actions 最小 CI
+- 标准 `dotnet test` 工程
+- 离线回归兜底入口
 
-下一阶段更适合继续补的是标准 CI 和正式的 `dotnet test` 工程。
+下一阶段更适合继续补的是测试分层和更细粒度的宿主单元测试。

@@ -63,6 +63,39 @@ function Assert-LastExitCode([string]$context) {
     }
 }
 
+function Should-FallbackToOfflineHostRegression([string]$message) {
+    if ([string]::IsNullOrWhiteSpace($message)) {
+        return $false
+    }
+
+    return $message -match 'NU1301|project\.assets\.json|Unable to load the service index|repository signatures|restore'
+}
+
+function Invoke-HostRegressionChecks([string]$projectRoot) {
+    $standardTestProject = Join-Path $projectRoot "ToolHub.App.Tests\ToolHub.App.Tests.csproj"
+    if (Test-Path $standardTestProject) {
+        try {
+            Run-Step 'Run host regression checks (dotnet test)' {
+                dotnet test $standardTestProject -c Debug
+                Assert-LastExitCode 'dotnet test host regression checks'
+            }
+            return
+        }
+        catch {
+            if (-not (Should-FallbackToOfflineHostRegression $_.Exception.Message)) {
+                throw
+            }
+
+            Write-Warn "dotnet test is unavailable in the current environment. Falling back to the offline host regression runner."
+        }
+    }
+
+    Run-Step 'Run host regression checks (offline)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot "ToolHub.App.Tests\run-tests.ps1")
+        Assert-LastExitCode 'host regression checks'
+    }
+}
+
 function Get-NpmExecutable() {
     $cmdCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
     if ($null -ne $cmdCommand) {
@@ -815,10 +848,7 @@ Run-Step "Build backend for host regression (dotnet build Debug)" {
 }
 
 if (-not $NoHostRegression) {
-    Run-Step "Run host regression checks" {
-        powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot "ToolHub.App.Tests\run-tests.ps1")
-        Assert-LastExitCode "host regression checks"
-    }
+    Invoke-HostRegressionChecks -projectRoot $projectRoot
 }
 
 if ((Test-Path $outputDir) -and (-not $NoClean)) {

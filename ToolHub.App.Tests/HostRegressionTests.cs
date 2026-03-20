@@ -12,31 +12,35 @@ using ToolHub.App.Utils;
 
 internal static class HostRegressionTests
 {
+    private static readonly (string Name, Action Run)[] Tests =
+    {
+        ("Bridge message contract", BridgeMessageTypes_ShouldMatchStableContract),
+        ("Runtime override resolution", ResolveRuntimeOverride_ShouldUseExpectedRules),
+        ("Args spec compilation", ArgsSpecCompiler_ShouldSupportStructuredAndLegacyFallback),
+        ("Tool registry projection", ToolRegistry_ShouldProjectDefinitionsIntoViews),
+        ("Runnable tool projection", RunnableToolProjection_ShouldMatchExecutionBoundary),
+        ("Tool runtime resolution", ToolRuntimeResolution_ShouldRespectToolTypeRules),
+        ("Message router boundary", MessageRouter_ShouldReturnExpectedErrors),
+        ("Resolved run command boundary", ResolvedRunCommand_ShouldUnifyRuntimeAndArguments),
+        ("Process start info boundary", ProcessStartInfo_ShouldComposeCommandsForSupportedToolTypes),
+        ("Terminal run command boundary", TerminalRunCommand_ShouldComposeShellCommandsForSupportedShellKinds)
+    };
+
+    internal static void RunAll()
+    {
+        foreach (var test in Tests)
+        {
+            test.Run();
+            Console.WriteLine($"[PASS] {test.Name}");
+        }
+    }
+
     private static int Main()
     {
-        var tests = new (string Name, Action Run)[]
-        {
-            ("Bridge message contract", BridgeMessageTypes_ShouldMatchStableContract),
-            ("Runtime override resolution", ResolveRuntimeOverride_ShouldUseExpectedRules),
-            ("Args spec compilation", ArgsSpecCompiler_ShouldSupportStructuredAndLegacyFallback),
-            ("Tool registry projection", ToolRegistry_ShouldProjectDefinitionsIntoViews),
-            ("Runnable tool projection", RunnableToolProjection_ShouldMatchExecutionBoundary),
-            ("Tool runtime resolution", ToolRuntimeResolution_ShouldRespectToolTypeRules),
-            ("Message router boundary", MessageRouter_ShouldReturnExpectedErrors),
-            ("Resolved run command boundary", ResolvedRunCommand_ShouldUnifyRuntimeAndArguments),
-            ("Process start info boundary", ProcessStartInfo_ShouldComposeCommandsForSupportedToolTypes),
-            ("Terminal run command boundary", TerminalRunCommand_ShouldComposeShellCommandsForSupportedShellKinds)
-        };
-
         try
         {
-            foreach (var test in tests)
-            {
-                test.Run();
-                Console.WriteLine($"[PASS] {test.Name}");
-            }
-
-            Console.WriteLine($"Host regression tests passed: {tests.Length}/{tests.Length}");
+            RunAll();
+            Console.WriteLine($"Host regression tests passed: {Tests.Length}/{Tests.Length}");
             return 0;
         }
         catch (Exception ex)
