@@ -76,4 +76,19 @@ describe('terminals store', () => {
       runtimePath: 'D:/Tools/.venv/Scripts/python.exe',
     })
   })
+
+  it('does not auto create a terminal when the backend reports none', () => {
+    const sendSpy = vi.fn()
+    setExternalSender(sendSpy)
+
+    const store = useTerminalsStore()
+    store.handleTerminalsMessage({
+      type: 'terminals',
+      terminals: [],
+    })
+
+    expect(sendSpy).not.toHaveBeenCalled()
+    expect(store.terminals).toHaveLength(0)
+    expect(store.activeTerminalId).toBe('')
+  })
 })

@@ -42,7 +42,6 @@ export const useTerminalsStore = defineStore('terminals', () => {
     return terminalBuffers[activeTerminalId.value] ?? []
   })
 
-  let terminalBootstrapped = false
   let terminalCreateInFlight = false
   let lastTerminalCreateAt = 0
 
@@ -224,13 +223,6 @@ export const useTerminalsStore = defineStore('terminals', () => {
     terminals.value = normalizeTerminals(message.terminals)
     pruneTerminalBuffers()
     ensureActiveTerminal()
-
-    if (!terminalBootstrapped) {
-      terminalBootstrapped = true
-      if (terminals.value.length === 0) {
-        createTerminal()
-      }
-    }
   }
 
   function handleTerminalStarted(message: TerminalStartedMessage): void {

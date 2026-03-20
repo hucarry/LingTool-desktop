@@ -143,6 +143,7 @@ internal static class Program
         window.Load(indexPath);
         window.WaitForClose();
         ShutdownManagers();
+        Environment.Exit(0);
     }
 
     private static void ReportStartupFailure(Exception exception)

@@ -9,6 +9,7 @@ public sealed class PythonPackageManager
 {
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan MutationTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PipBootstrapTimeout = TimeSpan.FromMinutes(2);
 
     private readonly string _appRoot;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
@@ -25,6 +26,7 @@ public sealed class PythonPackageManager
     {
         var executable = ResolvePythonExecutable(pythonPath);
         ValidatePythonExecutable(executable);
+        await EnsurePipAvailableAsync(executable, cancellationToken);
 
         var startInfo = BuildBaseStartInfo(executable);
         startInfo.ArgumentList.Add("-m");
@@ -70,6 +72,7 @@ public sealed class PythonPackageManager
 
         var executable = ResolvePythonExecutable(pythonPath);
         ValidatePythonExecutable(executable);
+        await EnsurePipAvailableAsync(executable, cancellationToken);
 
         var startInfo = BuildBaseStartInfo(executable);
         startInfo.ArgumentList.Add("-m");
@@ -100,6 +103,7 @@ public sealed class PythonPackageManager
 
         var executable = ResolvePythonExecutable(pythonPath);
         ValidatePythonExecutable(executable);
+        await EnsurePipAvailableAsync(executable, cancellationToken);
 
         var startInfo = BuildBaseStartInfo(executable);
         startInfo.ArgumentList.Add("-m");
@@ -176,6 +180,45 @@ public sealed class PythonPackageManager
             TryTerminateProcess(process);
             throw;
         }
+    }
+
+    private async Task EnsurePipAvailableAsync(string executable, CancellationToken cancellationToken)
+    {
+        if (await CanRunPipAsync(executable, cancellationToken))
+        {
+            return;
+        }
+
+        var bootstrapInfo = BuildBaseStartInfo(executable);
+        bootstrapInfo.ArgumentList.Add("-m");
+        bootstrapInfo.ArgumentList.Add("ensurepip");
+        bootstrapInfo.ArgumentList.Add("--upgrade");
+
+        var bootstrapRun = await RunProcessCaptureAsync(bootstrapInfo, PipBootstrapTimeout, cancellationToken);
+        if (bootstrapRun.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Python 未安装 pip，且自动引导失败（exit={bootstrapRun.ExitCode}）：{PickErrorMessage(bootstrapRun.StdErr, bootstrapRun.StdOut)}"
+            );
+        }
+
+        if (await CanRunPipAsync(executable, cancellationToken))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException("Python pip 自动引导完成，但 pip 仍不可用。");
+    }
+
+    private async Task<bool> CanRunPipAsync(string executable, CancellationToken cancellationToken)
+    {
+        var startInfo = BuildBaseStartInfo(executable);
+        startInfo.ArgumentList.Add("-m");
+        startInfo.ArgumentList.Add("pip");
+        startInfo.ArgumentList.Add("--version");
+
+        var run = await RunProcessCaptureAsync(startInfo, QueryTimeout, cancellationToken);
+        return run.ExitCode == 0;
     }
 
     private string ResolvePythonExecutable(string? rawPath)

@@ -32,7 +32,7 @@ if ($NoBundlePortablePip) {
 }
 
 if ($Runtime -notlike "win-*") {
-    throw "publish.ps1 仅支持 Windows 运行时。请使用 win-x64、win-x86 或其他 win-* RID。"
+    throw "publish.ps1 only supports Windows runtimes. Use win-x64, win-x86, or another win-* RID."
 }
 
 if (-not $BundlePortablePython -and $BundlePortablePip) {
@@ -289,20 +289,20 @@ function Invoke-FrontendInstall([string]$frontendDir) {
             return
         }
 
-        $message = @"
-Frontend dependency installation failed.
-
-Common causes:
-- frontend/node_modules contains files locked by Vite, VS Code, antivirus, or another Node process
-- the current shell profile prints unrelated errors before/after npm runs
-
-Recommended retries:
-1. Close running frontend dev servers and editors using this repo
-2. Re-run with a clean shell:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-3. If dependencies are already installed, skip reinstall:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendInstall
-"@
+        $message = @(
+            "Frontend dependency installation failed.",
+            "",
+            "Common causes:",
+            "- frontend/node_modules contains files locked by Vite, VS Code, antivirus, or another Node process",
+            "- the current shell profile prints unrelated errors before/after npm runs",
+            "",
+            "Recommended retries:",
+            "1. Close running frontend dev servers and editors using this repo",
+            "2. Re-run with a clean shell:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1",
+            "3. If dependencies are already installed, skip reinstall:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendInstall"
+        ) -join [Environment]::NewLine
         throw "$message`n$($_.Exception.Message)"
     }
 }
@@ -315,17 +315,17 @@ function Assert-FrontendDependenciesAvailable([string]$frontendDir) {
 
     $missing = @($requiredBins | Where-Object { -not (Test-Path $_) })
     if ($missing.Count -gt 0) {
-        $message = @"
-Frontend dependencies look incomplete.
-
-Missing local tools:
-$($missing -join "`n")
-
-You used -NoFrontendInstall, but the frontend toolchain is not fully available.
-Re-run one of these commands:
-  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendBuild
-"@
+        $message = @(
+            "Frontend dependencies look incomplete.",
+            "",
+            "Missing local tools:",
+            ($missing -join "`n"),
+            "",
+            "You used -NoFrontendInstall, but the frontend toolchain is not fully available.",
+            "Re-run one of these commands:",
+            "  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1",
+            "  powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoFrontendBuild"
+        ) -join [Environment]::NewLine
         throw $message
     }
 }
@@ -604,38 +604,39 @@ function Resolve-FullPythonSource([string]$manualPath) {
         ""
     }
 
-    $message = @"
-Failed to locate a usable full Python installation for bundling.
-
-Requirements:
-- a real Python installation directory, not an embed package or a venv
-- tkinter available
-- ensurepip available
-- venv available
-
-Checked candidates:
-$checkedSummary
-"@
+    $messageLines = @(
+        "Failed to locate a usable full Python installation for bundling.",
+        "",
+        "Requirements:",
+        "- a real Python installation directory, not an embed package or a venv",
+        "- tkinter available",
+        "- ensurepip available",
+        "- venv available",
+        "",
+        "Checked candidates:",
+        $checkedSummary
+    )
 
     if (-not [string]::IsNullOrWhiteSpace($ignoredCondaSummary)) {
-        $message += @"
-
-Ignored conda candidates:
-$ignoredCondaSummary
-"@
+        $messageLines += @(
+            "",
+            "Ignored conda candidates:",
+            $ignoredCondaSummary
+        )
     }
 
-    $message += @"
-
-Recommended retries:
-1. Install the official full Python for Windows from python.org
-2. Re-run with an explicit source path:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -BundledPythonSourcePath C:\Path\To\Python312
-3. If you intentionally want to bundle a conda base environment, allow it explicitly:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -AllowCondaPythonSource
-4. If you do not need bundled Python, skip it:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePython
-"@
+    $messageLines += @(
+        "",
+        "Recommended retries:",
+        "1. Install the official full Python for Windows from python.org",
+        "2. Re-run with an explicit source path:",
+        "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -BundledPythonSourcePath C:\Path\To\Python312",
+        "3. If you intentionally want to bundle a conda base environment, allow it explicitly:",
+        "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -AllowCondaPythonSource",
+        "4. If you do not need bundled Python, skip it:",
+        "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePython"
+    )
+    $message = $messageLines -join [Environment]::NewLine
     throw $message
 }
 
@@ -746,18 +747,18 @@ function Resolve-GetPipScript([string]$manualPath) {
             Invoke-WebRequest -Uri $url -OutFile $target
         }
         catch {
-            $message = @"
-Failed to download get-pip.py from:
-  $url
-
-Recommended retries:
-1. Re-run in a clean shell:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-2. Download get-pip.py manually and pass:
-   -GetPipScriptPath C:\path\to\get-pip.py
-3. If you can publish without bundled pip, skip it:
-   -NoBundlePortablePip
-"@
+            $message = @(
+                "Failed to download get-pip.py from:",
+                "  $url",
+                "",
+                "Recommended retries:",
+                "1. Re-run in a clean shell:",
+                "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1",
+                "2. Download get-pip.py manually and pass:",
+                "   -GetPipScriptPath C:\path\to\get-pip.py",
+                "3. If you can publish without bundled pip, skip it:",
+                "   -NoBundlePortablePip"
+            ) -join [Environment]::NewLine
             throw "$message`n$($_.Exception.Message)"
         }
     }
@@ -797,39 +798,44 @@ function Install-PortablePip(
         & $pythonExe @commandArgs
     }
     catch {
-        $message = @"
-Bundled Python pip bootstrap failed.
-
-Recommended retries:
-1. Re-run in a clean shell:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-2. If your network to PyPI is unstable, pass a mirror explicitly:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
-3. If you only need the desktop app and can skip packaged pip:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
-"@
+        $message = @(
+            "Bundled Python pip bootstrap failed.",
+            "",
+            "Recommended retries:",
+            "1. Re-run in a clean shell:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1",
+            "2. If your network to PyPI is unstable, pass a mirror explicitly:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple",
+            "3. If you only need the desktop app and can skip packaged pip:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip"
+        ) -join [Environment]::NewLine
         throw "$message`n$($_.Exception.Message)"
     }
 
     if ($LASTEXITCODE -ne 0) {
         $mirrorHint = ""
         if ($pipArgs.Count -eq 0) {
-            $mirrorHint = @"
-2. If your network to PyPI is unstable, retry with a mirror:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
-"@
+            $mirrorHint = @(
+                "2. If your network to PyPI is unstable, retry with a mirror:",
+                "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple"
+            ) -join [Environment]::NewLine
         }
 
-        $message = @"
-Failed to install pip into bundled Python.
-
-Recommended retries:
-1. Re-run in a clean shell:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-$mirrorHint
-3. If you only need the desktop app and can skip packaged pip:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
-"@
+        $messageLines = @(
+            "Failed to install pip into bundled Python.",
+            "",
+            "Recommended retries:",
+            "1. Re-run in a clean shell:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1"
+        )
+        if (-not [string]::IsNullOrWhiteSpace($mirrorHint)) {
+            $messageLines += $mirrorHint
+        }
+        $messageLines += @(
+            "3. If you only need the desktop app and can skip packaged pip:",
+            "   powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip"
+        )
+        $message = $messageLines -join [Environment]::NewLine
         throw $message
     }
 
