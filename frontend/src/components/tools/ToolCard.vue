@@ -38,14 +38,14 @@ const { t } = useI18n()
 
       <div class="flex shrink-0 items-center justify-end gap-1.5">
         <span
-          class="inline-flex h-7 w-7 items-center justify-center rounded-chip border border-border bg-editor text-muted"
+          class="inline-flex h-6 w-6 items-center justify-center rounded-chip border border-border bg-editor text-muted"
           :title="tool.type"
           :aria-label="tool.type"
         >
           <svg
             v-if="tool.type === 'python'"
             viewBox="0 0 24 24"
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             fill="none"
             stroke="currentColor"
             stroke-linecap="round"
@@ -61,7 +61,7 @@ const { t } = useI18n()
           <svg
             v-else-if="tool.type === 'node'"
             viewBox="0 0 24 24"
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             fill="none"
             stroke="currentColor"
             stroke-linecap="round"
@@ -75,7 +75,7 @@ const { t } = useI18n()
           <svg
             v-else-if="tool.type === 'command'"
             viewBox="0 0 24 24"
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             fill="none"
             stroke="currentColor"
             stroke-linecap="round"
@@ -88,7 +88,7 @@ const { t } = useI18n()
           <svg
             v-else-if="tool.type === 'url'"
             viewBox="0 0 24 24"
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             fill="none"
             stroke="currentColor"
             stroke-linecap="round"
@@ -102,7 +102,7 @@ const { t } = useI18n()
           <svg
             v-else
             viewBox="0 0 24 24"
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             fill="none"
             stroke="currentColor"
             stroke-linecap="round"
@@ -116,7 +116,7 @@ const { t } = useI18n()
         </span>
 
         <span
-          class="inline-flex h-2.5 w-2.5 rounded-full"
+          class="inline-flex h-2 w-2 rounded-full"
           :class="tool.valid ? 'bg-success' : 'bg-danger'"
           :title="tool.valid ? t('tools.ready') : t('tools.invalidPath')"
           :aria-label="tool.valid ? t('tools.ready') : t('tools.invalidPath')"
@@ -134,14 +134,14 @@ const { t } = useI18n()
 
     <footer class="mt-2.5 flex items-end justify-between gap-2" @click.stop>
       <div class="flex min-w-0 flex-wrap gap-1">
-        <UiBadge v-for="tag in tool.tags" :key="tag" tone="accent">{{ tag }}</UiBadge>
+        <UiBadge v-for="tag in tool.tags" :key="tag" tone="accent" class="min-h-5! px-1.5 py-0 text-[10px] leading-none">{{ tag }}</UiBadge>
       </div>
 
-      <div class="flex shrink-0 gap-1.5">
-        <UiButton size="sm" class="min-h-7 px-2" :disabled="busy" @click="emit('edit')">{{ t('tools.edit') }}</UiButton>
+      <div class="flex shrink-0 gap-1">
+        <UiButton size="sm" class="min-h-6! px-2! text-[11px]!" :disabled="busy" @click="emit('edit')">{{ t('tools.edit') }}</UiButton>
         <UiButton
           size="sm"
-          class="min-h-7 px-2"
+          class="min-h-6! px-2! text-[11px]!"
           :variant="tool.valid ? 'primary' : 'default'"
           :disabled="busy"
           @click="tool.valid ? emit('run') : emit('edit')"

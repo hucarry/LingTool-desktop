@@ -16,7 +16,7 @@ const emit = defineEmits<{
     :value="props.modelValue"
     :readonly="readonly"
     :class="[
-      'ui-field h-10',
+      'ui-field min-h-[32px] text-[13px]',
       invalid ? 'border-danger focus:border-danger focus:ring-danger/30' : '',
       readonly ? 'ui-field-readonly' : '',
     ]"

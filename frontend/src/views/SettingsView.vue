@@ -14,13 +14,13 @@ const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
 
 <template>
   <section class="h-full overflow-auto p-3">
-    <div class="flex flex-col gap-4">
-      <UiPanel class="space-y-2">
+    <div class="flex flex-col gap-3">
+      <UiPanel class="space-y-1.5">
         <h2 class="text-lg font-semibold text-foreground">{{ t('settings.title') }}</h2>
         <p class="max-w-3xl text-sm leading-6 text-muted">{{ t('settings.description') }}</p>
       </UiPanel>
 
-      <UiPanel class="flex flex-col gap-4">
+      <UiPanel class="flex flex-col gap-3">
         <div class="space-y-1">
           <h3 class="text-sm font-semibold text-foreground">{{ t('settings.themeTitle') }}</h3>
           <p class="text-xs leading-5 text-muted">{{ t('settings.themeDesc') }}</p>
@@ -36,7 +36,7 @@ const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
         </div>
       </UiPanel>
 
-      <UiPanel class="flex flex-col gap-4">
+      <UiPanel class="flex flex-col gap-3">
         <div class="space-y-1">
           <h3 class="text-sm font-semibold text-foreground">{{ t('settings.pythonTitle') }}</h3>
           <p class="text-xs leading-5 text-muted">{{ t('settings.pythonDesc') }}</p>
@@ -49,7 +49,7 @@ const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
         </div>
       </UiPanel>
 
-      <UiPanel class="flex flex-col gap-4">
+      <UiPanel class="flex flex-col gap-3">
         <div class="space-y-1">
           <h3 class="text-sm font-semibold text-foreground">{{ t('settings.nodeTitle') }}</h3>
           <p class="text-xs leading-5 text-muted">{{ t('settings.nodeDesc') }}</p>

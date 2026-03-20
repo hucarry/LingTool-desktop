@@ -161,7 +161,7 @@ function deleteSelected(): void {
 </script>
 
 <template>
-  <section class="ui-panel flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-editor p-3">
+  <section class="ui-panel flex h-full min-h-0 flex-col gap-2 overflow-hidden bg-editor p-3">
     <ToolListToolbar
       :keyword="keyword"
       :selected-count="selectedCount"
@@ -197,7 +197,7 @@ function deleteSelected(): void {
     />
 
     <div class="relative min-h-0 flex-1 overflow-auto">
-      <div class="grid grid-cols-1 items-start gap-4 p-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+      <TransitionGroup name="list" tag="div" class="grid grid-cols-1 items-start gap-3 p-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 relative">
         <ToolCard
           v-for="tool in visibleTools"
           :key="tool.id"
@@ -236,7 +236,7 @@ function deleteSelected(): void {
             </div>
           </div>
         </div>
-      </div>
+      </TransitionGroup>
 
       <div v-if="loading" class="absolute inset-0 flex items-center justify-center rounded-panel bg-overlay backdrop-blur-sm">
         <span class="h-7 w-7 animate-spin rounded-full border-2 border-border-soft border-t-accent" />
@@ -256,3 +256,20 @@ function deleteSelected(): void {
     />
   </section>
 </template>
+
+<style scoped>
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(15px);
+}
+.list-leave-active {
+  position: absolute;
+  z-index: -1;
+}
+</style>

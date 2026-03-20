@@ -129,22 +129,22 @@ function clearForm(): void {
 
 <template>
   <section class="h-full overflow-auto p-3">
-    <UiPanel class="space-y-4">
-      <header class="space-y-1 border-b border-border pb-3">
+    <UiPanel class="space-y-3">
+      <header class="space-y-1 border-b border-border pb-2">
         <h2 class="text-lg font-semibold text-foreground">{{ t('addTool.title') }}</h2>
         <p class="text-sm text-muted">{{ t('addTool.subtitle') }}</p>
       </header>
 
-      <form class="space-y-4" @submit.prevent="submit">
-        <div class="ui-panel space-y-1 bg-soft p-3">
+      <form class="space-y-3" @submit.prevent="submit">
+        <div class="ui-panel space-y-1 bg-soft p-2.5">
           <strong class="text-xs font-semibold text-foreground">{{ t('addTool.summaryTitle') }}</strong>
           <span class="text-xs text-muted">
             {{ form.path.trim() ? t('addTool.summaryReady') : t('addTool.summaryEmpty') }}
           </span>
         </div>
 
-        <div class="grid gap-4 xl:grid-cols-2">
-          <UiField :label="t('addTool.toolType')">
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+          <UiField :label="t('addTool.toolType')" class="col-span-1">
             <UiSelect v-model="form.type">
               <option value="python">Python</option>
               <option value="node">Node.js</option>
@@ -158,6 +158,7 @@ function clearForm(): void {
             :label="t('addTool.toolId')"
             :hint="shouldShowError('id') ? undefined : t('addTool.idHint')"
             :error="shouldShowError('id') ? validationErrors.id : ''"
+            class="col-span-1"
           >
             <UiInput v-model="form.id" :invalid="shouldShowError('id')" @blur="markTouched('id')" />
           </UiField>
@@ -166,11 +167,16 @@ function clearForm(): void {
             :label="t('addTool.toolName')"
             :hint="shouldShowError('name') ? undefined : t('addTool.nameInlineHint')"
             :error="shouldShowError('name') ? validationErrors.name : ''"
+            class="col-span-1"
           >
             <UiInput v-model="form.name" :invalid="shouldShowError('name')" @blur="markTouched('name')" />
           </UiField>
 
-          <div class="xl:col-span-2">
+          <UiField :label="t('addTool.tags')" class="col-span-1">
+            <UiInput v-model="form.tagsText" :placeholder="t('addTool.tagsHint')" />
+          </UiField>
+
+          <div class="sm:col-span-2 lg:col-span-2">
             <UiField :label="toolPathLabel" :error="shouldShowError('path') ? validationErrors.path : ''" :hint="pathHint">
               <div class="grid gap-2" :class="supportsPathBrowse(form.type) ? 'md:grid-cols-[minmax(0,1fr)_auto]' : ''">
                 <UiInput
@@ -184,7 +190,7 @@ function clearForm(): void {
             </UiField>
           </div>
 
-          <div v-if="needsRuntimePath" class="xl:col-span-2">
+          <div v-if="needsRuntimePath" class="sm:col-span-2 lg:col-span-2">
             <UiField :label="runtimeLabel" :hint="runtimeHint">
               <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
                 <UiInput v-model="form.runtimePath" @blur="markTouched('runtimePath')" />
@@ -193,26 +199,22 @@ function clearForm(): void {
             </UiField>
           </div>
 
-          <UiField v-if="!isUrlTool" :label="t('addTool.cwd')" :hint="t('addTool.cwdInlineHint')">
+          <UiField v-if="!isUrlTool" :label="t('addTool.cwd')" :hint="t('addTool.cwdInlineHint')" class="sm:col-span-2 lg:col-span-2">
             <UiInput v-model="form.cwd" />
           </UiField>
 
-          <UiField v-if="!isUrlTool" :label="t('addTool.argsTemplate')">
+          <UiField v-if="!isUrlTool" :label="t('addTool.argsTemplate')" class="sm:col-span-2 lg:col-span-2">
             <UiInput v-model="form.argsTemplate" :placeholder="isScriptTool ? t('addTool.argsScriptHint') : t('addTool.argsHint')" />
           </UiField>
 
-          <UiField :label="t('addTool.tags')">
-            <UiInput v-model="form.tagsText" :placeholder="t('addTool.tagsHint')" />
-          </UiField>
-
-          <div class="xl:col-span-2">
+          <div class="col-span-full">
             <UiField :label="t('addTool.description')">
-              <UiTextarea v-model="form.description" rows="4" />
+              <UiTextarea v-model="form.description" rows="2" />
             </UiField>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 border-t border-border pt-4">
+        <div class="flex justify-end gap-2 border-t border-border pt-3">
           <UiButton @click="clearForm">{{ t('addTool.clear') }}</UiButton>
           <UiButton type="submit" variant="primary" :disabled="addingTool">{{ t('addTool.submit') }}</UiButton>
         </div>

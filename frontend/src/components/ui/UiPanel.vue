@@ -7,7 +7,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <section :class="['ui-panel', padded ? 'p-4' : '']">
+  <section :class="['ui-panel', padded ? 'p-3' : '']">
     <slot />
   </section>
 </template>

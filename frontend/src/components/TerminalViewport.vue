@@ -123,6 +123,7 @@ function teardownTerminal(): void {
   resizeObserver = null
   term?.dispose()
   term = null
+  fitAddon?.dispose()
   fitAddon = null
 }
 

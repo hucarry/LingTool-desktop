@@ -78,30 +78,30 @@ function isRowBusy(name: string): boolean {
 </script>
 
 <template>
-  <UiPanel class="flex h-full min-h-0 flex-col gap-4 bg-editor p-4">
-    <header class="flex flex-col gap-3 min-[500px]:flex-row min-[500px]:items-start min-[500px]:justify-between">
+  <UiPanel class="flex h-full min-h-0 flex-col gap-3 bg-editor p-3">
+    <header class="flex flex-col gap-2 min-[500px]:flex-row min-[500px]:items-start min-[500px]:justify-between">
       <div class="space-y-1">
-        <h2 class="text-[1.75rem] font-semibold tracking-tight text-foreground">{{ t('python.managerTitle') }}</h2>
+        <h2 class="text-xl font-semibold tracking-tight text-foreground">{{ t('python.managerTitle') }}</h2>
         <p class="text-sm text-muted">{{ t('python.managerDesc') }}</p>
       </div>
       <UiButton class="min-[500px]:self-start" :disabled="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</UiButton>
     </header>
 
-    <section class="space-y-3">
-      <div class="grid gap-3 min-[500px]:grid-cols-[minmax(0,1fr)_auto_auto]">
+    <section class="space-y-2">
+      <div class="grid gap-2 min-[500px]:grid-cols-[minmax(0,1fr)_auto_auto]">
         <UiInput
           :model-value="pythonPath || 'python'"
           readonly
           :placeholder="t('python.currentInterpreter')"
           class="font-mono min-[500px]:min-w-0"
         />
-        <div class="grid gap-3 min-[500px]:contents">
+        <div class="grid gap-2 min-[500px]:contents">
           <UiButton @click="emit('browsePython')">{{ t('python.browse') }}</UiButton>
           <UiButton @click="emit('useSystemPython')">{{ t('python.systemPython') }}</UiButton>
         </div>
       </div>
 
-      <div class="grid gap-3 min-[500px]:grid-cols-[minmax(0,1fr)_auto]">
+      <div class="grid gap-2 min-[500px]:grid-cols-[minmax(0,1fr)_auto]">
         <UiInput
           v-model="packageToInstall"
           class="min-[500px]:min-w-0"
@@ -125,8 +125,8 @@ function isRowBusy(name: string): boolean {
       </div>
     </section>
 
-    <section class="flex min-h-0 flex-1 flex-col gap-3">
-      <div class="grid gap-3 min-[500px]:grid-cols-[minmax(0,1fr)_auto] min-[500px]:items-center">
+    <section class="flex min-h-0 flex-1 flex-col gap-2">
+      <div class="grid gap-2 min-[500px]:grid-cols-[minmax(0,1fr)_auto] min-[500px]:items-center">
         <UiInput
           v-model="packageKeyword"
           class="min-[500px]:min-w-0"
@@ -144,9 +144,9 @@ function isRowBusy(name: string): boolean {
         <table v-if="filteredPackages.length > 0" class="min-w-full border-collapse text-sm">
           <thead class="sticky top-0 bg-editor text-left text-xs font-semibold text-muted">
             <tr>
-              <th class="border-b border-border px-4 py-3">{{ t('python.name') }}</th>
-              <th class="border-b border-border px-4 py-3">{{ t('python.version') }}</th>
-              <th class="border-b border-border px-4 py-3">{{ t('python.action') }}</th>
+              <th class="border-b border-border px-3 py-2">{{ t('python.name') }}</th>
+              <th class="border-b border-border px-3 py-2">{{ t('python.version') }}</th>
+              <th class="border-b border-border px-3 py-2 text-right">{{ t('python.action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -156,9 +156,9 @@ function isRowBusy(name: string): boolean {
               v-memo="[item.name, item.version, processing && processingAction === 'uninstall' && processingPackage === item.name]"
               class="odd:bg-transparent even:bg-white/3 hover:bg-hovered/60"
             >
-              <td class="border-b border-border px-4 py-3 font-mono text-[0.95rem] text-foreground">{{ item.name }}</td>
-              <td class="border-b border-border px-4 py-3 text-[0.95rem] text-foreground">{{ item.version }}</td>
-              <td class="border-b border-border px-4 py-3">
+              <td class="border-b border-border px-3 py-1.5 font-mono text-[0.9rem] text-foreground">{{ item.name }}</td>
+              <td class="border-b border-border px-3 py-1.5 text-[0.9rem] text-foreground">{{ item.version }}</td>
+              <td class="border-b border-border px-3 py-1.5 text-right">
                 <UiButton
                   size="sm"
                   variant="danger"

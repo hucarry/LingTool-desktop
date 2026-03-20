@@ -16,7 +16,7 @@ const classes = [
   props.variant === 'primary' ? 'ui-btn-primary' : '',
   props.variant === 'danger' ? 'ui-btn-danger' : '',
   props.variant === 'ghost' ? 'border-transparent bg-transparent' : '',
-  props.size === 'sm' ? 'min-h-8 px-2.5 text-xs' : '',
+  props.size === 'sm' ? 'min-h-[26px] px-2 text-xs' : '',
   props.block ? 'w-full' : '',
 ]
 </script>

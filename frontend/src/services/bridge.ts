@@ -16,7 +16,16 @@ class Bridge {
 
     const ext = this.getExternal()
     if (ext?.sendMessage) {
-      ext.sendMessage(payload)
+      try {
+        ext.sendMessage(payload)
+      } catch (error) {
+        console.error('[Bridge] 发送消息至宿主失败:', error, message)
+        this.dispatch(JSON.stringify({ 
+          type: 'error', 
+          message: 'UI Bridge Communication Failed', 
+          details: error instanceof Error ? error.message : String(error)
+        }))
+      }
       return
     }
 
