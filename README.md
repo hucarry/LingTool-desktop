@@ -289,5 +289,6 @@ npm run build
 - 宿主离线回归
 - 构建脚本门禁
 - 发布脚本门禁
+- GitHub Actions 最小 CI
 
 下一阶段更适合继续补的是标准 CI 和正式的 `dotnet test` 工程。

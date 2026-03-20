@@ -351,7 +351,7 @@ public sealed class TerminalManager : IDisposable
         string? runtimePath)
     {
         var shellKind = GetShellKind(shell);
-        var resolvedArgs = ArgTemplate.BuildArguments(tool.ArgsTemplate, args);
+        var resolvedArgs = ArgsSpecCompiler.BuildArguments(tool.ArgsSpec, tool.ArgsTemplate, args);
         string? sessionSetup = null;
 
         var parts = new List<string>();

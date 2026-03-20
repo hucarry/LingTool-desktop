@@ -215,7 +215,7 @@ public sealed class ProcessManager : IDisposable
         string? runtimeOverride
     )
     {
-        var resolvedArgs = ArgTemplate.BuildArguments(tool.ArgsTemplate, args);
+        var resolvedArgs = ArgsSpecCompiler.BuildArguments(tool.ArgsSpec, tool.ArgsTemplate, args);
 
         var startInfo = new ProcessStartInfo
         {

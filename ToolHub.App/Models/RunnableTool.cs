@@ -15,4 +15,6 @@ public sealed class RunnableTool
     public string? Cwd { get; set; }
 
     public string ArgsTemplate { get; set; } = string.Empty;
+
+    public ArgsSpecV1? ArgsSpec { get; set; }
 }

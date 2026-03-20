@@ -9,6 +9,7 @@ import UiOverlay from './ui/UiOverlay.vue'
 import UiPanel from './ui/UiPanel.vue'
 import UiSelect from './ui/UiSelect.vue'
 import UiTextarea from './ui/UiTextarea.vue'
+import ToolArgsEditor from './tools/ToolArgsEditor.vue'
 import ToolPathField from './tools/ToolPathField.vue'
 import { useI18n } from '../composables/useI18n'
 import { useNotify } from '../composables/useNotify'
@@ -39,6 +40,7 @@ const { appRootPath, desktopPath } = storeToRefs(settingsStore)
 const {
   form,
   submitAttempted,
+  isScriptTool,
   needsRuntimePath,
   isUrlTool,
   validationErrors,
@@ -117,6 +119,8 @@ watch(
     if (nextType === 'url') {
       form.cwd = ''
       form.argsTemplate = ''
+      form.argsSpec = null
+      form.argsMode = 'legacy'
     }
   },
 )
@@ -266,9 +270,16 @@ function saveEdit(): void {
             <UiInput v-model="form.cwd" />
           </UiField>
 
-          <UiField v-if="!isUrlTool" :label="t('tools.argsTemplate')">
-            <UiInput v-model="form.argsTemplate" />
-          </UiField>
+          <div v-if="!isUrlTool" class="xl:col-span-2">
+            <ToolArgsEditor
+              v-model:mode="form.argsMode"
+              v-model:args-template="form.argsTemplate"
+              v-model:args-spec="form.argsSpec"
+              :label="t('tools.argsTemplate')"
+              :hint="t('tools.argsModeHint')"
+              :placeholder="isScriptTool ? t('addTool.argsScriptHint') : t('addTool.argsHint')"
+            />
+          </div>
 
           <UiField :label="t('tools.tags')">
             <UiInput v-model="form.tagsText" />

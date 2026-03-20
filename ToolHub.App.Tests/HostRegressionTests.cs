@@ -17,6 +17,7 @@ internal static class HostRegressionTests
         {
             ("Bridge message contract", BridgeMessageTypes_ShouldMatchStableContract),
             ("Runtime override resolution", ResolveRuntimeOverride_ShouldUseExpectedRules),
+            ("Args spec compilation", ArgsSpecCompiler_ShouldSupportStructuredAndLegacyFallback),
             ("Tool registry projection", ToolRegistry_ShouldProjectDefinitionsIntoViews),
             ("Runnable tool projection", RunnableToolProjection_ShouldMatchExecutionBoundary),
             ("Tool runtime resolution", ToolRuntimeResolution_ShouldRespectToolTypeRules),
@@ -168,6 +169,54 @@ internal static class HostRegressionTests
         }
     }
 
+    private static void ArgsSpecCompiler_ShouldSupportStructuredAndLegacyFallback()
+    {
+        var structured = new ArgsSpecV1
+        {
+            Version = 1,
+            Fields = new List<ArgFieldSpec>
+            {
+                new() { Name = "input", Kind = "path", Required = true },
+                new() { Name = "format", Kind = "select", DefaultValue = "json" },
+                new() { Name = "verbose", Kind = "flag", DefaultValue = "false" }
+            },
+            Argv = new List<ArgTokenSpec>
+            {
+                new() { Kind = "literal", Value = "--input" },
+                new() { Kind = "field", Field = "input" },
+                new() { Kind = "switch", Field = "verbose", WhenTrue = "--verbose" },
+                new() { Kind = "literal", Value = "--format" },
+                new() { Kind = "field", Field = "format", OmitWhenEmpty = false }
+            }
+        };
+
+        var structuredArgs = ArgsSpecCompiler.BuildArguments(
+            structured,
+            null,
+            new Dictionary<string, string?> { ["input"] = @"D:\data\input.txt", ["verbose"] = "true" }
+        );
+
+        AssertEqual(5, structuredArgs.Count, "Structured args should expand into ordered argv tokens.");
+        AssertEqual("--input", structuredArgs[0], "Structured args should preserve literal tokens.");
+        AssertEqual(@"D:\data\input.txt", structuredArgs[1], "Structured args should inject field values.");
+        AssertEqual("--verbose", structuredArgs[2], "Structured args should emit boolean switches.");
+        AssertEqual("--format", structuredArgs[3], "Structured args should preserve later literal tokens.");
+        AssertEqual("json", structuredArgs[4], "Structured args should fall back to default field values.");
+
+        var inferred = ArgsSpecCompiler.InferFromTemplate("--name {name} --pair={pair}");
+        AssertNotNull(inferred, "Legacy templates should infer a basic args spec.");
+        AssertEqual(2, inferred!.Fields.Count, "Legacy inference should discover placeholder fields.");
+
+        var inferredArgs = ArgsSpecCompiler.BuildArguments(
+            inferred,
+            null,
+            new Dictionary<string, string?> { ["name"] = "demo", ["pair"] = "42" }
+        );
+        AssertEqual("--name", inferredArgs[0], "Inferred args spec should preserve literal tokens.");
+        AssertEqual("demo", inferredArgs[1], "Inferred args spec should substitute bare placeholder tokens.");
+        AssertEqual("--pair=42", inferredArgs[2], "Inferred args spec should preserve inline prefix/suffix tokens.");
+    }
+
     private static void ToolRegistry_ShouldProjectDefinitionsIntoViews()
     {
         var workspaceRoot = Path.Combine(Path.GetTempPath(), "toolhub-registry-tests", Guid.NewGuid().ToString("N"));
@@ -190,7 +239,7 @@ internal static class HostRegressionTests
                 Type = "python",
                 Path = @"Tools\demo.py",
                 RuntimePath = @"missing\python.exe",
-                ArgsTemplate = " --flag ",
+                ArgsTemplate = " --flag {mode} ",
                 Tags = new List<string> { "alpha", " alpha ", "beta" }
             });
 
@@ -199,12 +248,37 @@ internal static class HostRegressionTests
             AssertEqual("python", added.Type, "Tool type should remain python.");
             AssertEqual(scriptPath, added.Path, "Relative tool path should resolve to an absolute path.");
             AssertEqual(toolsDirectory, added.Cwd, "Cwd should default to the tool directory.");
-            AssertEqual("--flag", added.ArgsTemplate, "ArgsTemplate should be trimmed.");
+            AssertEqual("--flag {mode}", added.ArgsTemplate, "ArgsTemplate should be trimmed.");
+            AssertNotNull(added.ArgsSpec, "Legacy argsTemplate should infer a structured args spec.");
+            AssertEqual("mode", added.ArgsSpec!.Fields[0].Name, "Inferred args spec should expose placeholder names.");
             AssertEqual("alpha,beta", string.Join(',', added.Tags), "Tags should be trimmed and de-duplicated.");
             AssertTrue(added.PathExists, "Existing tool path should be marked as present.");
             AssertTrue(added.Valid, "Valid tool should remain valid after projection.");
             AssertNull(added.RuntimePath, "Unusable runtime path should be cleared.");
             AssertNull(added.ValidationMessage, "Valid tool should not expose a validation message.");
+
+            var structured = registry.AddTool(new ToolDefinition
+            {
+                Id = "structured_py",
+                Name = "Structured Py",
+                Type = "python",
+                Path = @"Tools\demo.py",
+                ArgsSpec = new ArgsSpecV1
+                {
+                    Version = 1,
+                    Fields = new List<ArgFieldSpec>
+                    {
+                        new() { Name = "input", Kind = "path", Required = true }
+                    },
+                    Argv = new List<ArgTokenSpec>
+                    {
+                        new() { Kind = "literal", Value = "--input" },
+                        new() { Kind = "field", Field = "input" }
+                    }
+                }
+            });
+            AssertNotNull(structured.ArgsSpec, "Structured args spec should round-trip through the registry.");
+            AssertEqual("--input {input}", structured.ArgsTemplate, "Structured args spec should backfill a legacy argsTemplate for compatibility.");
 
             var persistedJson = File.ReadAllText(toolsFilePath);
             AssertFalse(persistedJson.Contains("\"valid\"", StringComparison.OrdinalIgnoreCase), "Persisted config should not store Valid.");
@@ -262,6 +336,19 @@ internal static class HostRegressionTests
             Python = @"legacy\python.exe",
             Cwd = @"D:\tools",
             ArgsTemplate = "--name {{name}}",
+            ArgsSpec = new ArgsSpecV1
+            {
+                Version = 1,
+                Fields = new List<ArgFieldSpec>
+                {
+                    new() { Name = "name", Kind = "text" }
+                },
+                Argv = new List<ArgTokenSpec>
+                {
+                    new() { Kind = "literal", Value = "--name" },
+                    new() { Kind = "field", Field = "name" }
+                }
+            },
             Tags = new List<string> { "alpha", "beta" },
             Description = "demo",
             PathExists = true,
@@ -279,6 +366,8 @@ internal static class HostRegressionTests
         AssertEqual(view.RuntimePath, runnable.RuntimePath, "RunnableTool should preserve RuntimePath.");
         AssertEqual(view.Cwd, runnable.Cwd, "RunnableTool should preserve Cwd.");
         AssertEqual(view.ArgsTemplate, runnable.ArgsTemplate, "RunnableTool should preserve ArgsTemplate.");
+        AssertNotNull(runnable.ArgsSpec, "RunnableTool should preserve structured args spec.");
+        AssertEqual("name", runnable.ArgsSpec!.Fields[0].Name, "RunnableTool should preserve args field metadata.");
     }
 
     private static void ToolRuntimeResolution_ShouldRespectToolTypeRules()
@@ -479,12 +568,25 @@ internal static class HostRegressionTests
             Name = "Command Demo",
             Type = "command",
             Path = "git",
-            ArgsTemplate = "status --short"
+            ArgsTemplate = string.Empty,
+            ArgsSpec = new ArgsSpecV1
+            {
+                Version = 1,
+                Fields = new List<ArgFieldSpec>
+                {
+                    new() { Name = "short", Kind = "flag" }
+                },
+                Argv = new List<ArgTokenSpec>
+                {
+                    new() { Kind = "literal", Value = "status" },
+                    new() { Kind = "switch", Field = "short", WhenTrue = "--short" }
+                }
+            }
         };
         var commandStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[]
         {
             commandTool,
-            new Dictionary<string, string?>(),
+            new Dictionary<string, string?> { ["short"] = "true" },
             null
         });
         AssertNotNull(commandStartInfo, "Command start info should be created.");
@@ -611,7 +713,20 @@ internal static class HostRegressionTests
             Type = "executable",
             Path = @"D:\apps\demo.exe",
             Cwd = @"D:\apps",
-            ArgsTemplate = "--flag {value}"
+            ArgsTemplate = string.Empty,
+            ArgsSpec = new ArgsSpecV1
+            {
+                Version = 1,
+                Fields = new List<ArgFieldSpec>
+                {
+                    new() { Name = "value", Kind = "text" }
+                },
+                Argv = new List<ArgTokenSpec>
+                {
+                    new() { Kind = "literal", Value = "--flag" },
+                    new() { Kind = "field", Field = "value" }
+                }
+            }
         };
 
         var genericCommand = (string?)buildMethod.Invoke(null, new object?[]

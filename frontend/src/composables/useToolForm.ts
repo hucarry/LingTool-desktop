@@ -1,7 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 
 import { useI18n } from './useI18n'
-import type { AddToolPayload, ToolItem, ToolType } from '../types'
+import type { AddToolPayload, ArgEditorMode, ArgsSpecV1, ToolItem, ToolType } from '../types'
 import {
   isCommandToolType,
   isScriptToolType,
@@ -10,6 +10,7 @@ import {
   supportsPathBrowse,
   isValidHttpUrl,
 } from '../utils/toolTypes'
+import { getCompatibleArgsSpec, normalizeArgsSpec } from '../utils/argsSpec'
 
 export interface ToolFormState {
   id: string
@@ -19,6 +20,8 @@ export interface ToolFormState {
   runtimePath: string
   cwd: string
   argsTemplate: string
+  argsSpec: ArgsSpecV1 | null
+  argsMode: ArgEditorMode
   tagsText: string
   description: string
 }
@@ -37,6 +40,8 @@ export function useToolForm(defaultType: ToolType = 'python') {
     runtimePath: '',
     cwd: '',
     argsTemplate: '',
+    argsSpec: null,
+    argsMode: 'legacy',
     tagsText: '',
     description: '',
   })
@@ -168,12 +173,16 @@ export function useToolForm(defaultType: ToolType = 'python') {
     form.runtimePath = ''
     form.cwd = ''
     form.argsTemplate = ''
+    form.argsSpec = null
+    form.argsMode = 'legacy'
     form.tagsText = ''
     form.description = ''
     resetValidationState()
   }
 
   function setFromTool(tool: ToolItem): void {
+    const normalizedArgsSpec = normalizeArgsSpec(tool.argsSpec) ?? null
+
     form.id = tool.id
     form.name = tool.name
     form.type = normalizeToolType(tool.type)
@@ -181,6 +190,8 @@ export function useToolForm(defaultType: ToolType = 'python') {
     form.runtimePath = tool.runtimePath ?? ''
     form.cwd = tool.cwd ?? ''
     form.argsTemplate = tool.argsTemplate ?? ''
+    form.argsSpec = normalizedArgsSpec
+    form.argsMode = normalizedArgsSpec ? 'structured' : 'legacy'
     form.tagsText = tool.tags.join(', ')
     form.description = tool.description ?? ''
     resetValidationState()
@@ -225,6 +236,7 @@ export function useToolForm(defaultType: ToolType = 'python') {
   }
 
   function createPayload(): AddToolPayload {
+    const normalizedTemplate = isUrlTool.value ? '' : form.argsTemplate.trim()
     return {
       id: form.id.trim(),
       name: form.name.trim(),
@@ -232,7 +244,8 @@ export function useToolForm(defaultType: ToolType = 'python') {
       path: form.path.trim(),
       runtimePath: needsRuntimePath.value ? form.runtimePath.trim() || undefined : undefined,
       cwd: isUrlTool.value ? undefined : form.cwd.trim() || undefined,
-      argsTemplate: isUrlTool.value ? '' : form.argsTemplate.trim(),
+      argsTemplate: normalizedTemplate,
+      argsSpec: isUrlTool.value ? undefined : getCompatibleArgsSpec(form.argsSpec, normalizedTemplate),
       tags: parseTags(form.tagsText),
       description: form.description.trim() || undefined,
     }

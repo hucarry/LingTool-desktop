@@ -8,6 +8,7 @@ import UiInput from '../components/ui/UiInput.vue'
 import UiPanel from '../components/ui/UiPanel.vue'
 import UiSelect from '../components/ui/UiSelect.vue'
 import UiTextarea from '../components/ui/UiTextarea.vue'
+import ToolArgsEditor from '../components/tools/ToolArgsEditor.vue'
 import ToolPathField from '../components/tools/ToolPathField.vue'
 import { useI18n } from '../composables/useI18n'
 import { useNotify } from '../composables/useNotify'
@@ -86,6 +87,8 @@ watch(
     if (nextType === 'url') {
       form.cwd = ''
       form.argsTemplate = ''
+      form.argsSpec = null
+      form.argsMode = 'legacy'
     }
   },
 )
@@ -227,9 +230,16 @@ function clearForm(): void {
             <UiInput v-model="form.cwd" />
           </UiField>
 
-          <UiField v-if="!isUrlTool" :label="t('addTool.argsTemplate')" class="sm:col-span-2 lg:col-span-2">
-            <UiInput v-model="form.argsTemplate" :placeholder="isScriptTool ? t('addTool.argsScriptHint') : t('addTool.argsHint')" />
-          </UiField>
+          <div v-if="!isUrlTool" class="sm:col-span-2 lg:col-span-2">
+            <ToolArgsEditor
+              v-model:mode="form.argsMode"
+              v-model:args-template="form.argsTemplate"
+              v-model:args-spec="form.argsSpec"
+              :label="t('addTool.argsTemplate')"
+              :hint="t('tools.argsModeHint')"
+              :placeholder="isScriptTool ? t('addTool.argsScriptHint') : t('addTool.argsHint')"
+            />
+          </div>
 
           <div class="col-span-full">
             <UiField :label="t('addTool.description')">

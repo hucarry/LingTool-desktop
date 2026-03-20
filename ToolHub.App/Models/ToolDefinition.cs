@@ -19,6 +19,8 @@ public sealed class ToolDefinition
 
     public string ArgsTemplate { get; set; } = string.Empty;
 
+    public ArgsSpecV1? ArgsSpec { get; set; }
+
     public List<string> Tags { get; set; } = new();
 
     public string? Description { get; set; }

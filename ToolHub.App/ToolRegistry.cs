@@ -272,6 +272,14 @@ public sealed class ToolRegistry
 
     private static ToolDefinition NormalizeDefinition(ToolDefinition source)
     {
+        var normalizedArgsSpec = ArgsSpecCompiler.Normalize(source.ArgsSpec)
+            ?? ArgsSpecCompiler.InferFromTemplate(source.ArgsTemplate);
+        var normalizedArgsTemplate = source.ArgsTemplate?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedArgsTemplate) && normalizedArgsSpec is not null)
+        {
+            normalizedArgsTemplate = ArgsSpecCompiler.BuildLegacyTemplate(normalizedArgsSpec);
+        }
+
         return new ToolDefinition
         {
             Id = source.Id.Trim(),
@@ -283,7 +291,8 @@ public sealed class ToolRegistry
                 : source.RuntimePath.Trim(),
             Python = null,
             Cwd = string.IsNullOrWhiteSpace(source.Cwd) ? null : source.Cwd.Trim(),
-            ArgsTemplate = source.ArgsTemplate?.Trim() ?? string.Empty,
+            ArgsTemplate = normalizedArgsTemplate,
+            ArgsSpec = normalizedArgsSpec,
             Tags = (source.Tags ?? new List<string>())
                 .Where(tag => !string.IsNullOrWhiteSpace(tag))
                 .Select(tag => tag.Trim())
@@ -305,6 +314,7 @@ public sealed class ToolRegistry
             Python = null,
             Cwd = source.Cwd,
             ArgsTemplate = source.ArgsTemplate ?? string.Empty,
+            ArgsSpec = ArgsSpecCompiler.Normalize(source.ArgsSpec),
             Tags = source.Tags?.ToList() ?? new List<string>(),
             Description = source.Description
         };
@@ -320,7 +330,11 @@ public sealed class ToolRegistry
             ? (string.IsNullOrWhiteSpace(tool.Python) ? null : tool.Python.Trim())
             : tool.RuntimePath.Trim();
         tool.Python = null;
-        tool.ArgsTemplate ??= string.Empty;
+        tool.ArgsSpec = ArgsSpecCompiler.Normalize(tool.ArgsSpec)
+            ?? ArgsSpecCompiler.InferFromTemplate(tool.ArgsTemplate);
+        tool.ArgsTemplate = string.IsNullOrWhiteSpace(tool.ArgsTemplate)
+            ? (tool.ArgsSpec is null ? string.Empty : ArgsSpecCompiler.BuildLegacyTemplate(tool.ArgsSpec))
+            : tool.ArgsTemplate.Trim();
         tool.Tags = (tool.Tags ?? new List<string>())
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .Select(tag => tag.Trim())
@@ -426,6 +440,7 @@ public sealed class ToolRegistry
             Python = source.Python,
             Cwd = source.Cwd,
             ArgsTemplate = source.ArgsTemplate,
+            ArgsSpec = ArgsSpecCompiler.Normalize(source.ArgsSpec),
             Tags = source.Tags?.ToList() ?? new List<string>(),
             Description = source.Description,
             PathExists = source.PathExists,

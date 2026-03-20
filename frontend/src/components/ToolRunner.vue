@@ -7,9 +7,11 @@ import UiDrawer from './ui/UiDrawer.vue'
 import UiField from './ui/UiField.vue'
 import UiInput from './ui/UiInput.vue'
 import UiOverlay from './ui/UiOverlay.vue'
+import UiSelect from './ui/UiSelect.vue'
 import { useI18n } from '../composables/useI18n'
 import type { ToolItem } from '../types'
 import { getDefaultRuntimeCommand, getDefaultRuntimeForTool, isScriptToolType, isUrlToolType } from '../utils/toolTypes'
+import { buildArgumentTokens, buildLegacyArgsTemplate, extractArgumentFields } from '../utils/argsSpec'
 
 const props = defineProps<{
   visible: boolean
@@ -75,25 +77,23 @@ const runtimeFieldLabel = computed(() => {
     : t('runner.nodeRuntime')
 })
 
-const placeholders = computed(() => {
-  const template = props.tool?.argsTemplate ?? ''
-  const regex = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g
-  const found: string[] = []
-  const seen = new Set<string>()
-
-  for (const match of template.matchAll(regex)) {
-    const key = match[1]
-    if (key && !seen.has(key)) {
-      seen.add(key)
-      found.push(key)
-    }
+const argumentFields = computed(() => {
+  if (!props.tool) {
+    return []
   }
 
-  return found
+  return extractArgumentFields(props.tool)
 })
 
 const filledPlaceholderCount = computed(() => {
-  return placeholders.value.filter((field) => formState[field]?.trim()).length
+  return argumentFields.value.filter((field) => {
+    const value = formState[field.name]?.trim() ?? ''
+    if (field.kind === 'flag') {
+      return value === 'true'
+    }
+
+    return value.length > 0
+  }).length
 })
 
 const currentRuntimeSource = computed(() => {
@@ -138,13 +138,13 @@ const runnerSummaryText = computed(() => {
     return t('runner.summaryUrlReady')
   }
 
-  if (placeholders.value.length === 0) {
+  if (argumentFields.value.length === 0) {
     return t('runner.summaryReady')
   }
 
   return t('runner.summaryArgs', {
     filled: filledPlaceholderCount.value,
-    total: placeholders.value.length,
+    total: argumentFields.value.length,
   })
 })
 
@@ -153,10 +153,8 @@ const commandPreview = computed(() => {
     return ''
   }
 
-  const renderedArgs = props.tool.argsTemplate.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_, key: string) => {
-    const value = formState[key]?.trim()
-    return value ? value : `{${key}}`
-  })
+  const renderedTokens = buildArgumentTokens(props.tool, { ...formState })
+  const renderedArgs = renderedTokens.join(' ')
 
   if (isUrlTool.value) {
     return props.tool.path
@@ -201,7 +199,10 @@ const infoRows = computed(() => {
   }
 
   if (!isUrlTool.value) {
-    rows.push([t('runner.argsTemplate'), props.tool.argsTemplate || t('runner.none')])
+    rows.push([
+      t('runner.argsTemplate'),
+      props.tool.argsTemplate || buildLegacyArgsTemplate(props.tool.argsSpec, '') || t('runner.none'),
+    ])
   }
 
   rows.push([t('runner.description'), props.tool.description || '-'])
@@ -209,11 +210,11 @@ const infoRows = computed(() => {
 })
 
 watch(
-  () => [props.tool?.id, props.visible, placeholders.value.join('|')],
+  () => [props.tool?.id, props.visible, argumentFields.value.map((field) => field.name).join('|')],
   () => {
     Object.keys(formState).forEach((key) => delete formState[key])
-    placeholders.value.forEach((key) => {
-      formState[key] = ''
+    argumentFields.value.forEach((field) => {
+      formState[field.name] = field.defaultValue
     })
 
     if (props.tool && isScriptToolType(props.tool.type)) {
@@ -310,12 +311,27 @@ function runTool(): void {
               </div>
             </div>
 
-            <div v-if="placeholders.length > 0" class="flex items-center gap-2">
-              <span class="text-xs text-muted">{{ t('runner.summaryArgs', { filled: filledPlaceholderCount, total: placeholders.length }) }}</span>
+            <div v-if="argumentFields.length > 0" class="flex items-center gap-2">
+              <span class="text-xs text-muted">{{ t('runner.summaryArgs', { filled: filledPlaceholderCount, total: argumentFields.length }) }}</span>
             </div>
 
-            <UiField v-for="field in placeholders" :key="field" :label="t('runner.argument', { field })">
-              <UiInput v-model="formState[field]" :placeholder="t('runner.enterArgument', { field })" />
+            <UiField
+              v-for="field in argumentFields"
+              :key="field.name"
+              :label="field.label || t('runner.argument', { field: field.name })"
+              :hint="field.description"
+            >
+              <UiSelect v-if="field.kind === 'select' || field.kind === 'flag'" v-model="formState[field.name]">
+                <option v-for="option in field.options" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </UiSelect>
+              <UiInput
+                v-else
+                v-model="formState[field.name]"
+                :type="field.kind === 'number' ? 'number' : field.kind === 'secret' ? 'password' : 'text'"
+                :placeholder="field.placeholder || t('runner.enterArgument', { field: field.name })"
+              />
             </UiField>
 
             <UiField :label="isUrlTool ? t('runner.linkPreview') : t('runner.commandPreview')">
@@ -324,7 +340,7 @@ function runTool(): void {
               </code>
             </UiField>
 
-            <div v-if="placeholders.length === 0 && !isUrlTool" class="flex flex-col items-center gap-3 py-8 text-muted">
+            <div v-if="argumentFields.length === 0 && !isUrlTool" class="flex flex-col items-center gap-3 py-8 text-muted">
               <span class="flex h-14 w-14 items-center justify-center rounded-full border border-border text-xs font-bold tracking-[0.14em]">
                 RUN
               </span>

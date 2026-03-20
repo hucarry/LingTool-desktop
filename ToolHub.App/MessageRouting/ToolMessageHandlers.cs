@@ -219,7 +219,8 @@ internal static class ToolMessageHandlers
             Path = source.Path,
             RuntimePath = source.RuntimePath,
             Cwd = source.Cwd,
-            ArgsTemplate = source.ArgsTemplate
+            ArgsTemplate = source.ArgsTemplate,
+            ArgsSpec = ArgsSpecCompiler.Normalize(source.ArgsSpec)
         };
     }
 

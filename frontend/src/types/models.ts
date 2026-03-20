@@ -1,6 +1,35 @@
 export type ToolType = 'python' | 'node' | 'command' | 'executable' | 'url'
 export type RunState = 'running' | 'exited' | 'stopped' | 'failed'
 export type TerminalState = 'running' | 'exited' | 'stopped' | 'failed'
+export type ArgFieldKind = 'text' | 'path' | 'number' | 'flag' | 'select' | 'secret'
+export type ArgEditorMode = 'legacy' | 'structured'
+
+export interface ArgFieldOption {
+  label: string
+  value: string
+}
+
+export interface ArgFieldSpec {
+  name: string
+  label?: string
+  description?: string
+  kind: ArgFieldKind
+  required?: boolean
+  defaultValue?: string
+  placeholder?: string
+  options?: ArgFieldOption[]
+}
+
+export type ArgTokenSpec =
+  | { kind: 'literal'; value: string }
+  | { kind: 'field'; field: string; prefix?: string; suffix?: string; omitWhenEmpty?: boolean }
+  | { kind: 'switch'; field: string; whenTrue: string; whenFalse?: string }
+
+export interface ArgsSpecV1 {
+  version: 1
+  fields: ArgFieldSpec[]
+  argv: ArgTokenSpec[]
+}
 
 export interface ToolItem {
   id: string
@@ -10,6 +39,7 @@ export interface ToolItem {
   runtimePath?: string
   cwd?: string
   argsTemplate: string
+  argsSpec?: ArgsSpecV1
   tags: string[]
   description?: string
   pathExists: boolean
@@ -43,6 +73,7 @@ export interface AddToolPayload {
   runtimePath?: string
   cwd?: string
   argsTemplate?: string
+  argsSpec?: ArgsSpecV1
   tags?: string[]
   description?: string
 }

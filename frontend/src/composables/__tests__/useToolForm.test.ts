@@ -69,4 +69,79 @@ describe('useToolForm', () => {
       argsTemplate: '',
     })
   })
+
+  it('preserves structured argsSpec when the legacy template stays aligned', () => {
+    const form = useToolForm('python')
+
+    form.setFromTool({
+      id: 'structured-demo',
+      name: 'Structured Demo',
+      type: 'python',
+      path: 'C:/Tools/demo.py',
+      argsTemplate: '--input {input}',
+      argsSpec: {
+        version: 1,
+        fields: [
+          { name: 'input', label: 'Input', kind: 'path', required: true },
+        ],
+        argv: [
+          { kind: 'literal', value: '--input' },
+          { kind: 'field', field: 'input' },
+        ],
+      },
+      tags: [],
+      pathExists: true,
+      valid: true,
+    })
+
+    expect(form.createPayload().argsSpec).toEqual({
+      version: 1,
+      fields: [
+        { name: 'input', label: 'Input', kind: 'path', required: true, options: [] },
+      ],
+      argv: [
+        { kind: 'literal', value: '--input' },
+        { kind: 'field', field: 'input', omitWhenEmpty: true },
+      ],
+    })
+    expect(form.form.argsMode).toBe('structured')
+  })
+
+  it('re-infers a minimal argsSpec when the raw template changes', () => {
+    const form = useToolForm('python')
+
+    form.setFromTool({
+      id: 'structured-demo',
+      name: 'Structured Demo',
+      type: 'python',
+      path: 'C:/Tools/demo.py',
+      argsTemplate: '--input {input}',
+      argsSpec: {
+        version: 1,
+        fields: [
+          { name: 'input', label: 'Input', kind: 'path', required: true },
+        ],
+        argv: [
+          { kind: 'literal', value: '--input' },
+          { kind: 'field', field: 'input' },
+        ],
+      },
+      tags: [],
+      pathExists: true,
+      valid: true,
+    })
+
+    form.form.argsTemplate = '--output {output}'
+
+    expect(form.createPayload().argsSpec).toEqual({
+      version: 1,
+      fields: [
+        { name: 'output', kind: 'text' },
+      ],
+      argv: [
+        { kind: 'literal', value: '--output' },
+        { kind: 'field', field: 'output', omitWhenEmpty: false },
+      ],
+    })
+  })
 })
