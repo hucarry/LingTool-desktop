@@ -48,10 +48,11 @@ public sealed class TerminalManager : IDisposable
             var options = new PtyOptions
             {
                 App = info.Shell,
+                CommandLine = GetShellArgs(info.Shell),
                 Cwd = info.Cwd,
                 Cols = DefaultCols,
                 Rows = DefaultRows,
-                VerbatimCommandLine = true
+                VerbatimCommandLine = false
             };
 
             var connection = await PtyProvider.SpawnAsync(options, CancellationToken.None);
@@ -316,6 +317,15 @@ public sealed class TerminalManager : IDisposable
             : cwd.Trim();
 
         return Path.GetFullPath(raw);
+    }
+
+    private static string[] GetShellArgs(string shell)
+    {
+        if (GetShellKind(shell) == ShellKind.PowerShell)
+        {
+            return ["-ExecutionPolicy", "Bypass"];
+        }
+        return [];
     }
 
     private static string ResolveShell(string? shell)
