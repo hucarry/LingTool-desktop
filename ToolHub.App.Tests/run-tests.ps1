@@ -69,6 +69,7 @@ $compileArgs = @(
     '/target:exe',
     '/langversion:latest',
     '/nullable:enable',
+    '/define:HOST_REGRESSION_CONSOLE',
     '/main:HostRegressionTests',
     "/out:$outputPath",
     "-r:$codePagesPath",

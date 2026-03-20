@@ -35,6 +35,7 @@ internal static class HostRegressionTests
         }
     }
 
+    #if HOST_REGRESSION_CONSOLE
     private static int Main()
     {
         try
@@ -49,6 +50,7 @@ internal static class HostRegressionTests
             return 1;
         }
     }
+    #endif
 
     private static void BridgeMessageTypes_ShouldMatchStableContract()
     {
