@@ -140,7 +140,7 @@ public sealed class TerminalManager : IDisposable
 
     public async Task RunToolInTerminalAsync(
         string? terminalId,
-        ToolItem tool,
+        RunnableTool tool,
         Dictionary<string, string?> args,
         string? pythonPath)
     {
@@ -346,7 +346,7 @@ public sealed class TerminalManager : IDisposable
 
     private static string BuildRunCommand(
         string shell,
-        ToolItem tool,
+        RunnableTool tool,
         IReadOnlyDictionary<string, string?> args,
         string? runtimePath)
     {

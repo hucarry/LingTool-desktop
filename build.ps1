@@ -1,21 +1,73 @@
 param(
-    [switch]$NoRun
+    [switch]$NoRun,
+    [switch]$NoFrontendInstall,
+    [switch]$NoHostRegression
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 Set-Location $PSScriptRoot
 
-Write-Host '==> 安装前端依赖并构建...'
-Push-Location frontend
-npm install
-npm run build
-Pop-Location
+function Run-Step([string]$name, [scriptblock]$action) {
+    Write-Host "==> $name" -ForegroundColor Cyan
+    & $action
+}
 
-Write-Host '==> 构建后端...'
-dotnet build ToolHub.App/ToolHub.App.csproj
+function Assert-LastExitCode([string]$context) {
+    if ($LASTEXITCODE -ne 0) {
+        throw "$context failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Get-NpmExecutable() {
+    $cmdCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if ($null -ne $cmdCommand) {
+        return $cmdCommand.Source
+    }
+
+    $command = Get-Command npm -ErrorAction Stop
+    return $command.Source
+}
+
+function Invoke-NpmCommand([string[]]$arguments, [string]$context) {
+    $npmExe = Get-NpmExecutable
+    & $npmExe @arguments
+    Assert-LastExitCode $context
+}
+
+Push-Location frontend
+try {
+    if (-not $NoFrontendInstall) {
+        $installCommand = if (Test-Path 'package-lock.json') { 'ci' } else { 'install' }
+        Run-Step "Install frontend dependencies (npm $installCommand)" {
+            Invoke-NpmCommand -arguments @($installCommand) -context "npm $installCommand"
+        }
+    }
+
+    Run-Step 'Build frontend (npm run build)' {
+        Invoke-NpmCommand -arguments @('run', 'build') -context 'npm run build'
+    }
+}
+finally {
+    Pop-Location
+}
+
+Run-Step 'Build backend (dotnet build)' {
+    dotnet build ToolHub.App/ToolHub.App.csproj
+    Assert-LastExitCode 'dotnet build'
+}
+
+if (-not $NoHostRegression) {
+    Run-Step 'Run host regression checks' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File .\ToolHub.App.Tests\run-tests.ps1
+        Assert-LastExitCode 'host regression checks'
+    }
+}
 
 if (-not $NoRun) {
-    Write-Host '==> 启动桌面应用...'
-    dotnet run --project ToolHub.App/ToolHub.App.csproj
+    Run-Step 'Launch desktop app' {
+        dotnet run --project ToolHub.App/ToolHub.App.csproj
+        Assert-LastExitCode 'dotnet run'
+    }
 }

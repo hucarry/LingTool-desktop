@@ -305,15 +305,15 @@ internal static class Program
         return fromProjectFolder;
     }
 
-    internal static string? ResolveRuntimeOverride(string? runtimePath, ToolItem tool)
+    internal static string? ResolveRuntimeOverride(string? runtimePath, string? cwd)
     {
         if (string.IsNullOrWhiteSpace(runtimePath))
         {
             return null;
         }
 
-        var baseDirectory = !string.IsNullOrWhiteSpace(tool.Cwd)
-            ? tool.Cwd
+        var baseDirectory = !string.IsNullOrWhiteSpace(cwd)
+            ? cwd
             : Directory.GetCurrentDirectory();
 
         return PathUtils.ResolvePathOrCommand(runtimePath, baseDirectory);

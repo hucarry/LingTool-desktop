@@ -15,6 +15,7 @@ param(
     [switch]$NoBundlePortablePip,
     [switch]$NoFrontendInstall,
     [switch]$NoFrontendBuild,
+    [switch]$NoHostRegression,
     [switch]$NoClean,
     [switch]$OpenOutput
 )
@@ -805,6 +806,18 @@ if (-not $NoFrontendBuild) {
     }
     finally {
         Pop-Location
+    }
+}
+
+Run-Step "Build backend for host regression (dotnet build Debug)" {
+    dotnet build $backendProject -c Debug
+    Assert-LastExitCode "dotnet build Debug"
+}
+
+if (-not $NoHostRegression) {
+    Run-Step "Run host regression checks" {
+        powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot "ToolHub.App.Tests\run-tests.ps1")
+        Assert-LastExitCode "host regression checks"
     }
 }
 

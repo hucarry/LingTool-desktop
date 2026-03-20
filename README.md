@@ -1,90 +1,43 @@
-# LingTool Desktop
+# ToolHub Desktop
 
-<p align="center">
-  一个面向 Windows 的本地工具管理平台，用桌面应用的方式统一管理和运行常用脚本、命令与程序。
-</p>
+本项目是一个面向 Windows 的本地工具管理平台，用于统一管理和运行 Python、Node、命令行、可执行文件与 URL 工具。桌面宿主基于 `Photino.NET`，前端基于 `Vue 3 + Vite + Pinia`，工具配置通过根目录 `tools.json` 管理。
 
-<p align="center">
-  <a href="https://github.com/hucarry/LingTool-desktop"><img src="https://img.shields.io/github/stars/hucarry/LingTool-desktop?style=flat-square" alt="GitHub stars" /></a>
-  <a href="https://github.com/hucarry/LingTool-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square" alt="Platform Windows" />
-  <img src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square" alt=".NET 8" />
-  <img src="https://img.shields.io/badge/Vue-3-42B883?style=flat-square" alt="Vue 3" />
-  <img src="https://img.shields.io/badge/Photino.NET-Desktop-4B5563?style=flat-square" alt="Photino.NET" />
-</p>
+## 项目定位
 
-> 把零散的 Python、Node.js、命令行、可执行程序和网址入口，收拢到一个统一的桌面工作台中。
-
-LingTool Desktop 基于 Photino.NET 和 Vue 3 构建，不依赖本地 HTTP 服务，适合整理个人开发工具、自动化脚本、内部小工具和常用命令入口。
-
-![LingTool Desktop Preview](./pngs/2.png)
-
-## 目录
-
-- [项目亮点](#项目亮点)
-- [技术栈](#技术栈)
-- [适用场景](#适用场景)
-- [界面预览](#界面预览)
-- [快速开始](#快速开始)
-- [一键开发脚本](#一键开发脚本)
-- [开发命令](#开发命令)
-- [tools.json 配置](#toolsjson-配置)
-- [主要功能](#主要功能)
-- [项目结构](#项目结构)
-- [架构说明](#架构说明)
-- [打包发布](#打包发布)
-- [常见问题](#常见问题)
-- [后续方向](#后续方向)
-
-## 项目亮点
-
-- 支持多种工具类型：`python`、`node`、`command`、`executable`、`url`
-- 通过 `tools.json` 统一管理工具定义、参数模板、工作目录和运行时路径
-- 支持动态参数输入，可根据 `argsTemplate` 自动生成表单
-- 内置终端面板，支持多会话、分屏和运行输出查看
-- 支持 Python 包管理，可查看、安装和卸载当前解释器的包
-- 支持默认 Python / Node 运行时设置，减少每个工具重复配置
-- 所有工具都在本机运行，适合本地开发与个人效率场景
+- 统一管理本地开发工具、脚本和常用命令入口
+- 提供桌面化运行入口，而不是依赖单独的本地 Web 服务
+- 支持直接运行与终端运行两种模式
+- 支持 Python 包管理与内置终端工作区
 
 ## 技术栈
 
-- .NET 8
-- Photino.NET
-- Vue 3
-- Vite
-- TypeScript
-- Pinia
-- xterm.js
+- `.NET 8`
+- `Photino.NET`
+- `Vue 3`
+- `TypeScript`
+- `Pinia`
+- `Vite`
+- `xterm.js`
 
-## 适用场景
+## 功能概览
 
-- 把零散的 Python / Node / EXE / 命令行工具集中管理
-- 为常用脚本提供统一入口，减少手动切目录和敲命令
-- 给内部工具或个人工具做一个轻量桌面壳
-- 在同一个界面里管理运行状态、终端输出和 Python 依赖
+- 支持工具类型：`python`、`node`、`command`、`executable`、`url`
+- 支持通过 `tools.json` 维护工具定义
+- 支持 `argsTemplate` 动态参数模板
+- 支持直接运行工具并查看输出日志
+- 支持在内置终端中运行工具并保留交互
+- 支持多终端、分屏终端与终端状态管理
+- 支持选择默认 Python 路径与默认 Node 路径
+- 支持查看、安装、卸载 Python 包
 
-## 界面预览
+## 环境要求
 
-### 工具目录
-
-![工具目录预览](./pngs/2.png)
-
-### Python 包管理
-
-![Python 包管理预览](./pngs/1.png)
-
-### 新增工具
-
-![新增工具预览](./pngs/3.png)
+- Windows 10 或 Windows 11
+- `.NET SDK 8.x`
+- `Node.js 18+`
+- `npm 9+`
 
 ## 快速开始
-
-### 环境要求
-
-- Windows 10 / 11
-- .NET SDK 8.x
-- Node.js 18+
-- npm 9+
 
 ### 1. 安装前端依赖并构建
 
@@ -96,46 +49,77 @@ npm run build
 
 ### 2. 初始化本地工具配置
 
-仓库中提交的是公开示例配置 [`tools.example.json`](./tools.example.json)，首次使用前请复制为本地私有配置：
+仓库中提交的是示例配置 [`tools.example.json`](./tools.example.json)。首次使用时复制为本地配置：
 
 ```powershell
-cd ..
-Copy-Item tools.example.json tools.json
+Copy-Item .\tools.example.json .\tools.json
 ```
 
-`tools.json` 已加入 `.gitignore`，适合保存你自己的本机路径、解释器路径和命令参数，不会上传到 GitHub。
+`tools.json` 已加入 `.gitignore`，适合保存本机路径和私有工具配置。
 
 ### 3. 启动桌面应用
 
 ```powershell
-dotnet run --project ToolHub.App/ToolHub.App.csproj
+dotnet run --project .\ToolHub.App\ToolHub.App.csproj
 ```
 
-如果根目录不存在 `tools.json`，应用会优先尝试从 `tools.example.json` 自动生成一份默认配置。
+## 一键构建
 
-## 一键开发脚本
+根目录提供了 [`build.ps1`](./build.ps1)，默认会执行以下流程：
 
-根目录提供 [`build.ps1`](./build.ps1)，用于快速完成前端构建、后端编译和应用启动：
+1. 前端安装依赖并构建
+2. 后端编译
+3. 宿主回归检查
+4. 启动桌面应用
+
+直接执行：
 
 ```powershell
-./build.ps1
+.\build.ps1
 ```
 
-它会执行：
-
-1. `cd frontend && npm install && npm run build`
-2. `dotnet build ToolHub.App/ToolHub.App.csproj`
-3. `dotnet run --project ToolHub.App/ToolHub.App.csproj`
-
-只构建不启动：
+仅构建，不启动应用：
 
 ```powershell
-./build.ps1 -NoRun
+.\build.ps1 -NoRun
 ```
 
-## 开发命令
+跳过前端安装：
 
-### 前端开发
+```powershell
+.\build.ps1 -NoFrontendInstall
+```
+
+跳过宿主回归：
+
+```powershell
+.\build.ps1 -NoHostRegression
+```
+
+## 宿主回归测试
+
+项目包含一套零依赖宿主回归入口：[`ToolHub.App.Tests/run-tests.ps1`](./ToolHub.App.Tests/run-tests.ps1)。
+
+该脚本会离线编译当前 `ToolHub.App` 源码并执行回归检查，当前已覆盖：
+
+- 协议常量稳定性
+- 运行时覆盖解析
+- `ToolRegistry` 配置投影
+- `RunnableTool` 投影边界
+- 工具运行时解析
+- `MessageRouter` 错误边界
+- `ProcessManager.BuildStartInfo` 命令拼装
+- `TerminalManager.BuildRunCommand` Shell 拼装
+
+手动执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\ToolHub.App.Tests\run-tests.ps1
+```
+
+## 前端开发与验证
+
+启动前端开发环境：
 
 ```powershell
 cd frontend
@@ -143,29 +127,53 @@ npm install
 npm run dev
 ```
 
-### 前端构建
-
-```powershell
-cd frontend
-npm run build
-```
-
-### 前端测试
+运行前端测试：
 
 ```powershell
 cd frontend
 npm test
 ```
 
-### 后端运行
+执行前端生产构建：
 
 ```powershell
-dotnet run --project ToolHub.App/ToolHub.App.csproj
+cd frontend
+npm run build
+```
+
+前端构建产物会输出到 [`ToolHub.App/wwwroot`](./ToolHub.App/wwwroot)。
+
+## 发布
+
+根目录提供了 [`publish.ps1`](./publish.ps1)，默认流程如下：
+
+1. 前端安装与构建
+2. 后端 `Debug` 编译
+3. 宿主回归检查
+4. `dotnet publish`
+5. 可选打包便携 Python 与 pip
+
+直接发布：
+
+```powershell
+.\publish.ps1
+```
+
+常用参数：
+
+```powershell
+.\publish.ps1 -Runtime win-x64 -Configuration Release
+.\publish.ps1 -NoFrontendInstall
+.\publish.ps1 -NoFrontendBuild
+.\publish.ps1 -NoHostRegression
+.\publish.ps1 -OpenOutput
+.\publish.ps1 -NoBundlePortablePython
+.\publish.ps1 -NoBundlePortablePip
 ```
 
 ## tools.json 配置
 
-应用运行时读取根目录 `tools.json` 作为工具注册表。建议以 [`tools.example.json`](./tools.example.json) 为起点，按你的本机环境修改。
+应用运行时读取根目录 `tools.json` 作为工具注册表。
 
 最小示例：
 
@@ -174,169 +182,78 @@ dotnet run --project ToolHub.App/ToolHub.App.csproj
   "tools": [
     {
       "id": "demo_py",
-      "name": "项目内 Python 示例",
+      "name": "Python 示例",
       "type": "python",
       "path": "Tools/testdemo.py",
       "cwd": "Tools",
-      "argsTemplate": "",
-      "tags": ["示例", "Python"]
+      "argsTemplate": "--date {date}",
+      "tags": ["demo", "python"]
     }
   ]
 }
 ```
 
-### 字段说明
+字段说明：
 
-- `id`：工具唯一标识，建议使用字母、数字、`.`、`_`、`-`
-- `name`：工具显示名称
+- `id`：工具唯一标识
+- `name`：显示名称
 - `type`：工具类型，支持 `python`、`node`、`command`、`executable`、`url`
 - `path`：脚本路径、命令名、可执行文件路径或 URL
-- `runtimePath`：`python` / `node` 工具可选，指定解释器或运行时
-- `cwd`：工具启动时的工作目录
+- `runtimePath`：`python` / `node` 工具的可选运行时路径
+- `cwd`：工作目录
 - `argsTemplate`：参数模板，支持 `{placeholder}` 占位符
-- `tags`：工具标签
-- `description`：工具描述
+- `tags`：标签列表
+- `description`：可选说明
 
-### 类型说明
+说明：
 
-- `python`：运行 Python 脚本，可选指定 `runtimePath`
-- `node`：运行 Node 脚本，可选指定 `runtimePath`
-- `command`：运行系统命令，例如 `npm`、`git`、`docker`
-- `executable`：运行本地可执行文件
-- `url`：打开网页链接，仅支持 `http://` 和 `https://`
+- 相对路径会按项目根目录或配置基目录解析
+- `url` 类型仅支持 `http://` 和 `https://`
+- `argsTemplate` 中的占位符会在前端自动生成输入项
 
-### 参数模板示例
-
-```json
-{
-  "id": "report",
-  "name": "日报生成",
-  "type": "python",
-  "path": "Tools/report.py",
-  "cwd": "Tools",
-  "argsTemplate": "--date {date} --mode {mode}"
-}
-```
-
-上面的模板会在前端生成 `date` 和 `mode` 两个输入项，运行时自动拼接为命令参数。
-
-## 主要功能
-
-### 工具管理
-
-- 查看工具列表和状态
-- 新增、编辑、删除工具
-- 支持 URL 工具直接调用系统浏览器
-- 支持从文件选择器选择脚本、运行时和可执行文件
-
-### 运行与终端
-
-- 直接运行工具并查看输出
-- 在终端中运行工具，保留交互能力
-- 支持多终端会话
-- 支持分屏终端
-- 支持停止运行与清空输出
-
-### Python 环境管理
-
-- 选择 Python 解释器
-- 查看已安装包
-- 安装 / 卸载包
-- 支持使用系统 Python
-
-### 设置
-
-- 切换浅色 / 深色主题
-- 配置默认 Python 路径
-- 配置默认 Node 路径
-
-## 项目结构
+## 目录结构
 
 ```text
 .
 ├─ ToolHub.sln
-├─ tools.example.json
 ├─ build.ps1
 ├─ publish.ps1
-├─ README.md
+├─ tools.example.json
 ├─ frontend/
 │  ├─ package.json
 │  ├─ vite.config.ts
-│  ├─ scripts/
 │  └─ src/
-│     ├─ components/
-│     ├─ composables/
-│     ├─ locales/
-│     ├─ router/
-│     ├─ stores/
-│     └─ views/
-└─ ToolHub.App/
-   ├─ Program.cs
-   ├─ MessageRouter.cs
-   ├─ ToolRegistry.cs
-   ├─ ProcessManager.cs
-   ├─ PythonPackageManager.cs
-   ├─ TerminalManager.cs
-   ├─ Models/
-   ├─ Utils/
-   └─ wwwroot/
+├─ ToolHub.App/
+│  ├─ Program.cs
+│  ├─ MessageRouter.cs
+│  ├─ MessageRouting/
+│  ├─ ToolRegistry.cs
+│  ├─ ProcessManager.cs
+│  ├─ TerminalManager.cs
+│  ├─ PythonPackageManager.cs
+│  ├─ Models/
+│  ├─ Utils/
+│  └─ wwwroot/
+└─ ToolHub.App.Tests/
+   ├─ HostRegressionTests.cs
+   ├─ ToolHub.GlobalUsings.cs
+   └─ run-tests.ps1
 ```
 
 ## 架构说明
 
-- 前端通过 `window.external.sendMessage(JSON.stringify(msg))` 向 Photino 宿主发送消息
-- 后端通过 `RegisterWebMessageReceivedHandler` 接收消息并交由 `MessageRouter` 分发
-- 工具注册由 `ToolRegistry` 负责，配置文件来源于根目录 `tools.json`
-- 工具进程由 `ProcessManager` 管理
-- 终端会话由 `TerminalManager` 管理
-- Python 包管理由 `PythonPackageManager` 处理
-- 前端构建产物输出到 `ToolHub.App/wwwroot`
+- 前端通过 `window.external.sendMessage(...)` 与 Photino 宿主通信
+- 宿主通过 `MessageRouter` 和 `MessageRouting/*` 处理消息分发
+- `ToolRegistry` 负责工具配置读写、规范化与视图投影
+- `ProcessManager` 负责直接运行工具
+- `TerminalManager` 负责内置终端与终端运行工具
+- `PythonPackageManager` 负责 Python 包查询与安装卸载
 
-## 打包发布
+当前宿主模型边界为：
 
-项目提供 [`publish.ps1`](./publish.ps1) 用于一键发布桌面应用。
-
-### 默认发布
-
-```powershell
-./publish.ps1
-```
-
-### 常用参数
-
-```powershell
-./publish.ps1 -Runtime win-x64 -Configuration Release
-./publish.ps1 -NoFrontendInstall
-./publish.ps1 -NoFrontendBuild
-./publish.ps1 -OpenOutput
-./publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
-./publish.ps1 -NoBundlePortablePip
-```
-
-### 发布说明
-
-- 默认输出目录为 `publish/win-x64`
-- 脚本会优先构建前端，再执行 `dotnet publish`
-- 可选打包便携版 Python 和 pip
-- 发布目录中请保留你自己的 `tools.json`
-
-如果在安装便携版 pip 时遇到网络相关错误（例如只看到 `ERROR: Operation cancelled by user`），优先尝试以下命令：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-```
-
-如果仍然失败，可显式指定 PyPI 镜像：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -PortablePipIndexUrl https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-如果当前只需要完成应用发布、不要求内置 pip，可临时跳过：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -NoBundlePortablePip
-```
+- `ToolDefinition`：持久化配置模型
+- `ToolItem`：前端回显与校验模型
+- `RunnableTool`：运行时最小模型
 
 ## 常见问题
 
@@ -350,21 +267,27 @@ npm install
 npm run build
 ```
 
-### 工具显示“路径异常”
+### 为什么仓库里没有提交 `tools.json`
 
-检查 `tools.json` 中的 `path`、`cwd`、`runtimePath` 是否存在且可访问。
+因为该文件通常包含本机路径、解释器路径和私有工具配置，不适合直接提交到仓库。
 
-### 为什么仓库里没有 `tools.json`
+### 工具显示路径异常或不可用
 
-因为它通常包含本机路径和私有运行环境，不适合公开提交。仓库只保留 `tools.example.json` 作为示例模板。
+优先检查：
 
-### 停止运行后状态显示 `failed`
+- `path` 是否存在
+- `cwd` 是否存在
+- `runtimePath` 是否存在且可用
+- 是否使用了错误的相对路径基准
 
-部分进程被强制终止时会返回非 0 退出码；当前实现会优先按“主动停止”标记为 `stopped`，但底层进程可能仍返回失败码。
+## 当前工程化状态
 
-## 后续方向
+目前项目已具备以下基础门禁：
 
-- 更完整的多语言文案整理
-- 更细的工具分类与搜索能力
-- 更多运行时支持
-- 更完善的发布产物说明与自动化发布流程
+- 前端测试
+- 前端生产构建
+- 宿主离线回归
+- 构建脚本门禁
+- 发布脚本门禁
+
+下一阶段更适合继续补的是标准 CI 和正式的 `dotnet test` 工程。

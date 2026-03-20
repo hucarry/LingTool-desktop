@@ -1,37 +1,45 @@
 import type { ToolType, ToolItem, RunInfo, AddToolPayload, PythonPackageItem, TerminalInfo } from './models'
+import {
+  BRIDGE_MESSAGE_TYPES,
+  type FileSelectionPurpose,
+  type LogChannel,
+  type PythonPackageAction,
+  type PythonPackageInstallStatus,
+  type PythonSelectionPurpose,
+} from './bridgeMessageTypes'
 
 export interface GetToolsRequest {
-  type: 'getTools'
+  type: typeof BRIDGE_MESSAGE_TYPES.GET_TOOLS
 }
 
 export interface GetAppDefaultsRequest {
-  type: 'getAppDefaults'
+  type: typeof BRIDGE_MESSAGE_TYPES.GET_APP_DEFAULTS
 }
 
 export interface AddToolRequest {
-  type: 'addTool'
+  type: typeof BRIDGE_MESSAGE_TYPES.ADD_TOOL
   tool: AddToolPayload
 }
 
 export interface UpdateToolRequest {
-  type: 'updateTool'
+  type: typeof BRIDGE_MESSAGE_TYPES.UPDATE_TOOL
   tool: AddToolPayload
 }
 
 export interface DeleteToolsRequest {
-  type: 'deleteTools'
+  type: typeof BRIDGE_MESSAGE_TYPES.DELETE_TOOLS
   toolIds: string[]
 }
 
 export interface RunToolRequest {
-  type: 'runTool'
+  type: typeof BRIDGE_MESSAGE_TYPES.RUN_TOOL
   toolId: string
   args: Record<string, string>
   runtimePath?: string
 }
 
 export interface RunToolInTerminalRequest {
-  type: 'runToolInTerminal'
+  type: typeof BRIDGE_MESSAGE_TYPES.RUN_TOOL_IN_TERMINAL
   toolId: string
   args: Record<string, string>
   runtimePath?: string
@@ -39,55 +47,55 @@ export interface RunToolInTerminalRequest {
 }
 
 export interface OpenUrlToolRequest {
-  type: 'openUrlTool'
+  type: typeof BRIDGE_MESSAGE_TYPES.OPEN_URL_TOOL
   toolId: string
 }
 
 export interface StopRunRequest {
-  type: 'stopRun'
+  type: typeof BRIDGE_MESSAGE_TYPES.STOP_RUN
   runId: string
 }
 
 export interface GetRunsRequest {
-  type: 'getRuns'
+  type: typeof BRIDGE_MESSAGE_TYPES.GET_RUNS
 }
 
 export interface BrowsePythonRequest {
-  type: 'browsePython'
+  type: typeof BRIDGE_MESSAGE_TYPES.BROWSE_PYTHON
   defaultPath?: string
-  purpose?: 'toolRunnerRuntime' | 'addToolRuntime' | 'editToolRuntime' | 'packageManager' | 'settingsDefaultPython'
+  purpose?: PythonSelectionPurpose
 }
 
 export interface BrowseFileRequest {
-  type: 'browseFile'
+  type: typeof BRIDGE_MESSAGE_TYPES.BROWSE_FILE
   defaultPath?: string
   filter?: string
-  purpose?: 'addToolPath' | 'addToolRuntime' | 'editToolPath' | 'editToolRuntime' | 'toolRunnerRuntime' | 'settingsDefaultNode'
+  purpose?: FileSelectionPurpose
 }
 
 export interface GetPythonPackagesRequest {
-  type: 'getPythonPackages'
+  type: typeof BRIDGE_MESSAGE_TYPES.GET_PYTHON_PACKAGES
   pythonPath?: string
 }
 
 export interface InstallPythonPackageRequest {
-  type: 'installPythonPackage'
+  type: typeof BRIDGE_MESSAGE_TYPES.INSTALL_PYTHON_PACKAGE
   pythonPath?: string
   packageName: string
 }
 
 export interface UninstallPythonPackageRequest {
-  type: 'uninstallPythonPackage'
+  type: typeof BRIDGE_MESSAGE_TYPES.UNINSTALL_PYTHON_PACKAGE
   pythonPath?: string
   packageName: string
 }
 
 export interface GetTerminalsRequest {
-  type: 'getTerminals'
+  type: typeof BRIDGE_MESSAGE_TYPES.GET_TERMINALS
 }
 
 export interface StartTerminalRequest {
-  type: 'startTerminal'
+  type: typeof BRIDGE_MESSAGE_TYPES.START_TERMINAL
   title?: string
   shell?: string
   cwd?: string
@@ -96,20 +104,20 @@ export interface StartTerminalRequest {
 }
 
 export interface TerminalInputRequest {
-  type: 'terminalInput'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINAL_INPUT
   terminalId: string
   data: string
 }
 
 export interface TerminalResizeRequest {
-  type: 'terminalResize'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINAL_RESIZE
   terminalId: string
   cols: number
   rows: number
 }
 
 export interface StopTerminalRequest {
-  type: 'stopTerminal'
+  type: typeof BRIDGE_MESSAGE_TYPES.STOP_TERMINAL
   terminalId: string
 }
 
@@ -136,106 +144,106 @@ export type FrontMessage =
   | StopTerminalRequest
 
 export interface ToolsMessage {
-  type: 'tools'
+  type: typeof BRIDGE_MESSAGE_TYPES.TOOLS
   tools: ToolItem[]
 }
 
 export interface RunStartedMessage {
-  type: 'runStarted'
+  type: typeof BRIDGE_MESSAGE_TYPES.RUN_STARTED
   run: RunInfo
 }
 
 export interface RunStatusMessage {
-  type: 'runStatus'
+  type: typeof BRIDGE_MESSAGE_TYPES.RUN_STATUS
   run: RunInfo
 }
 
 export interface RunsMessage {
-  type: 'runs'
+  type: typeof BRIDGE_MESSAGE_TYPES.RUNS
   runs: RunInfo[]
 }
 
 export interface LogMessage {
-  type: 'log'
+  type: typeof BRIDGE_MESSAGE_TYPES.LOG
   runId: string
-  channel: 'stdout' | 'stderr'
+  channel: LogChannel
   line: string
   ts: string
 }
 
 export interface ErrorMessage {
-  type: 'error'
+  type: typeof BRIDGE_MESSAGE_TYPES.ERROR
   message: string
   details?: unknown
 }
 
 export interface PythonSelectedMessage {
-  type: 'pythonSelected'
+  type: typeof BRIDGE_MESSAGE_TYPES.PYTHON_SELECTED
   path?: string
-  purpose?: 'toolRunnerRuntime' | 'addToolRuntime' | 'editToolRuntime' | 'packageManager' | 'settingsDefaultPython'
+  purpose?: PythonSelectionPurpose
 }
 
 export interface FileSelectedMessage {
-  type: 'fileSelected'
+  type: typeof BRIDGE_MESSAGE_TYPES.FILE_SELECTED
   path?: string
-  purpose?: 'addToolPath' | 'addToolRuntime' | 'editToolPath' | 'editToolRuntime' | 'toolRunnerRuntime' | 'settingsDefaultNode'
+  purpose?: FileSelectionPurpose
 }
 
 export interface ToolAddedMessage {
-  type: 'toolAdded'
+  type: typeof BRIDGE_MESSAGE_TYPES.TOOL_ADDED
   toolId: string
 }
 
 export interface ToolUpdatedMessage {
-  type: 'toolUpdated'
+  type: typeof BRIDGE_MESSAGE_TYPES.TOOL_UPDATED
   toolId: string
 }
 
 export interface ToolsDeletedMessage {
-  type: 'toolsDeleted'
+  type: typeof BRIDGE_MESSAGE_TYPES.TOOLS_DELETED
   deletedCount: number
 }
 
 export interface PythonPackagesMessage {
-  type: 'pythonPackages'
+  type: typeof BRIDGE_MESSAGE_TYPES.PYTHON_PACKAGES
   pythonPath: string
   packages: PythonPackageItem[]
 }
 
 export interface PythonPackageInstallStatusMessage {
-  type: 'pythonPackageInstallStatus'
+  type: typeof BRIDGE_MESSAGE_TYPES.PYTHON_PACKAGE_INSTALL_STATUS
   packageName: string
-  action: 'install' | 'uninstall'
-  status: 'running' | 'succeeded' | 'failed'
+  action: PythonPackageAction
+  status: PythonPackageInstallStatus
   pythonPath: string
   message?: string
 }
 
 export interface TerminalsMessage {
-  type: 'terminals'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINALS
   terminals: TerminalInfo[]
 }
 
 export interface TerminalStartedMessage {
-  type: 'terminalStarted'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINAL_STARTED
   terminal: TerminalInfo
 }
 
 export interface TerminalOutputMessage {
-  type: 'terminalOutput'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINAL_OUTPUT
   terminalId: string
   data: string
-  channel: 'stdout' | 'stderr'
+  channel: LogChannel
   ts: string
 }
 
 export interface TerminalStatusMessage {
-  type: 'terminalStatus'
+  type: typeof BRIDGE_MESSAGE_TYPES.TERMINAL_STATUS
   terminal: TerminalInfo
 }
 
 export interface AppDefaultsMessage {
-  type: 'appDefaults'
+  type: typeof BRIDGE_MESSAGE_TYPES.APP_DEFAULTS
   pythonPath?: string
   appRootPath?: string
   desktopPath?: string

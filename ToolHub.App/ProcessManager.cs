@@ -22,7 +22,7 @@ public sealed class ProcessManager : IDisposable
     }
 
     public RunInfo StartRun(
-        ToolItem tool,
+        RunnableTool tool,
         IReadOnlyDictionary<string, string?> args,
         string? pythonOverride = null
     )
@@ -210,7 +210,7 @@ public sealed class ProcessManager : IDisposable
     }
 
     private static ProcessStartInfo BuildStartInfo(
-        ToolItem tool,
+        RunnableTool tool,
         IReadOnlyDictionary<string, string?> args,
         string? runtimeOverride
     )

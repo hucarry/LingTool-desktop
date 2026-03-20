@@ -1,4 +1,5 @@
 import type { BackMessage, FrontMessage } from '../types'
+import { BRIDGE_MESSAGE_TYPES } from '../types/bridgeMessageTypes'
 
 type MessageListener = (message: BackMessage) => void
 
@@ -19,17 +20,17 @@ class Bridge {
       try {
         ext.sendMessage(payload)
       } catch (error) {
-        console.error('[Bridge] 发送消息至宿主失败:', error, message)
-        this.dispatch(JSON.stringify({ 
-          type: 'error', 
-          message: 'UI Bridge Communication Failed', 
-          details: error instanceof Error ? error.message : String(error)
+        console.error('[Bridge] failed to send message to host:', error, message)
+        this.dispatch(JSON.stringify({
+          type: BRIDGE_MESSAGE_TYPES.ERROR,
+          message: 'UI Bridge Communication Failed',
+          details: error instanceof Error ? error.message : String(error),
         }))
       }
       return
     }
 
-    console.warn('[Bridge] window.external.sendMessage 不可用，当前可能是浏览器开发模式。', message)
+    console.warn('[Bridge] window.external.sendMessage is unavailable, running in browser mode?', message)
   }
 
   onMessage(listener: MessageListener): () => void {
@@ -66,7 +67,7 @@ class Bridge {
       const parsed = JSON.parse(raw) as BackMessage
       this.listeners.forEach((listener) => listener(parsed))
     } catch (error) {
-      console.error('[Bridge] 解析消息失败:', error, raw)
+      console.error('[Bridge] failed to parse message:', error, raw)
     }
   }
 

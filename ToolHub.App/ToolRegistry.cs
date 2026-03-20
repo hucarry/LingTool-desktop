@@ -15,7 +15,7 @@ public sealed class ToolRegistry
 
     private DateTime _lastLoadedUtc = DateTime.MinValue;
     private DateTime _lastCheckedUtc = DateTime.MinValue;
-    private List<ToolItem> _tools = new();
+    private List<ToolDefinition> _tools = new();
 
     public ToolRegistry(string toolsFilePath, JsonSerializerOptions jsonOptions)
     {
@@ -31,7 +31,9 @@ public sealed class ToolRegistry
         Reload();
         lock (_syncRoot)
         {
-            return _tools.Select(CloneTool).ToList();
+            return _tools
+                .Select(tool => BuildToolView(tool, GetRegistryBaseDirectory()))
+                .ToList();
         }
     }
 
@@ -42,16 +44,16 @@ public sealed class ToolRegistry
         lock (_syncRoot)
         {
             var tool = _tools.FirstOrDefault(item => string.Equals(item.Id, toolId, StringComparison.Ordinal));
-            return tool is null ? null : CloneTool(tool);
+            return tool is null ? null : BuildToolView(tool, GetRegistryBaseDirectory());
         }
     }
 
-    public ToolItem AddTool(ToolItem source)
+    public ToolItem AddTool(ToolDefinition source)
     {
         lock (_syncRoot)
         {
             var registryFile = ReadRegistryFile();
-            var candidate = NormalizeDraft(source);
+            var candidate = NormalizeDefinition(source);
 
             if (string.IsNullOrWhiteSpace(candidate.Id))
             {
@@ -66,8 +68,8 @@ public sealed class ToolRegistry
                 throw new InvalidOperationException($"Tool id already exists: {candidate.Id}");
             }
 
-            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
-            var validatedCandidate = ValidateTool(ToToolItem(candidate), baseDirectory);
+            var baseDirectory = GetRegistryBaseDirectory();
+            var validatedCandidate = BuildToolView(candidate, baseDirectory);
             if (!validatedCandidate.Valid)
             {
                 throw new InvalidOperationException(
@@ -79,7 +81,7 @@ public sealed class ToolRegistry
             SaveRegistryFile(registryFile);
 
             _tools = registryFile.Tools
-                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .Select(NormalizeDefinition)
                 .ToList();
             _lastLoadedUtc = DateTime.UtcNow;
 
@@ -87,12 +89,12 @@ public sealed class ToolRegistry
         }
     }
 
-    public ToolItem UpdateTool(ToolItem source)
+    public ToolItem UpdateTool(ToolDefinition source)
     {
         lock (_syncRoot)
         {
             var registryFile = ReadRegistryFile();
-            var candidate = NormalizeDraft(source);
+            var candidate = NormalizeDefinition(source);
 
             if (string.IsNullOrWhiteSpace(candidate.Id))
             {
@@ -107,8 +109,8 @@ public sealed class ToolRegistry
                 throw new InvalidOperationException($"Tool id not found: {candidate.Id}");
             }
 
-            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
-            var validatedCandidate = ValidateTool(ToToolItem(candidate), baseDirectory);
+            var baseDirectory = GetRegistryBaseDirectory();
+            var validatedCandidate = BuildToolView(candidate, baseDirectory);
             if (!validatedCandidate.Valid)
             {
                 throw new InvalidOperationException(
@@ -120,7 +122,7 @@ public sealed class ToolRegistry
             SaveRegistryFile(registryFile);
 
             _tools = registryFile.Tools
-                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .Select(NormalizeDefinition)
                 .ToList();
             _lastLoadedUtc = DateTime.UtcNow;
 
@@ -158,9 +160,9 @@ public sealed class ToolRegistry
 
             SaveRegistryFile(registryFile);
 
-            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+            var baseDirectory = GetRegistryBaseDirectory();
             _tools = registryFile.Tools
-                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .Select(NormalizeDefinition)
                 .ToList();
             _lastLoadedUtc = DateTime.UtcNow;
 
@@ -183,7 +185,7 @@ public sealed class ToolRegistry
 
             if (!File.Exists(_toolsFilePath))
             {
-                _tools = new List<ToolItem>();
+                _tools = new List<ToolDefinition>();
                 _lastLoadedUtc = now;
                 return;
             }
@@ -196,9 +198,8 @@ public sealed class ToolRegistry
 
             var parsed = ReadRegistryFile();
 
-            var baseDirectory = Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
             _tools = parsed.Tools
-                .Select(item => ValidateTool(ToToolItem(item), baseDirectory))
+                .Select(NormalizeDefinition)
                 .ToList();
 
             _lastLoadedUtc = now;
@@ -264,9 +265,14 @@ public sealed class ToolRegistry
         File.WriteAllText(_toolsFilePath, json);
     }
 
-    private static ToolDraft NormalizeDraft(ToolItem source)
+    private string GetRegistryBaseDirectory()
     {
-        return new ToolDraft
+        return Path.GetDirectoryName(_toolsFilePath) ?? Directory.GetCurrentDirectory();
+    }
+
+    private static ToolDefinition NormalizeDefinition(ToolDefinition source)
+    {
+        return new ToolDefinition
         {
             Id = source.Id.Trim(),
             Name = source.Name.Trim(),
@@ -287,7 +293,7 @@ public sealed class ToolRegistry
         };
     }
 
-    private static ToolItem ToToolItem(ToolDraft source)
+    private static ToolItem CreateToolView(ToolDefinition source)
     {
         return new ToolItem
         {
@@ -304,9 +310,9 @@ public sealed class ToolRegistry
         };
     }
 
-    private static ToolItem ValidateTool(ToolItem source, string baseDirectory)
+    private static ToolItem BuildToolView(ToolDefinition source, string baseDirectory)
     {
-        var tool = CloneTool(source);
+        var tool = CreateToolView(source);
         tool.Id = tool.Id.Trim();
         tool.Name = string.IsNullOrWhiteSpace(tool.Name) ? tool.Id : tool.Name.Trim();
         tool.Type = NormalizeToolType(tool.Type);
@@ -467,31 +473,7 @@ public sealed class ToolRegistry
 
     private sealed class ToolRegistryFile
     {
-        public List<ToolDraft> Tools { get; set; } = new();
-    }
-
-    private sealed class ToolDraft
-    {
-        public string Id { get; set; } = string.Empty;
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Type { get; set; } = string.Empty;
-
-        public string Path { get; set; } = string.Empty;
-
-        public string? RuntimePath { get; set; }
-
-        // Legacy field for backwards-compatible tools.json reads.
-        public string? Python { get; set; }
-
-        public string? Cwd { get; set; }
-
-        public string ArgsTemplate { get; set; } = string.Empty;
-
-        public List<string> Tags { get; set; } = new();
-
-        public string? Description { get; set; }
+        public List<ToolDefinition> Tools { get; set; } = new();
     }
 
     private static string NormalizeToolType(string? rawType)
