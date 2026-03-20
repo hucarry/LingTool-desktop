@@ -22,6 +22,8 @@ export function useBridgeBootstrap() {
     switch (message.type) {
       case 'appDefaults':
         settingsStore.setAppDefaultPythonPath(message.pythonPath)
+        settingsStore.setAppRootPath(message.appRootPath)
+        settingsStore.setDesktopPath(message.desktopPath)
         break
       case 'tools':
         toolsStore.handleToolsMessage(message)

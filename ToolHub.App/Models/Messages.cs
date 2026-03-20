@@ -417,14 +417,20 @@ public sealed class TerminalStatusMessage
 
 public sealed class AppDefaultsMessage
 {
-    public AppDefaultsMessage(string? pythonPath)
+    public AppDefaultsMessage(string? pythonPath, string? appRootPath, string? desktopPath)
     {
         PythonPath = pythonPath;
+        AppRootPath = appRootPath;
+        DesktopPath = desktopPath;
     }
 
     public string Type { get; } = BridgeMessageTypes.AppDefaults;
 
     public string? PythonPath { get; }
+
+    public string? AppRootPath { get; }
+
+    public string? DesktopPath { get; }
 }
 
 public sealed class ErrorMessage

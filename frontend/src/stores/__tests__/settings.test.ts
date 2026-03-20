@@ -52,4 +52,15 @@ describe('settings store', () => {
     await nextTick()
     expect(store.defaultPythonPath).toBe('D:/Apps/ToolHub/python/python.exe')
   })
+
+  it('stores app-level path presets from backend defaults', async () => {
+    const store = useSettingsStore()
+
+    store.setAppRootPath('D:/Apps/ToolHub')
+    store.setDesktopPath('C:/Users/demo/Desktop')
+    await nextTick()
+
+    expect(store.appRootPath).toBe('D:/Apps/ToolHub')
+    expect(store.desktopPath).toBe('C:/Users/demo/Desktop')
+  })
 })

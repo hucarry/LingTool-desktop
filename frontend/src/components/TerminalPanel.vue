@@ -1257,6 +1257,8 @@ onBeforeUnmount(() => {
 .pane-body {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  background: var(--terminal-bg);
 }
 
 .split-placeholder,

@@ -12,7 +12,7 @@ public record MessageContext(
     TerminalManager TerminalManager,
     Action<object> SendMessage,
     Func<string?, string?> BrowsePython,
-    Func<string?, string?, string?> BrowseFile,
+    Func<string?, string?, string?, string?> BrowseFile,
     JsonSerializerOptions JsonOptions
 );
 
@@ -30,7 +30,13 @@ public static class MessageRouter
 
         [BridgeMessageTypes.GetAppDefaults] = (ctx, _) =>
         {
-            ctx.SendMessage(new AppDefaultsMessage(PythonInterpreterProbe.ResolveBundled()));
+            var appRootPath = PathUtils.ResolveProjectRoot();
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            ctx.SendMessage(new AppDefaultsMessage(
+                PythonInterpreterProbe.ResolveBundled(),
+                appRootPath,
+                string.IsNullOrWhiteSpace(desktopPath) ? null : desktopPath
+            ));
             return;
         },
 
@@ -239,7 +245,7 @@ public static class MessageRouter
         [BridgeMessageTypes.BrowseFile] = (ctx, raw) =>
         {
             var request = JsonSerializer.Deserialize<BrowseFileRequest>(raw, ctx.JsonOptions);
-            var selectedPath = ctx.BrowseFile(request?.DefaultPath, request?.Filter);
+            var selectedPath = ctx.BrowseFile(request?.DefaultPath, request?.Filter, request?.Purpose);
             ctx.SendMessage(new FileSelectedMessage(selectedPath, request?.Purpose));
             return;
         },

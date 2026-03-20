@@ -237,6 +237,8 @@ export interface TerminalStatusMessage {
 export interface AppDefaultsMessage {
   type: 'appDefaults'
   pythonPath?: string
+  appRootPath?: string
+  desktopPath?: string
 }
 
 export type BackMessage =

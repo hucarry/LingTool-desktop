@@ -247,4 +247,7 @@ export const zhCNMessages = {
   'tools.emptyReadyHint': '当前没有可运行的工具，先刷新列表或修复工具路径。',
   'tools.emptyInvalidHint': '当前没有无效工具，目录状态看起来是干净的。',
   'tools.emptySearchHint': '换个关键词试试，或者清空搜索后再浏览完整目录。',
+  'tools.pathPresetCustom': '自定义路径',
+  'tools.pathPresetDesktop': '本地桌面',
+  'tools.pathPresetAppRoot': '软件根目录',
 } as const satisfies Record<string, string>

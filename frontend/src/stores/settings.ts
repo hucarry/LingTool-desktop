@@ -74,6 +74,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const locale = ref<AppLocale>(loadLocale())
   const storedDefaultPythonPath = ref(loadStoredPythonPath())
   const appDefaultPythonPath = ref('')
+  const appRootPath = ref('')
+  const desktopPath = ref('')
   const defaultPythonPath = computed(() => storedDefaultPythonPath.value || appDefaultPythonPath.value)
   const defaultNodePath = ref(loadNodePath())
 
@@ -151,6 +153,14 @@ export const useSettingsStore = defineStore('settings', () => {
     appDefaultPythonPath.value = path?.trim() ?? ''
   }
 
+  function setAppRootPath(path?: string): void {
+    appRootPath.value = path?.trim() ?? ''
+  }
+
+  function setDesktopPath(path?: string): void {
+    desktopPath.value = path?.trim() ?? ''
+  }
+
   function setDefaultNodePath(path: string): void {
     defaultNodePath.value = path.trim()
   }
@@ -181,12 +191,16 @@ export const useSettingsStore = defineStore('settings', () => {
     locale,
     defaultPythonPath,
     appDefaultPythonPath,
+    appRootPath,
+    desktopPath,
     defaultNodePath,
     setTheme,
     setLocale,
     setDefaultPythonPath,
     clearDefaultPythonPath,
     setAppDefaultPythonPath,
+    setAppRootPath,
+    setDesktopPath,
     setDefaultNodePath,
     clearDefaultNodePath,
     pickDefaultPython,

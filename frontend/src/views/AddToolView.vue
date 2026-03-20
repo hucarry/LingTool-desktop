@@ -8,14 +8,18 @@ import UiInput from '../components/ui/UiInput.vue'
 import UiPanel from '../components/ui/UiPanel.vue'
 import UiSelect from '../components/ui/UiSelect.vue'
 import UiTextarea from '../components/ui/UiTextarea.vue'
+import ToolPathField from '../components/tools/ToolPathField.vue'
 import { useI18n } from '../composables/useI18n'
 import { useNotify } from '../composables/useNotify'
 import { useToolForm } from '../composables/useToolForm'
+import { useSettingsStore } from '../stores/settings'
 import { useToolsStore } from '../stores/tools'
 import { supportsPathBrowse } from '../utils/toolTypes'
 
 const toolsStore = useToolsStore()
+const settingsStore = useSettingsStore()
 const { addToolPathSelection, addToolRuntimeSelection, lastAddedToolId, addingTool } = storeToRefs(toolsStore)
+const { appRootPath, desktopPath } = storeToRefs(settingsStore)
 const { t } = useI18n()
 const notify = useNotify()
 const {
@@ -177,16 +181,36 @@ function clearForm(): void {
           </UiField>
 
           <div class="sm:col-span-2 lg:col-span-2">
-            <UiField :label="toolPathLabel" :error="shouldShowError('path') ? validationErrors.path : ''" :hint="pathHint">
-              <div class="grid gap-2" :class="supportsPathBrowse(form.type) ? 'md:grid-cols-[minmax(0,1fr)_auto]' : ''">
-                <UiInput
-                  v-model="form.path"
-                  :invalid="shouldShowError('path')"
-                  :placeholder="pathHint"
-                  @blur="markTouched('path')"
-                />
-                <UiButton v-if="supportsPathBrowse(form.type)" @click="browseToolPath">{{ t('tools.browse') }}</UiButton>
-              </div>
+            <ToolPathField
+              v-if="supportsPathBrowse(form.type)"
+              v-model="form.path"
+              :label="toolPathLabel"
+              :hint="pathHint"
+              :error="shouldShowError('path') ? validationErrors.path : ''"
+              :invalid="shouldShowError('path')"
+              :placeholder="pathHint"
+              :browse-label="t('tools.browse')"
+              :desktop-path="desktopPath"
+              :app-root-path="appRootPath"
+              :desktop-label="t('tools.pathPresetDesktop')"
+              :app-root-label="t('tools.pathPresetAppRoot')"
+              :custom-label="t('tools.pathPresetCustom')"
+              :browse-visible="true"
+              @blur="markTouched('path')"
+              @browse="browseToolPath"
+            />
+            <UiField
+              v-else
+              :label="toolPathLabel"
+              :error="shouldShowError('path') ? validationErrors.path : ''"
+              :hint="pathHint"
+            >
+              <UiInput
+                v-model="form.path"
+                :invalid="shouldShowError('path')"
+                :placeholder="pathHint"
+                @blur="markTouched('path')"
+              />
             </UiField>
           </div>
 

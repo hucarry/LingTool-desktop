@@ -128,12 +128,14 @@ internal static class Program
                     pythonPackageManager,
                     terminalManager,
                     SendMessage,
-                    defaultPath => window is null ? null : ShowPythonPicker(window, defaultPath),
-                    (defaultPath, filter) => window is null ? null : ShowFilePicker(
+                    defaultPath => window is null ? null : ShowPythonPicker(window, appRoot, defaultPath),
+                    (defaultPath, filter, purpose) => window is null ? null : ShowFilePicker(
                         window,
                         "Select File",
+                        appRoot,
                         defaultPath,
-                        filter
+                        filter,
+                        purpose
                     )
                 );
             });
@@ -262,7 +264,7 @@ internal static class Program
         TerminalManager terminalManager,
         Action<object> sendMessage,
         Func<string?, string?> browsePython,
-        Func<string?, string?, string?> browseFile
+        Func<string?, string?, string?, string?> browseFile
     )
     {
         try
@@ -317,19 +319,21 @@ internal static class Program
         return PathUtils.ResolvePathOrCommand(runtimePath, baseDirectory);
     }
 
-    private static string? ShowPythonPicker(PhotinoWindow window, string? defaultPath)
+    private static string? ShowPythonPicker(PhotinoWindow window, string appRoot, string? defaultPath)
     {
-        return ShowFilePicker(window, "Select Python Interpreter", defaultPath, null);
+        return ShowFilePicker(window, "Select Python Interpreter", appRoot, defaultPath, null, null);
     }
 
     private static string? ShowFilePicker(
         PhotinoWindow window,
         string title,
+        string appRoot,
         string? defaultPath,
-        string? filter
+        string? filter,
+        string? purpose
     )
     {
-        var safeDefaultPath = ResolveDialogDefaultPath(defaultPath);
+        var safeDefaultPath = ResolveDialogDefaultPath(appRoot, defaultPath, purpose);
         var filters = ResolveFileFilters(filter);
 
         var candidates = window.ShowOpenFile(
@@ -412,39 +416,74 @@ internal static class Program
         ];
     }
 
-    private static string? ResolveDialogDefaultPath(string? rawPath)
+    private static string? ResolveDialogDefaultPath(string appRoot, string? rawPath, string? purpose)
     {
+        var fallbackPath = ResolveFallbackDialogPath(appRoot, purpose);
+
         if (string.IsNullOrWhiteSpace(rawPath))
         {
-            return null;
+            return fallbackPath;
         }
 
         try
         {
-            var fullPath = Path.GetFullPath(rawPath);
+            var fullPath = Path.IsPathRooted(rawPath)
+                ? Path.GetFullPath(rawPath)
+                : Path.GetFullPath(Path.Combine(appRoot, rawPath));
 
-            if (File.Exists(fullPath))
-            {
-                var directory = Path.GetDirectoryName(fullPath);
-                return !string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory)
-                    ? directory
-                    : null;
-            }
-
-            if (Directory.Exists(fullPath))
-            {
-                return fullPath;
-            }
-
-            var parent = Path.GetDirectoryName(fullPath);
-            return !string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent)
-                ? parent
-                : null;
+            return ResolveExistingDialogPath(fullPath) ?? fallbackPath;
         }
         catch
         {
+            return fallbackPath;
+        }
+    }
+
+    private static string? ResolveFallbackDialogPath(string appRoot, string? purpose)
+    {
+        if (IsToolPathBrowse(purpose))
+        {
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var resolvedDesktop = ResolveExistingDialogPath(desktop);
+            if (!string.IsNullOrWhiteSpace(resolvedDesktop))
+            {
+                return resolvedDesktop;
+            }
+        }
+
+        return ResolveExistingDialogPath(appRoot);
+    }
+
+    private static bool IsToolPathBrowse(string? purpose)
+    {
+        return string.Equals(purpose, "addToolPath", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(purpose, "editToolPath", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolveExistingDialogPath(string? candidatePath)
+    {
+        if (string.IsNullOrWhiteSpace(candidatePath))
+        {
             return null;
         }
+
+        if (File.Exists(candidatePath))
+        {
+            var directory = Path.GetDirectoryName(candidatePath);
+            return !string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory)
+                ? directory
+                : null;
+        }
+
+        if (Directory.Exists(candidatePath))
+        {
+            return candidatePath;
+        }
+
+        var parent = Path.GetDirectoryName(candidatePath);
+        return !string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent)
+            ? parent
+            : null;
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]

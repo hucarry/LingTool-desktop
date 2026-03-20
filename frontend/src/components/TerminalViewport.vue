@@ -219,7 +219,15 @@ watch(theme, async () => {
 
 :deep(.xterm) {
   height: 100%;
-  padding: 4px 8px;
+  background: var(--terminal-bg);
+}
+
+:deep(.xterm-helpers),
+:deep(.xterm-screen),
+:deep(.xterm-screen canvas),
+:deep(.xterm-scroll-area),
+:deep(.xterm-viewport) {
+  background: var(--terminal-bg);
 }
 
 :deep(.xterm-viewport) {
