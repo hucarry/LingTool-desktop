@@ -1,14 +1,13 @@
 using System.Diagnostics;
 using System.Text.Json;
 using ToolHub.App.Models;
+using ToolHub.App.Runtime;
 using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
 internal static class ToolMessageHandlers
 {
-    private static readonly string ResolveRuntimeFailed = "\x00__RESOLVE_FAILED__";
-
     public static void Register(IDictionary<string, MessageHandler> handlers)
     {
         handlers[BridgeMessageTypes.AddTool] = HandleAddTool;
@@ -75,17 +74,17 @@ internal static class ToolMessageHandlers
             return;
         }
 
-        var runtimeOverride = ResolveToolRuntime(context, tool, request.RuntimePath ?? request.Python);
-        if (runtimeOverride == ResolveRuntimeFailed)
+        if (!TryBuildResolvedRunCommand(
+                context,
+                tool,
+                request.Args ?? new Dictionary<string, string?>(),
+                request.RuntimePath ?? request.Python,
+                out var resolvedCommand))
         {
             return;
         }
 
-        context.ProcessManager.StartRun(
-            tool,
-            request.Args ?? new Dictionary<string, string?>(),
-            runtimeOverride
-        );
+        context.ProcessManager.StartRun(tool, resolvedCommand);
     }
 
     private static void HandleRunToolInTerminal(MessageContext context, string rawMessage)
@@ -102,8 +101,12 @@ internal static class ToolMessageHandlers
             return;
         }
 
-        var runtimeOverride = ResolveToolRuntime(context, tool, request.RuntimePath ?? request.Python);
-        if (runtimeOverride == ResolveRuntimeFailed)
+        if (!TryBuildResolvedRunCommand(
+                context,
+                tool,
+                request.Args ?? new Dictionary<string, string?>(),
+                request.RuntimePath ?? request.Python,
+                out var resolvedCommand))
         {
             return;
         }
@@ -115,8 +118,7 @@ internal static class ToolMessageHandlers
                 await context.TerminalManager.RunToolInTerminalAsync(
                     request.TerminalId,
                     tool,
-                    request.Args ?? new Dictionary<string, string?>(),
-                    runtimeOverride
+                    resolvedCommand
                 );
             }
             catch (Exception ex)
@@ -224,40 +226,41 @@ internal static class ToolMessageHandlers
         };
     }
 
-    private static string? ResolveToolRuntime(MessageContext context, RunnableTool tool, string? rawRuntimePath)
+    private static bool TryBuildResolvedRunCommand(
+        MessageContext context,
+        RunnableTool tool,
+        IReadOnlyDictionary<string, string?> args,
+        string? rawRuntimePath,
+        out ResolvedRunCommand resolvedCommand)
     {
+        resolvedCommand = null!;
         var runtimeOverride = Program.ResolveRuntimeOverride(rawRuntimePath, tool.Cwd);
 
-        if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var resolved = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-            if (string.IsNullOrWhiteSpace(resolved))
-            {
-                context.SendMessage(new ErrorMessage(
-                    "No usable Python interpreter was found.",
-                    "Install Python in the sandbox or choose a valid python.exe in the tool settings."
-                ));
-                return ResolveRuntimeFailed;
-            }
-
-            return resolved;
+            resolvedCommand = RunCommandBuilder.Build(tool, args, runtimeOverride);
+            return true;
         }
-
-        if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, "No usable Python interpreter was found.", StringComparison.Ordinal))
         {
-            var resolved = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
-            if (string.IsNullOrWhiteSpace(resolved))
-            {
-                context.SendMessage(new ErrorMessage(
-                    "No usable Node.js runtime was found.",
-                    "Install Node.js or choose a valid node.exe in the tool settings."
-                ));
-                return ResolveRuntimeFailed;
-            }
-
-            return resolved;
+            context.SendMessage(new ErrorMessage(
+                ex.Message,
+                "Install Python in the sandbox or choose a valid python.exe in the tool settings."
+            ));
+            return false;
         }
-
-        return runtimeOverride;
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, "No usable Node.js runtime was found.", StringComparison.Ordinal))
+        {
+            context.SendMessage(new ErrorMessage(
+                ex.Message,
+                "Install Node.js or choose a valid node.exe in the tool settings."
+            ));
+            return false;
+        }
+        catch (NotSupportedException ex)
+        {
+            context.SendMessage(new ErrorMessage(ex.Message));
+            return false;
+        }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using Pty.Net;
 using ToolHub.App.Models;
+using ToolHub.App.Runtime;
 using ToolHub.App.Utils;
 
 namespace ToolHub.App;
@@ -141,8 +142,7 @@ public sealed class TerminalManager : IDisposable
     public async Task RunToolInTerminalAsync(
         string? terminalId,
         RunnableTool tool,
-        Dictionary<string, string?> args,
-        string? pythonPath)
+        ResolvedRunCommand resolvedCommand)
     {
         string targetTerminalId;
         if (string.IsNullOrEmpty(terminalId) || !_terminals.ContainsKey(terminalId))
@@ -168,7 +168,7 @@ public sealed class TerminalManager : IDisposable
             _sendMessage(new TerminalStatusMessage(context.Info));
         }
 
-        var command = BuildRunCommand(context.Info.Shell, tool, args, pythonPath);
+        var command = BuildRunCommand(context.Info.Shell, resolvedCommand);
         await SendInputAsync(targetTerminalId, command);
     }
 
@@ -350,39 +350,21 @@ public sealed class TerminalManager : IDisposable
         IReadOnlyDictionary<string, string?> args,
         string? runtimePath)
     {
+        return BuildRunCommand(shell, RunCommandBuilder.Build(tool, args, runtimePath));
+    }
+
+    private static string BuildRunCommand(string shell, ResolvedRunCommand command)
+    {
         var shellKind = GetShellKind(shell);
-        var resolvedArgs = ArgsSpecCompiler.BuildArguments(tool.ArgsSpec, tool.ArgsTemplate, args);
-        string? sessionSetup = null;
-
-        var parts = new List<string>();
-        if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
-        {
-            var interpreter = PythonInterpreterProbe.ResolvePreferred(runtimePath, tool.RuntimePath) ?? "python";
-            sessionSetup = BuildSessionSetupCommand(shellKind, tool.Type, interpreter);
-
-            parts.Add(interpreter);
-            parts.Add(tool.Path);
-        }
-        else if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
-        {
-            var interpreter = NodeRuntimeProbe.ResolvePreferred(runtimePath, tool.RuntimePath) ?? "node";
-            sessionSetup = BuildSessionSetupCommand(shellKind, tool.Type, interpreter);
-
-            parts.Add(interpreter);
-            parts.Add(tool.Path);
-        }
-        else
-        {
-            parts.Add(tool.Path);
-        }
-
-        parts.AddRange(resolvedArgs);
+        var sessionSetup = string.IsNullOrWhiteSpace(command.RuntimePath)
+            ? null
+            : BuildSessionSetupCommand(shellKind, command.ToolType, command.RuntimePath);
 
         return shellKind switch
         {
-            ShellKind.PowerShell => BuildPowerShellCommand(tool.Cwd, sessionSetup, parts),
-            ShellKind.Cmd => BuildCmdCommand(tool.Cwd, sessionSetup, parts),
-            _ => BuildGenericCommand(tool.Cwd, sessionSetup, parts)
+            ShellKind.PowerShell => BuildPowerShellCommand(command.WorkingDirectoryOverride, sessionSetup, command),
+            ShellKind.Cmd => BuildCmdCommand(command.WorkingDirectoryOverride, sessionSetup, command),
+            _ => BuildGenericCommand(command.WorkingDirectoryOverride, sessionSetup, command)
         };
     }
 
@@ -413,7 +395,7 @@ public sealed class TerminalManager : IDisposable
     private static string BuildPowerShellCommand(
         string? cwd,
         string? sessionSetup,
-        IReadOnlyList<string> parts)
+        ResolvedRunCommand command)
     {
         var lines = new List<string>();
 
@@ -427,14 +409,14 @@ public sealed class TerminalManager : IDisposable
             lines.Add(sessionSetup);
         }
 
-        lines.Add($"& {string.Join(" ", parts.Select(ToPowerShellLiteral))}");
+        lines.Add($"& {ToPowerShellLiteral(command.CommandPath)} {string.Join(" ", command.Arguments.Select(ToPowerShellLiteral))}".TrimEnd());
         return BuildPowerShellScriptInvocation(lines);
     }
 
     private static string BuildCmdCommand(
         string? cwd,
         string? sessionSetup,
-        IReadOnlyList<string> parts)
+        ResolvedRunCommand command)
     {
         var lines = new List<string>
         {
@@ -451,6 +433,8 @@ public sealed class TerminalManager : IDisposable
             lines.Add(sessionSetup);
         }
 
+        var parts = new List<string> { command.CommandPath };
+        parts.AddRange(command.Arguments);
         lines.Add(string.Join(" ", parts.Select(ToCmdQuoted)));
         return BuildCmdScriptInvocation(lines);
     }
@@ -495,7 +479,7 @@ public sealed class TerminalManager : IDisposable
     private static string BuildGenericCommand(
         string? cwd,
         string? sessionSetup,
-        IReadOnlyList<string> parts)
+        ResolvedRunCommand command)
     {
         var sb = new StringBuilder();
 
@@ -512,6 +496,8 @@ public sealed class TerminalManager : IDisposable
             sb.Append(" && ");
         }
 
+        var parts = new List<string> { command.CommandPath };
+        parts.AddRange(command.Arguments);
         sb.Append(string.Join(" ", parts.Select(ToGenericQuoted)));
         sb.Append("\r");
 

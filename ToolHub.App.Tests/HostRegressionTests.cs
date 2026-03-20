@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using ToolHub.App;
 using ToolHub.App.Models;
+using ToolHub.App.Runtime;
 using ToolHub.App.Utils;
 
 #nullable enable
@@ -22,6 +23,7 @@ internal static class HostRegressionTests
             ("Runnable tool projection", RunnableToolProjection_ShouldMatchExecutionBoundary),
             ("Tool runtime resolution", ToolRuntimeResolution_ShouldRespectToolTypeRules),
             ("Message router boundary", MessageRouter_ShouldReturnExpectedErrors),
+            ("Resolved run command boundary", ResolvedRunCommand_ShouldUnifyRuntimeAndArguments),
             ("Process start info boundary", ProcessStartInfo_ShouldComposeCommandsForSupportedToolTypes),
             ("Terminal run command boundary", TerminalRunCommand_ShouldComposeShellCommandsForSupportedShellKinds)
         };
@@ -373,8 +375,8 @@ internal static class HostRegressionTests
     private static void ToolRuntimeResolution_ShouldRespectToolTypeRules()
     {
         var handlerType = typeof(MessageRouter).Assembly.GetType("ToolHub.App.ToolMessageHandlers", throwOnError: true)!;
-        var resolveMethod = handlerType.GetMethod("ResolveToolRuntime", BindingFlags.Static | BindingFlags.NonPublic);
-        AssertNotNull(resolveMethod, "ResolveToolRuntime should remain available.");
+        var resolveMethod = handlerType.GetMethod("TryBuildResolvedRunCommand", BindingFlags.Static | BindingFlags.NonPublic);
+        AssertNotNull(resolveMethod, "TryBuildResolvedRunCommand should remain available.");
 
         var sentMessages = new List<object>();
         using var processManager = new ProcessManager(sentMessages.Add);
@@ -410,9 +412,20 @@ internal static class HostRegressionTests
                 ArgsTemplate = string.Empty
             };
 
-            var resolvedCommandRuntime = (string?)resolveMethod!.Invoke(null, new object?[] { context, commandTool, @"runtime\tool.exe" });
-            var expectedCommandRuntime = Path.GetFullPath(Path.Combine(registryRoot, "runtime", "tool.exe"));
-            AssertEqual(expectedCommandRuntime, resolvedCommandRuntime, "Command tool runtime override should resolve against cwd.");
+            var commandArgs = new object?[]
+            {
+                context,
+                commandTool,
+                new Dictionary<string, string?>(),
+                @"runtime\tool.exe",
+                null
+            };
+            var commandBuilt = (bool)resolveMethod!.Invoke(null, commandArgs)!;
+            var commandRun = (ResolvedRunCommand?)commandArgs[4];
+            AssertTrue(commandBuilt, "Command tool should build a resolved run command.");
+            AssertNotNull(commandRun, "Command tool should return a resolved run command.");
+            AssertEqual(registryRoot, commandRun!.WorkingDirectory, "Command tool should preserve the explicit cwd.");
+            AssertEqual("echo", commandRun.CommandPath, "Command tool should keep the command path unchanged.");
             AssertEqual(0, sentMessages.Count, "Command runtime resolution should not emit errors.");
 
             var pythonTool = new RunnableTool
@@ -425,19 +438,30 @@ internal static class HostRegressionTests
             };
 
             var expectedPythonRuntime = PythonInterpreterProbe.ResolvePreferred(null, pythonTool.RuntimePath);
-            var pythonResult = (string?)resolveMethod.Invoke(null, new object?[] { context, pythonTool, null });
+            var pythonArgs = new object?[]
+            {
+                context,
+                pythonTool,
+                new Dictionary<string, string?>(),
+                null,
+                null
+            };
+            var pythonBuilt = (bool)resolveMethod.Invoke(null, pythonArgs)!;
+            var pythonCommand = (ResolvedRunCommand?)pythonArgs[4];
 
             if (string.IsNullOrWhiteSpace(expectedPythonRuntime))
             {
-                AssertEqual("\0__RESOLVE_FAILED__", pythonResult, "Python runtime resolution should return the failure sentinel when no interpreter is available.");
-
+                AssertFalse(pythonBuilt, "Python runtime resolution should fail when no interpreter is available.");
+                AssertNull(pythonCommand, "Python runtime resolution should not return a resolved command on failure.");
                 var error = sentMessages[^1] as ErrorMessage;
                 AssertNotNull(error, "Python runtime resolution should emit an error message when no interpreter is available.");
                 AssertEqual("No usable Python interpreter was found.", error!.Message, "Python runtime resolution should report a clear error message.");
             }
             else
             {
-                AssertEqual(expectedPythonRuntime, pythonResult, "Python runtime resolution should align with the interpreter probe.");
+                AssertTrue(pythonBuilt, "Python runtime resolution should succeed when an interpreter is available.");
+                AssertNotNull(pythonCommand, "Python runtime resolution should return a resolved command.");
+                AssertEqual(expectedPythonRuntime, pythonCommand!.RuntimePath, "Python runtime resolution should align with the interpreter probe.");
                 AssertEqual(0, sentMessages.Count, "Python runtime resolution should not emit errors when an interpreter is available.");
             }
         }
@@ -498,6 +522,77 @@ internal static class HostRegressionTests
         }
     }
 
+    private static void ResolvedRunCommand_ShouldUnifyRuntimeAndArguments()
+    {
+        var explicitRuntime = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "dotnet",
+            "dotnet.exe"
+        );
+        AssertTrue(File.Exists(explicitRuntime), "A stable explicit runtime should exist on Windows.");
+
+        var pythonTool = new RunnableTool
+        {
+            Id = "py_demo",
+            Name = "Python Demo",
+            Type = "python",
+            Path = @"D:\tools\demo.py",
+            Cwd = @"D:\tools",
+            ArgsTemplate = "--name {name} --count {count}"
+        };
+        var pythonCommand = RunCommandBuilder.Build(
+            pythonTool,
+            new Dictionary<string, string?> { ["name"] = "demo", ["count"] = "2" },
+            explicitRuntime
+        );
+
+        AssertEqual("python", pythonCommand.ToolType, "Resolved command should preserve tool type.");
+        AssertEqual(Path.GetFullPath(explicitRuntime), pythonCommand.CommandPath, "Resolved command should use the resolved runtime.");
+        AssertEqual(pythonTool.Cwd, pythonCommand.WorkingDirectory, "Resolved command should preserve cwd.");
+        AssertEqual(pythonTool.Cwd, pythonCommand.WorkingDirectoryOverride, "Resolved command should preserve the explicit shell cwd.");
+        AssertEqual(Path.GetFullPath(explicitRuntime), pythonCommand.RuntimePath, "Resolved command should expose the runtime for shell session setup.");
+        AssertEqual(5, pythonCommand.Arguments.Count, "Resolved command should prepend the tool path before expanded args.");
+        AssertEqual(pythonTool.Path, pythonCommand.Arguments[0], "Resolved command should prepend the tool path.");
+        AssertEqual("--name", pythonCommand.Arguments[1], "Resolved command should preserve literal template tokens.");
+        AssertEqual("demo", pythonCommand.Arguments[2], "Resolved command should substitute placeholder values.");
+        AssertEqual("--count", pythonCommand.Arguments[3], "Resolved command should preserve later literal tokens.");
+        AssertEqual("2", pythonCommand.Arguments[4], "Resolved command should substitute later placeholder values.");
+
+        var commandTool = new RunnableTool
+        {
+            Id = "cmd_demo",
+            Name = "Command Demo",
+            Type = "command",
+            Path = "git",
+            ArgsTemplate = string.Empty,
+            ArgsSpec = new ArgsSpecV1
+            {
+                Version = 1,
+                Fields = new List<ArgFieldSpec>
+                {
+                    new() { Name = "short", Kind = "flag" }
+                },
+                Argv = new List<ArgTokenSpec>
+                {
+                    new() { Kind = "literal", Value = "status" },
+                    new() { Kind = "switch", Field = "short", WhenTrue = "--short" }
+                }
+            }
+        };
+        var commandRun = RunCommandBuilder.Build(
+            commandTool,
+            new Dictionary<string, string?> { ["short"] = "true" },
+            null
+        );
+
+        AssertEqual("git", commandRun.CommandPath, "Command tools should use the tool path directly.");
+        AssertEqual(Directory.GetCurrentDirectory(), commandRun.WorkingDirectory, "Command tools should fall back to the current directory when cwd is absent.");
+        AssertNull(commandRun.WorkingDirectoryOverride, "Command tools without cwd should not force a terminal cd.");
+        AssertNull(commandRun.RuntimePath, "Command tools should not expose a runtime path.");
+        AssertEqual("status", commandRun.Arguments[0], "Command tools should preserve literal args.");
+        AssertEqual("--short", commandRun.Arguments[1], "Command tools should preserve switch args.");
+    }
+
     private static void ProcessStartInfo_ShouldComposeCommandsForSupportedToolTypes()
     {
         var processManagerType = typeof(ProcessManager);
@@ -520,12 +615,12 @@ internal static class HostRegressionTests
             Cwd = @"D:\tools",
             ArgsTemplate = "--name {name} --count {count}"
         };
-        var pythonStartInfo = (ProcessStartInfo?)buildMethod!.Invoke(null, new object?[]
-        {
+        var pythonCommand = RunCommandBuilder.Build(
             pythonTool,
             new Dictionary<string, string?> { ["name"] = "demo", ["count"] = "2" },
             explicitRuntime
-        });
+        );
+        var pythonStartInfo = (ProcessStartInfo?)buildMethod!.Invoke(null, new object?[] { pythonCommand });
         AssertNotNull(pythonStartInfo, "Python start info should be created.");
         AssertEqual(Path.GetFullPath(explicitRuntime), pythonStartInfo!.FileName, "Python start info should honor the resolved runtime.");
         AssertEqual(pythonTool.Cwd, pythonStartInfo.WorkingDirectory, "Python start info should preserve cwd.");
@@ -549,12 +644,12 @@ internal static class HostRegressionTests
             Cwd = @"D:\tools",
             ArgsTemplate = "--watch {mode}"
         };
-        var nodeStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[]
-        {
+        var nodeCommand = RunCommandBuilder.Build(
             nodeTool,
             new Dictionary<string, string?> { ["mode"] = "full" },
             explicitRuntime
-        });
+        );
+        var nodeStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[] { nodeCommand });
         AssertNotNull(nodeStartInfo, "Node start info should be created.");
         AssertEqual(Path.GetFullPath(explicitRuntime), nodeStartInfo!.FileName, "Node start info should honor the resolved runtime.");
         AssertEqual(3, nodeStartInfo.ArgumentList.Count, "Node start info should prepend the script path before template args.");
@@ -583,12 +678,12 @@ internal static class HostRegressionTests
                 }
             }
         };
-        var commandStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[]
-        {
+        var commandRun = RunCommandBuilder.Build(
             commandTool,
             new Dictionary<string, string?> { ["short"] = "true" },
             null
-        });
+        );
+        var commandStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[] { commandRun });
         AssertNotNull(commandStartInfo, "Command start info should be created.");
         AssertEqual("git", commandStartInfo!.FileName, "Command start info should use the tool path directly.");
         AssertEqual(Directory.GetCurrentDirectory(), commandStartInfo.WorkingDirectory, "Command start info should fall back to the current directory when cwd is absent.");
@@ -604,12 +699,12 @@ internal static class HostRegressionTests
             Cwd = @"D:\apps",
             ArgsTemplate = "--flag {value}"
         };
-        var executableStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[]
-        {
+        var executableRun = RunCommandBuilder.Build(
             executableTool,
             new Dictionary<string, string?> { ["value"] = "ok" },
             null
-        });
+        );
+        var executableStartInfo = (ProcessStartInfo?)buildMethod.Invoke(null, new object?[] { executableRun });
         AssertNotNull(executableStartInfo, "Executable start info should be created.");
         AssertEqual(executableTool.Path, executableStartInfo!.FileName, "Executable start info should use the executable path directly.");
         AssertEqual(executableTool.Cwd, executableStartInfo.WorkingDirectory, "Executable start info should preserve cwd.");
@@ -618,8 +713,7 @@ internal static class HostRegressionTests
 
         try
         {
-            _ = buildMethod.Invoke(null, new object?[]
-            {
+            _ = RunCommandBuilder.Build(
                 new RunnableTool
                 {
                     Id = "url_demo",
@@ -630,20 +724,31 @@ internal static class HostRegressionTests
                 },
                 new Dictionary<string, string?>(),
                 null
-            });
+            );
             throw new InvalidOperationException("Unsupported tool type should throw.");
         }
-        catch (TargetInvocationException ex)
+        catch (NotSupportedException ex)
         {
-            AssertNotNull(ex.InnerException, "Unsupported tool type should surface an inner exception.");
-            AssertEqual(typeof(NotSupportedException), ex.InnerException!.GetType(), "Unsupported tool type should throw NotSupportedException.");
+            AssertEqual(typeof(NotSupportedException), ex.GetType(), "Unsupported tool type should throw NotSupportedException.");
         }
     }
 
     private static void TerminalRunCommand_ShouldComposeShellCommandsForSupportedShellKinds()
     {
         var terminalManagerType = typeof(TerminalManager);
-        var buildMethod = terminalManagerType.GetMethod("BuildRunCommand", BindingFlags.Static | BindingFlags.NonPublic);
+        var buildMethod = terminalManagerType.GetMethod(
+            "BuildRunCommand",
+            BindingFlags.Static | BindingFlags.NonPublic,
+            binder: null,
+            types:
+            [
+                typeof(string),
+                typeof(RunnableTool),
+                typeof(IReadOnlyDictionary<string, string?>),
+                typeof(string)
+            ],
+            modifiers: null
+        );
         AssertNotNull(buildMethod, "BuildRunCommand should remain available.");
 
         var explicitRuntime = Path.Combine(

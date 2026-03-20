@@ -2,13 +2,14 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using ToolHub.App.Models;
+using ToolHub.App.Runtime;
 using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
 public sealed class ProcessManager : IDisposable
 {
-    /// <summary>已完成运行的最大保留条数，超出后自动清理最旧的记录。</summary>
+    /// <summary>宸插畬鎴愯繍琛岀殑鏈€澶т繚鐣欐潯鏁帮紝瓒呭嚭鍚庤嚜鍔ㄦ竻鐞嗘渶鏃х殑璁板綍銆?/summary>
     private const int MaxCompletedRunHistory = 200;
 
     private readonly ConcurrentDictionary<string, RunContext> _runs = new();
@@ -21,11 +22,7 @@ public sealed class ProcessManager : IDisposable
         _sendMessage = sendMessage;
     }
 
-    public RunInfo StartRun(
-        RunnableTool tool,
-        IReadOnlyDictionary<string, string?> args,
-        string? pythonOverride = null
-    )
+    public RunInfo StartRun(RunnableTool tool, ResolvedRunCommand resolvedCommand)
     {
         ThrowIfDisposed();
 
@@ -38,7 +35,7 @@ public sealed class ProcessManager : IDisposable
             StartTime = DateTimeOffset.UtcNow
         };
 
-        var startInfo = BuildStartInfo(tool, args, pythonOverride);
+        var startInfo = BuildStartInfo(resolvedCommand);
         var process = new Process
         {
             StartInfo = startInfo,
@@ -48,7 +45,7 @@ public sealed class ProcessManager : IDisposable
         var context = new RunContext(run, process);
         if (!_runs.TryAdd(run.RunId, context))
         {
-            throw new InvalidOperationException($"无法创建运行上下文: {run.RunId}");
+            throw new InvalidOperationException($"鏃犳硶鍒涘缓杩愯涓婁笅鏂? {run.RunId}");
         }
 
         HookProcessEvents(context);
@@ -71,10 +68,10 @@ public sealed class ProcessManager : IDisposable
                 run.ExitCode = -1;
             }
 
-            _sendMessage(new ErrorMessage($"启动工具失败: {tool.Name}", ex.Message));
+            _sendMessage(new ErrorMessage($"鍚姩宸ュ叿澶辫触: {tool.Name}", ex.Message));
             _sendMessage(new RunStatusMessage(CloneRun(run)));
 
-            // 启动失败时也需要释放 Process 对象，防止句柄泄漏
+            // 鍚姩澶辫触鏃朵篃闇€瑕侀噴鏀?Process 瀵硅薄锛岄槻姝㈠彞鏌勬硠婕?
             DisposeProcessSafe(process);
         }
 
@@ -124,17 +121,17 @@ public sealed class ProcessManager : IDisposable
                 if (IsProcessRunning(context.Process))
                 {
                     context.RequestStop();
-                    // 使用带超时的 Wait 避免死锁，最多等 3 秒
+                    // 浣跨敤甯﹁秴鏃剁殑 Wait 閬垮厤姝婚攣锛屾渶澶氱瓑 3 绉?
                     ProcessKiller.KillProcessTreeAsync(context.Process)
                         .Wait(TimeSpan.FromSeconds(3));
                 }
             }
             catch
             {
-                // 忽略终止错误，避免阻塞应用关闭
+                // 蹇界暐缁堟閿欒锛岄伩鍏嶉樆濉炲簲鐢ㄥ叧闂?
             }
 
-            // 无论进程是否还在运行，都释放 Process 对象
+            // 鏃犺杩涚▼鏄惁杩樺湪杩愯锛岄兘閲婃斁 Process 瀵硅薄
             DisposeProcessSafe(context.Process);
         }
     }
@@ -202,21 +199,15 @@ public sealed class ProcessManager : IDisposable
 
         _sendMessage(new RunStatusMessage(CloneRun(run)));
 
-        // 释放已完成的 Process 对象，回收系统句柄
+        // 閲婃斁宸插畬鎴愮殑 Process 瀵硅薄锛屽洖鏀剁郴缁熷彞鏌?
         DisposeProcessSafe(context.Process);
 
-        // 清理过旧的运行记录，防止内存无限增长
+        // 娓呯悊杩囨棫鐨勮繍琛岃褰曪紝闃叉鍐呭瓨鏃犻檺澧為暱
         TrimCompletedRuns();
     }
 
-    private static ProcessStartInfo BuildStartInfo(
-        RunnableTool tool,
-        IReadOnlyDictionary<string, string?> args,
-        string? runtimeOverride
-    )
+    private static ProcessStartInfo BuildStartInfo(ResolvedRunCommand command)
     {
-        var resolvedArgs = ArgsSpecCompiler.BuildArguments(tool.ArgsSpec, tool.ArgsTemplate, args);
-
         var startInfo = new ProcessStartInfo
         {
             RedirectStandardOutput = true,
@@ -225,50 +216,31 @@ public sealed class ProcessManager : IDisposable
             StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = tool.Cwd ?? Directory.GetCurrentDirectory()
+            WorkingDirectory = command.WorkingDirectory
         };
 
-        if (string.Equals(tool.Type, "python", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(command.ToolType, "python", StringComparison.OrdinalIgnoreCase))
         {
-            startInfo.FileName = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath) ?? "python";
+            startInfo.FileName = command.CommandPath;
             ApplyBundledPythonEnvironment(startInfo);
-            startInfo.ArgumentList.Add(tool.Path);
-
-            foreach (var arg in resolvedArgs)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            return startInfo;
         }
-
-        if (string.Equals(tool.Type, "node", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(command.ToolType, "node", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(command.ToolType, "command", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(command.ToolType, "executable", StringComparison.OrdinalIgnoreCase))
         {
-            startInfo.FileName = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath) ?? "node";
-            startInfo.ArgumentList.Add(tool.Path);
-
-            foreach (var arg in resolvedArgs)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            return startInfo;
+            startInfo.FileName = command.CommandPath;
         }
-
-        if (string.Equals(tool.Type, "command", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(tool.Type, "executable", StringComparison.OrdinalIgnoreCase))
+        else
         {
-            startInfo.FileName = tool.Path;
-
-            foreach (var arg in resolvedArgs)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            return startInfo;
+            throw new NotSupportedException($"Unsupported tool type: {command.ToolType}");
         }
 
-        throw new NotSupportedException($"不支持的工具类型: {tool.Type}");
+        foreach (var arg in command.Arguments)
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        return startInfo;
     }
 
     private static bool IsProcessRunning(Process process)
@@ -367,7 +339,7 @@ public sealed class ProcessManager : IDisposable
         }
     }
 
-    /// <summary>安全释放 Process 对象，忽略任何释放错误。</summary>
+    /// <summary>瀹夊叏閲婃斁 Process 瀵硅薄锛屽拷鐣ヤ换浣曢噴鏀鹃敊璇€?/summary>
     private static void DisposeProcessSafe(Process process)
     {
         try
@@ -376,11 +348,11 @@ public sealed class ProcessManager : IDisposable
         }
         catch
         {
-            // 忽略释放错误
+            // 蹇界暐閲婃斁閿欒
         }
     }
 
-    /// <summary>清理过旧的已完成运行记录，防止 _runs 字典无限增长。</summary>
+    /// <summary>娓呯悊杩囨棫鐨勫凡瀹屾垚杩愯璁板綍锛岄槻姝?_runs 瀛楀吀鏃犻檺澧為暱銆?/summary>
     private void TrimCompletedRuns()
     {
         var completedEntries = _runs
