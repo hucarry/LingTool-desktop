@@ -151,6 +151,35 @@ npm run build
 
 前端构建产物会输出到 [`ToolHub.App/wwwroot`](./ToolHub.App/wwwroot)。
 
+## 桥接协议常量生成
+
+前端桥接协议常量不再手工维护两份，当前以宿主侧 [`ToolHub.App/Models/Messages.cs`](./ToolHub.App/Models/Messages.cs) 为单一来源，由生成脚本自动产出前端常量文件。
+
+生成入口：
+
+```powershell
+cd frontend
+npm run generate:bridge-types
+```
+
+生成文件：
+
+- [`frontend/src/types/bridgeMessageTypes.generated.ts`](./frontend/src/types/bridgeMessageTypes.generated.ts)
+
+说明：
+
+- `npm run dev`
+- `npm test`
+- `npm run build`
+
+以上命令都会先自动执行一次协议常量生成。
+
+维护约束：
+
+- 如需新增或修改宿主桥接消息，请优先修改 [`ToolHub.App/Models/Messages.cs`](./ToolHub.App/Models/Messages.cs)
+- 不要直接手改 [`frontend/src/types/bridgeMessageTypes.generated.ts`](./frontend/src/types/bridgeMessageTypes.generated.ts)
+- [`frontend/src/types/bridgeMessageTypes.ts`](./frontend/src/types/bridgeMessageTypes.ts) 仅保留前端本地常量与生成结果的统一导出
+
 ## 发布
 
 根目录提供了 [`publish.ps1`](./publish.ps1)，默认流程如下：

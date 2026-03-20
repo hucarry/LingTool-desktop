@@ -4,9 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "generate:bridge-types": "node ./scripts/generate-bridge-message-types.mjs",
+    "predev": "npm run generate:bridge-types",
     "dev": "vite",
+    "prebuild": "npm run generate:bridge-types",
     "build": "node ./scripts/clean-output.mjs && vue-tsc -b && vite build",
     "preview": "vite preview",
+    "pretest": "npm run generate:bridge-types",
     "test": "vitest run"
   },
   "dependencies": {
