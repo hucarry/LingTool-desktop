@@ -5,6 +5,9 @@
 /ToolHub.App.Tests/bin/
 /ToolHub.App.Tests/obj/
 publish/
+!scripts/
+!scripts/publish/
+!scripts/publish/*.ps1
 
 # Temporary build folders
 .tmp_build/
