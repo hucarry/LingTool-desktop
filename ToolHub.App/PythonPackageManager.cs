@@ -5,7 +5,7 @@ using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
-public sealed class PythonPackageManager
+public sealed class PythonPackageManager : IPythonPackageService
 {
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan MutationTimeout = TimeSpan.FromMinutes(5);
@@ -39,7 +39,7 @@ public sealed class PythonPackageManager
         if (run.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"读取包列表失败（exit={run.ExitCode}）：{PickErrorMessage(run.StdErr, run.StdOut)}"
+                $"Failed to read installed packages (exit={run.ExitCode}): {PickErrorMessage(run.StdErr, run.StdOut)}"
             );
         }
 
@@ -84,7 +84,7 @@ public sealed class PythonPackageManager
         var run = await RunProcessCaptureAsync(startInfo, MutationTimeout, cancellationToken);
         var success = run.ExitCode == 0;
         var message = success
-            ? "安装完成。"
+            ? "Installation completed."
             : PickErrorMessage(run.StdErr, run.StdOut);
 
         return new PythonPackageInstallResult(executable, packageName.Trim(), success, message);
@@ -116,7 +116,7 @@ public sealed class PythonPackageManager
         var run = await RunProcessCaptureAsync(startInfo, MutationTimeout, cancellationToken);
         var success = run.ExitCode == 0;
         var message = success
-            ? "卸载完成。"
+            ? "Uninstallation completed."
             : PickErrorMessage(run.StdErr, run.StdOut);
 
         return new PythonPackageInstallResult(executable, packageName.Trim(), success, message);
@@ -137,7 +137,7 @@ public sealed class PythonPackageManager
         };
 
         startInfo.Environment["PIP_DISABLE_PIP_VERSION_CHECK"] = "1";
-        // 确保 pip 输出使用 UTF-8 编码
+        // Ensure pip output is encoded as UTF-8.
         startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
         return startInfo;
     }
@@ -198,7 +198,7 @@ public sealed class PythonPackageManager
         if (bootstrapRun.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"Python 未安装 pip，且自动引导失败（exit={bootstrapRun.ExitCode}）：{PickErrorMessage(bootstrapRun.StdErr, bootstrapRun.StdOut)}"
+                $"Python does not have pip available and automatic bootstrap failed (exit={bootstrapRun.ExitCode}): {PickErrorMessage(bootstrapRun.StdErr, bootstrapRun.StdOut)}"
             );
         }
 
@@ -207,7 +207,7 @@ public sealed class PythonPackageManager
             return;
         }
 
-        throw new InvalidOperationException("Python pip 自动引导完成，但 pip 仍不可用。");
+        throw new InvalidOperationException("Python pip bootstrap completed, but pip is still unavailable.");
     }
 
     private async Task<bool> CanRunPipAsync(string executable, CancellationToken cancellationToken)
@@ -238,7 +238,7 @@ public sealed class PythonPackageManager
             return resolved;
         }
 
-        throw new FileNotFoundException("No usable Python interpreter was found.");
+        throw new FileNotFoundException(RuntimeErrorMessages.NoUsablePythonInterpreter);
     }
 
     private static void ValidatePythonExecutable(string executable)
@@ -256,7 +256,7 @@ public sealed class PythonPackageManager
             : stdErr;
 
         return string.IsNullOrWhiteSpace(message)
-            ? "未知错误。"
+            ? "Unknown error."
             : message.Trim();
     }
 

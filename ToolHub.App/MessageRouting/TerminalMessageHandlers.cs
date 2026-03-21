@@ -3,13 +3,13 @@ using ToolHub.App.Models;
 
 namespace ToolHub.App;
 
-internal static class TerminalMessageHandlers
+internal sealed class TerminalMessageHandlers(ITerminalManager terminalManager) : IMessageRouteRegistrar
 {
-    public static void Register(IDictionary<string, MessageHandler> handlers)
+    public void Register(IDictionary<string, MessageHandler> handlers)
     {
         handlers[BridgeMessageTypes.GetTerminals] = (context, _) =>
         {
-            var terminals = context.TerminalManager.GetTerminals();
+            var terminals = terminalManager.GetTerminals();
             context.SendMessage(new TerminalsMessage(terminals.ToList()));
         };
         handlers[BridgeMessageTypes.StartTerminal] = HandleStartTerminal;
@@ -18,14 +18,14 @@ internal static class TerminalMessageHandlers
         handlers[BridgeMessageTypes.StopTerminal] = HandleStopTerminal;
     }
 
-    private static void HandleStartTerminal(MessageContext context, string rawMessage)
+    private void HandleStartTerminal(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<StartTerminalRequest>(rawMessage, context.JsonOptions);
         _ = Task.Run(async () =>
         {
             try
             {
-                await context.TerminalManager.StartTerminalAsync(
+                await terminalManager.StartTerminalAsync(
                     request?.Title,
                     request?.Shell,
                     request?.Cwd,
@@ -35,17 +35,17 @@ internal static class TerminalMessageHandlers
             }
             catch (Exception ex)
             {
-                context.SendMessage(new ErrorMessage("Failed to start terminal.", ex.Message));
+                context.SendMessage(new ErrorMessage(TerminalErrorMessages.FailedToStartTerminal, ex.Message));
             }
         });
     }
 
-    private static void HandleTerminalInput(MessageContext context, string rawMessage)
+    private void HandleTerminalInput(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<TerminalInputRequest>(rawMessage, context.JsonOptions);
         if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
         {
-            context.SendMessage(new ErrorMessage("terminalInput request is missing terminalId."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.TerminalInputMissingTerminalId));
             return;
         }
 
@@ -53,47 +53,47 @@ internal static class TerminalMessageHandlers
         {
             try
             {
-                var ok = await context.TerminalManager.SendInputAsync(request.TerminalId, request.Data ?? string.Empty);
+                var ok = await terminalManager.SendInputAsync(request.TerminalId, request.Data ?? string.Empty);
                 if (!ok)
                 {
-                    context.SendMessage(new ErrorMessage($"Terminal not found or not running: {request.TerminalId}"));
+                    context.SendMessage(new ErrorMessage(TerminalErrorMessages.TerminalNotFoundOrNotRunning(request.TerminalId)));
                 }
             }
             catch (Exception ex)
             {
-                context.SendMessage(new ErrorMessage("Failed to write terminal input.", ex.Message));
+                context.SendMessage(new ErrorMessage(TerminalErrorMessages.FailedToWriteTerminalInput, ex.Message));
             }
         });
     }
 
-    private static void HandleTerminalResize(MessageContext context, string rawMessage)
+    private void HandleTerminalResize(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<TerminalResizeRequest>(rawMessage, context.JsonOptions);
         if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
         {
-            context.SendMessage(new ErrorMessage("terminalResize request is missing terminalId."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.TerminalResizeMissingTerminalId));
             return;
         }
 
-        context.TerminalManager.ResizeTerminal(request.TerminalId, request.Cols, request.Rows);
+        terminalManager.ResizeTerminal(request.TerminalId, request.Cols, request.Rows);
     }
 
-    private static void HandleStopTerminal(MessageContext context, string rawMessage)
+    private void HandleStopTerminal(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<StopTerminalRequest>(rawMessage, context.JsonOptions);
         if (request is null || string.IsNullOrWhiteSpace(request.TerminalId))
         {
-            context.SendMessage(new ErrorMessage("stopTerminal request is missing terminalId."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.StopTerminalMissingTerminalId));
             return;
         }
 
         try
         {
-            context.TerminalManager.StopTerminal(request.TerminalId);
+            terminalManager.StopTerminal(request.TerminalId);
         }
         catch (Exception ex)
         {
-            context.SendMessage(new ErrorMessage("Failed to stop terminal.", ex.Message));
+            context.SendMessage(new ErrorMessage(TerminalErrorMessages.FailedToStopTerminal, ex.Message));
         }
     }
 }

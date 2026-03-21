@@ -1,12 +1,13 @@
-using Xunit;
-
 namespace ToolHub.App.Tests;
 
 public sealed class HostRegressionSuiteTests
 {
-    [Fact]
-    public void HostRegressionSuite_ShouldPass()
+    public static IEnumerable<object[]> Cases => global::HostRegressionTests.GetCases();
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public void HostRegressionCase_ShouldPass(string caseName)
     {
-        global::HostRegressionTests.RunAll();
+        global::HostRegressionTests.RunCase(caseName);
     }
 }

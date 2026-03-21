@@ -20,7 +20,7 @@ public static class RunCommandBuilder
             var interpreter = PythonInterpreterProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
             if (string.IsNullOrWhiteSpace(interpreter))
             {
-                throw new InvalidOperationException("No usable Python interpreter was found.");
+                throw new InvalidOperationException(RuntimeErrorMessages.NoUsablePythonInterpreter);
             }
 
             return new ResolvedRunCommand
@@ -39,7 +39,7 @@ public static class RunCommandBuilder
             var runtime = NodeRuntimeProbe.ResolvePreferred(runtimeOverride, tool.RuntimePath);
             if (string.IsNullOrWhiteSpace(runtime))
             {
-                throw new InvalidOperationException("No usable Node.js runtime was found.");
+                throw new InvalidOperationException(RuntimeErrorMessages.NoUsableNodeRuntime);
             }
 
             return new ResolvedRunCommand
@@ -67,7 +67,7 @@ public static class RunCommandBuilder
             };
         }
 
-        throw new NotSupportedException($"Unsupported tool type: {tool.Type}");
+        throw new NotSupportedException(RuntimeErrorMessages.UnsupportedToolType(tool.Type));
     }
 
     private static string ResolveWorkingDirectory(string? cwd)

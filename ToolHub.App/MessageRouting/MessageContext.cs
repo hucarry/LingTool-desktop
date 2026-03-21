@@ -1,13 +1,8 @@
 using System.Text.Json;
-using ToolHub.App.Models;
 
 namespace ToolHub.App;
 
-public record MessageContext(
-    ToolRegistry Registry,
-    ProcessManager ProcessManager,
-    PythonPackageManager PythonPackageManager,
-    TerminalManager TerminalManager,
+public sealed record MessageContext(
     Action<object> SendMessage,
     Func<string?, string?> BrowsePython,
     Func<string?, string?, string?, string?> BrowseFile,

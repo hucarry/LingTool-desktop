@@ -2,14 +2,14 @@ using Photino.NET;
 
 namespace ToolHub.App;
 
-internal sealed class AppDialogPicker(string appRoot)
+internal sealed class AppDialogPicker(string appRoot) : IFileDialogService
 {
-    internal string? ShowPythonPicker(PhotinoWindow window, string? defaultPath)
+    public string? ShowPythonPicker(PhotinoWindow window, string? defaultPath)
     {
         return ShowFilePicker(window, "Select Python Interpreter", defaultPath, null, null);
     }
 
-    internal string? ShowFilePicker(
+    public string? ShowFilePicker(
         PhotinoWindow window,
         string title,
         string? defaultPath,

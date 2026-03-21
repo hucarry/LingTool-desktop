@@ -3,36 +3,41 @@ using ToolHub.App.Models;
 
 namespace ToolHub.App;
 
-public static class MessageRouter
+public sealed class MessageRouter : IMessageRouter
 {
-    private static readonly IReadOnlyDictionary<string, MessageHandler> Handlers = BuildHandlers();
+    private readonly IReadOnlyDictionary<string, MessageHandler> _handlers;
 
-    public static void Route(MessageContext context, string rawMessage)
+    internal MessageRouter(IEnumerable<IMessageRouteRegistrar> registrars)
+    {
+        _handlers = BuildHandlers(registrars);
+    }
+
+    public void Dispatch(MessageContext context, string rawMessage)
     {
         var baseMessage = JsonSerializer.Deserialize<IncomingMessage>(rawMessage, context.JsonOptions);
-        if (baseMessage?.Type is null)
+        if (string.IsNullOrWhiteSpace(baseMessage?.Type))
         {
-            context.SendMessage(new ErrorMessage("Message is missing type field."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.MessageMissingTypeField));
             return;
         }
 
-        if (Handlers.TryGetValue(baseMessage.Type, out var handler))
+        if (_handlers.TryGetValue(baseMessage.Type, out var handler))
         {
             handler(context, rawMessage);
             return;
         }
 
-        context.SendMessage(new ErrorMessage($"Unsupported message type: {baseMessage.Type}"));
+        context.SendMessage(new ErrorMessage(BridgeErrorMessages.UnsupportedMessageType(baseMessage.Type)));
     }
 
-    private static IReadOnlyDictionary<string, MessageHandler> BuildHandlers()
+    private static IReadOnlyDictionary<string, MessageHandler> BuildHandlers(IEnumerable<IMessageRouteRegistrar> registrars)
     {
         var handlers = new Dictionary<string, MessageHandler>();
 
-        AppMessageHandlers.Register(handlers);
-        ToolMessageHandlers.Register(handlers);
-        PythonMessageHandlers.Register(handlers);
-        TerminalMessageHandlers.Register(handlers);
+        foreach (var registrar in registrars)
+        {
+            registrar.Register(handlers);
+        }
 
         return handlers;
     }

@@ -3,13 +3,13 @@ using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
-internal static class AppMessageHandlers
+internal sealed class AppMessageHandlers(IToolRegistry registry) : IMessageRouteRegistrar
 {
-    public static void Register(IDictionary<string, MessageHandler> handlers)
+    public void Register(IDictionary<string, MessageHandler> handlers)
     {
         handlers[BridgeMessageTypes.GetTools] = (context, _) =>
         {
-            context.SendMessage(new ToolsMessage(context.Registry.GetTools()));
+            context.SendMessage(new ToolsMessage(registry.GetTools()));
         };
 
         handlers[BridgeMessageTypes.GetAppDefaults] = (context, _) =>

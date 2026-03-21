@@ -5,10 +5,10 @@ namespace ToolHub.App.Utils;
 
 public static class PythonInterpreterProbe
 {
-    /// <summary>IsUsable 结果缓存的有效期。</summary>
+    /// <summary>TTL for cached <c>IsUsable</c> probe results.</summary>
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
 
-    /// <summary>缓存 path → (isUsable, checkedAtUtc)。</summary>
+    /// <summary>Cache of normalized interpreter path to probe result and timestamp.</summary>
     private static readonly ConcurrentDictionary<string, (bool IsUsable, DateTime CheckedAtUtc)> UsabilityCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly string[] DefaultCandidates =
     [
@@ -30,7 +30,7 @@ public static class PythonInterpreterProbe
             return false;
         }
 
-        // 检查缓存
+        // Return the cached result while it is still fresh.
         if (UsabilityCache.TryGetValue(normalized, out var cached)
             && (DateTime.UtcNow - cached.CheckedAtUtc) < CacheTtl)
         {
@@ -42,7 +42,7 @@ public static class PythonInterpreterProbe
         return result;
     }
 
-    /// <summary>实际执行可用性检查（无缓存）。</summary>
+    /// <summary>Runs the actual usability probe without using the cache.</summary>
     private static bool CheckUsability(string normalized)
     {
         if (!Path.IsPathRooted(normalized))

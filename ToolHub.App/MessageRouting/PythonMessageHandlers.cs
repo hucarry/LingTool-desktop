@@ -3,9 +3,9 @@ using ToolHub.App.Models;
 
 namespace ToolHub.App;
 
-internal static class PythonMessageHandlers
+internal sealed class PythonMessageHandlers(IPythonPackageService pythonPackageService) : IMessageRouteRegistrar
 {
-    public static void Register(IDictionary<string, MessageHandler> handlers)
+    public void Register(IDictionary<string, MessageHandler> handlers)
     {
         handlers[BridgeMessageTypes.BrowsePython] = HandleBrowsePython;
         handlers[BridgeMessageTypes.BrowseFile] = HandleBrowseFile;
@@ -28,29 +28,29 @@ internal static class PythonMessageHandlers
         context.SendMessage(new FileSelectedMessage(selectedPath, request?.Purpose));
     }
 
-    private static void HandleGetPythonPackages(MessageContext context, string rawMessage)
+    private void HandleGetPythonPackages(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<GetPythonPackagesRequest>(rawMessage, context.JsonOptions);
         _ = Task.Run(async () =>
         {
             try
             {
-                var result = await context.PythonPackageManager.GetInstalledPackagesAsync(request?.PythonPath);
+                var result = await pythonPackageService.GetInstalledPackagesAsync(request?.PythonPath);
                 context.SendMessage(new PythonPackagesMessage(result.PythonPath, result.Packages));
             }
             catch (Exception ex)
             {
-                context.SendMessage(new ErrorMessage("Failed to read installed Python packages.", ex.Message));
+                context.SendMessage(new ErrorMessage(PythonErrorMessages.FailedToReadInstalledPythonPackages, ex.Message));
             }
         });
     }
 
-    private static void HandleInstallPythonPackage(MessageContext context, string rawMessage)
+    private void HandleInstallPythonPackage(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<InstallPythonPackageRequest>(rawMessage, context.JsonOptions);
         if (request is null || string.IsNullOrWhiteSpace(request.PackageName))
         {
-            context.SendMessage(new ErrorMessage("installPythonPackage request is missing packageName."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.InstallPythonPackageMissingPackageName));
             return;
         }
 
@@ -67,7 +67,7 @@ internal static class PythonMessageHandlers
                     pythonForStatus
                 ));
 
-                var result = await context.PythonPackageManager.InstallPackageAsync(
+                var result = await pythonPackageService.InstallPackageAsync(
                     request.PythonPath,
                     request.PackageName
                 );
@@ -82,7 +82,7 @@ internal static class PythonMessageHandlers
 
                 if (result.Success)
                 {
-                    var packageResult = await context.PythonPackageManager.GetInstalledPackagesAsync(result.PythonPath);
+                    var packageResult = await pythonPackageService.GetInstalledPackagesAsync(result.PythonPath);
                     context.SendMessage(new PythonPackagesMessage(packageResult.PythonPath, packageResult.Packages));
                 }
             }
@@ -99,12 +99,12 @@ internal static class PythonMessageHandlers
         });
     }
 
-    private static void HandleUninstallPythonPackage(MessageContext context, string rawMessage)
+    private void HandleUninstallPythonPackage(MessageContext context, string rawMessage)
     {
         var request = JsonSerializer.Deserialize<UninstallPythonPackageRequest>(rawMessage, context.JsonOptions);
         if (request is null || string.IsNullOrWhiteSpace(request.PackageName))
         {
-            context.SendMessage(new ErrorMessage("uninstallPythonPackage request is missing packageName."));
+            context.SendMessage(new ErrorMessage(BridgeErrorMessages.UninstallPythonPackageMissingPackageName));
             return;
         }
 
@@ -121,7 +121,7 @@ internal static class PythonMessageHandlers
                     pythonForStatus
                 ));
 
-                var result = await context.PythonPackageManager.UninstallPackageAsync(
+                var result = await pythonPackageService.UninstallPackageAsync(
                     request.PythonPath,
                     request.PackageName
                 );
@@ -136,7 +136,7 @@ internal static class PythonMessageHandlers
 
                 if (result.Success)
                 {
-                    var packageResult = await context.PythonPackageManager.GetInstalledPackagesAsync(result.PythonPath);
+                    var packageResult = await pythonPackageService.GetInstalledPackagesAsync(result.PythonPath);
                     context.SendMessage(new PythonPackagesMessage(packageResult.PythonPath, packageResult.Packages));
                 }
             }

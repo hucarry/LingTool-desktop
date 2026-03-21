@@ -1,6 +1,6 @@
 namespace ToolHub.App;
 
-internal sealed class AppShutdownCoordinator(TerminalManager terminalManager, ProcessManager processManager)
+internal sealed class AppShutdownCoordinator(ITerminalManager terminalManager, IProcessManager processManager)
 {
     private int _shutdownTriggered;
 
