@@ -3,7 +3,9 @@ using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
-internal sealed class AppMessageHandlers(IToolRegistry registry) : IMessageRouteRegistrar
+internal sealed class AppMessageHandlers(
+    IToolRegistry registry,
+    DiagnosticBundleService diagnosticBundleService) : IMessageRouteRegistrar
 {
     public void Register(IDictionary<string, MessageHandler> handlers)
     {
@@ -23,5 +25,28 @@ internal sealed class AppMessageHandlers(IToolRegistry registry) : IMessageRoute
                 string.IsNullOrWhiteSpace(desktopPath) ? null : desktopPath
             ));
         };
+        handlers[BridgeMessageTypes.ExportDiagnosticBundle] = HandleExportDiagnosticBundle;
+    }
+
+    private void HandleExportDiagnosticBundle(MessageContext context, string rawMessage)
+    {
+        var request = System.Text.Json.JsonSerializer.Deserialize<ExportDiagnosticBundleRequest>(rawMessage, context.JsonOptions);
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var result = diagnosticBundleService.Export(request?.OutputDirectory);
+                context.SendMessage(new DiagnosticBundleExportedMessage(
+                    result.BundlePath,
+                    result.EntryCount,
+                    result.ExportedAt
+                ));
+            }
+            catch (Exception ex)
+            {
+                context.SendMessage(new ErrorMessage(AppErrorMessages.FailedToExportDiagnosticBundle, ex.Message));
+            }
+        });
     }
 }

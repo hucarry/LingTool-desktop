@@ -22,6 +22,7 @@ public static class BridgeMessageTypes
     public const string TerminalResize = "terminalResize";
     public const string StopTerminal = "stopTerminal";
     public const string GetAppDefaults = "getAppDefaults";
+    public const string ExportDiagnosticBundle = "exportDiagnosticBundle";
 
     public const string Tools = "tools";
     public const string RunStarted = "runStarted";
@@ -40,6 +41,7 @@ public static class BridgeMessageTypes
     public const string TerminalOutput = "terminalOutput";
     public const string TerminalStatus = "terminalStatus";
     public const string AppDefaults = "appDefaults";
+    public const string DiagnosticBundleExported = "diagnosticBundleExported";
     public const string Error = "error";
 }
 

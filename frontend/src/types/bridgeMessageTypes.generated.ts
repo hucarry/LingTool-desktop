@@ -24,6 +24,7 @@ export const BRIDGE_MESSAGE_TYPES = {
   TERMINAL_RESIZE: 'terminalResize',
   STOP_TERMINAL: 'stopTerminal',
   GET_APP_DEFAULTS: 'getAppDefaults',
+  EXPORT_DIAGNOSTIC_BUNDLE: 'exportDiagnosticBundle',
   TOOLS: 'tools',
   RUN_STARTED: 'runStarted',
   LOG: 'log',
@@ -41,6 +42,7 @@ export const BRIDGE_MESSAGE_TYPES = {
   TERMINAL_OUTPUT: 'terminalOutput',
   TERMINAL_STATUS: 'terminalStatus',
   APP_DEFAULTS: 'appDefaults',
+  DIAGNOSTIC_BUNDLE_EXPORTED: 'diagnosticBundleExported',
   ERROR: 'error',
 } as const
 

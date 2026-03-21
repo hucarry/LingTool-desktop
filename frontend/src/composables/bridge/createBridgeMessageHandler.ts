@@ -1,6 +1,7 @@
 import type {
   AppDefaultsMessage,
   BackMessage,
+  DiagnosticBundleExportedMessage,
   ErrorMessage,
   FileSelectedMessage,
   PythonPackageInstallStatusMessage,
@@ -51,6 +52,8 @@ export interface BridgeMessageHandlerDependencies {
     handleTerminalsMessage(message: TerminalsMessage): void
   }
   settingsStore: {
+    completeDiagnosticExport(path?: string): void
+    failDiagnosticExport(): void
     setAppDefaultPythonPath(path?: string): void
     setAppRootPath(path?: string): void
     setDefaultNodePath(path: string): void
@@ -67,7 +70,7 @@ export interface BridgeMessageHandlerDependencies {
 
 function createAppHandlers(
   dependencies: BridgeMessageHandlerDependencies,
-): Pick<BridgeMessageHandlerMap, 'appDefaults' | 'error'> {
+): Pick<BridgeMessageHandlerMap, 'appDefaults' | 'diagnosticBundleExported' | 'error'> {
   const { settingsStore, toolsStore, pythonStore, terminalsStore, notifications, t } = dependencies
 
   return {
@@ -77,9 +80,15 @@ function createAppHandlers(
       settingsStore.setDesktopPath(message.desktopPath)
     },
 
+    diagnosticBundleExported(message: DiagnosticBundleExportedMessage) {
+      settingsStore.completeDiagnosticExport(message.bundlePath)
+      notifications.success(t('settings.diagnosticsExported'))
+    },
+
     error(message: ErrorMessage) {
       toolsStore.resetBusyStates()
       pythonStore.resetBusyState()
+      settingsStore.failDiagnosticExport()
 
       if (message.message.includes('Terminal not found or not running')) {
         terminalsStore.fetchTerminals()

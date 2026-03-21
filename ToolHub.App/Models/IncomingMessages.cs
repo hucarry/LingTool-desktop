@@ -126,3 +126,8 @@ public sealed class StopTerminalRequest : IncomingMessage
 public sealed class GetAppDefaultsRequest : IncomingMessage
 {
 }
+
+public sealed class ExportDiagnosticBundleRequest : IncomingMessage
+{
+    public string? OutputDirectory { get; set; }
+}

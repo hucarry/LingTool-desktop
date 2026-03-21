@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 
 import UiButton from '../components/ui/UiButton.vue'
 import UiInput from '../components/ui/UiInput.vue'
@@ -9,7 +10,13 @@ import { useSettingsStore } from '../stores/settings'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
-const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
+const { theme, defaultPythonPath, defaultNodePath, diagnosticsExporting, lastDiagnosticBundlePath } = storeToRefs(settingsStore)
+
+const diagnosticsButtonLabel = computed(() =>
+  diagnosticsExporting.value
+    ? t('settings.diagnosticsExporting')
+    : t('settings.diagnosticsExport'),
+)
 </script>
 
 <template>
@@ -59,6 +66,24 @@ const { theme, defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
           <UiInput :model-value="defaultNodePath" readonly :placeholder="t('settings.nodePlaceholder')" />
           <UiButton @click="settingsStore.pickDefaultNode">{{ t('python.browse') }}</UiButton>
           <UiButton @click="settingsStore.clearDefaultNodePath">{{ t('settings.clear') }}</UiButton>
+        </div>
+      </UiPanel>
+
+      <UiPanel class="flex flex-col gap-3">
+        <div class="space-y-1">
+          <h3 class="text-sm font-semibold text-foreground">{{ t('settings.diagnosticsTitle') }}</h3>
+          <p class="text-xs leading-5 text-muted">{{ t('settings.diagnosticsDesc') }}</p>
+        </div>
+
+        <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+          <UiInput
+            :model-value="lastDiagnosticBundlePath"
+            readonly
+            :placeholder="t('settings.diagnosticsPlaceholder')"
+          />
+          <UiButton :disabled="diagnosticsExporting" @click="settingsStore.exportDiagnosticBundle">
+            {{ diagnosticsButtonLabel }}
+          </UiButton>
         </div>
       </UiPanel>
     </div>

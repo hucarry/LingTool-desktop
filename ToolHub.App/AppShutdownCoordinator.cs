@@ -1,7 +1,14 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace ToolHub.App;
 
-internal sealed class AppShutdownCoordinator(ITerminalManager terminalManager, IProcessManager processManager)
+internal sealed class AppShutdownCoordinator(
+    ITerminalManager terminalManager,
+    IProcessManager processManager,
+    ILogger<AppShutdownCoordinator>? logger = null)
 {
+    private readonly ILogger<AppShutdownCoordinator> _logger = logger ?? NullLogger<AppShutdownCoordinator>.Instance;
     private int _shutdownTriggered;
 
     internal void Shutdown()
@@ -11,22 +18,26 @@ internal sealed class AppShutdownCoordinator(ITerminalManager terminalManager, I
             return;
         }
 
+        _logger.LogInformation("Starting coordinated shutdown.");
+
         try
         {
             terminalManager.Dispose();
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore shutdown errors.
+            _logger.LogWarning(ex, "Terminal manager shutdown failed.");
         }
 
         try
         {
             processManager.Dispose();
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore shutdown errors.
+            _logger.LogWarning(ex, "Process manager shutdown failed.");
         }
+
+        _logger.LogInformation("Coordinated shutdown completed.");
     }
 }

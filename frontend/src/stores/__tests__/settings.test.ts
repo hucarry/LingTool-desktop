@@ -1,8 +1,16 @@
 import { nextTick } from 'vue'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useSettingsStore } from '../settings'
+
+function setExternalSender(spy: ReturnType<typeof vi.fn>) {
+  Object.defineProperty(window, 'external', {
+    value: { sendMessage: spy },
+    configurable: true,
+    writable: true,
+  })
+}
 
 describe('settings store', () => {
   beforeEach(() => {
@@ -62,5 +70,23 @@ describe('settings store', () => {
 
     expect(store.appRootPath).toBe('D:/Apps/ToolHub')
     expect(store.desktopPath).toBe('C:/Users/demo/Desktop')
+  })
+
+  it('sends a diagnostic bundle export request and tracks completion', () => {
+    const sendSpy = vi.fn()
+    setExternalSender(sendSpy)
+
+    const store = useSettingsStore()
+    store.exportDiagnosticBundle()
+
+    expect(store.diagnosticsExporting).toBe(true)
+    expect(JSON.parse(sendSpy.mock.calls[0]![0]!)).toEqual({
+      type: 'exportDiagnosticBundle',
+    })
+
+    store.completeDiagnosticExport('D:/Diagnostics/toolhub.zip')
+
+    expect(store.diagnosticsExporting).toBe(false)
+    expect(store.lastDiagnosticBundlePath).toBe('D:/Diagnostics/toolhub.zip')
   })
 })

@@ -228,6 +228,12 @@ export const enUSMessages = {
   'settings.nodeTitle': 'Default Node.js',
   'settings.nodeDesc': 'Falls back to tool config or system Node.js when empty.',
   'settings.nodePlaceholder': 'Falls back to tool config or system Node.js when empty',
+  'settings.diagnosticsTitle': 'Diagnostics',
+  'settings.diagnosticsDesc': 'Export a support bundle with runtime logs, startup failures, and core host metadata.',
+  'settings.diagnosticsPlaceholder': 'No diagnostic bundle has been exported yet',
+  'settings.diagnosticsExport': 'Export Bundle',
+  'settings.diagnosticsExporting': 'Exporting...',
+  'settings.diagnosticsExported': 'Diagnostic bundle exported',
   'settings.clear': 'Clear',
 
   'addTool.title': 'Add Tool',

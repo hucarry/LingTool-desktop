@@ -32,6 +32,8 @@ function createDependencies() {
       handleTerminalsMessage: vi.fn(),
     },
     settingsStore: {
+      completeDiagnosticExport: vi.fn(),
+      failDiagnosticExport: vi.fn(),
       setAppDefaultPythonPath: vi.fn(),
       setAppRootPath: vi.fn(),
       setDefaultNodePath: vi.fn(),
@@ -62,6 +64,21 @@ describe('createBridgeMessageHandler', () => {
     expect(dependencies.settingsStore.setAppDefaultPythonPath).toHaveBeenCalledWith('D:/ToolHub/python/python.exe')
     expect(dependencies.settingsStore.setAppRootPath).toHaveBeenCalledWith('D:/ToolHub')
     expect(dependencies.settingsStore.setDesktopPath).toHaveBeenCalledWith('C:/Users/demo/Desktop')
+  })
+
+  it('handles diagnostic bundle export completion', () => {
+    const dependencies = createDependencies()
+    const handleMessage = createBridgeMessageHandler(dependencies)
+
+    handleMessage({
+      type: 'diagnosticBundleExported',
+      bundlePath: 'D:/Diagnostics/toolhub.zip',
+      entryCount: 4,
+      exportedAt: '2026-03-21T10:00:00Z',
+    })
+
+    expect(dependencies.settingsStore.completeDiagnosticExport).toHaveBeenCalledWith('D:/Diagnostics/toolhub.zip')
+    expect(dependencies.notifications.success).toHaveBeenCalledWith('settings.diagnosticsExported')
   })
 
   it('handles python runtime selection by purpose', () => {

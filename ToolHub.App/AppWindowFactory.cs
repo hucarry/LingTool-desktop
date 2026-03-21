@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Photino.NET;
 using ToolHub.App.Models;
 
@@ -11,9 +12,11 @@ internal static class AppWindowFactory
         JsonSerializerOptions jsonOptions,
         AppShutdownCoordinator shutdownCoordinator,
         IFileDialogService dialogPicker,
-        Action<object> sendMessage
+        Action<object> sendMessage,
+        ILoggerFactory loggerFactory
     )
     {
+        var logger = loggerFactory.CreateLogger(typeof(AppWindowFactory).FullName ?? nameof(AppWindowFactory));
         PhotinoWindow? window = null;
         window = new PhotinoWindow().SetTitle("ToolHub Local Tool Platform")
             .SetUseOsDefaultLocation(true)
@@ -26,11 +29,13 @@ internal static class AppWindowFactory
             })
             .RegisterWebMessageReceivedHandler((_, rawMessage) =>
             {
+                logger.LogDebug("Received bridge message. MessageLength={MessageLength}", rawMessage.Length);
                 HandleMessage(
                     rawMessage,
                     messageRouter,
                     jsonOptions,
                     sendMessage,
+                    logger,
                     defaultPath => window is null ? null : dialogPicker.ShowPythonPicker(window, defaultPath),
                     (defaultPath, filter, purpose) => window is null ? null : dialogPicker.ShowFilePicker(
                         window,
@@ -67,6 +72,7 @@ internal static class AppWindowFactory
         IMessageRouter messageRouter,
         JsonSerializerOptions jsonOptions,
         Action<object> sendMessage,
+        ILogger logger,
         Func<string?, string?> browsePython,
         Func<string?, string?, string?, string?> browseFile
     )
@@ -84,6 +90,7 @@ internal static class AppWindowFactory
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to handle bridge message. RawMessage={RawMessage}", rawMessage);
             sendMessage(new ErrorMessage(AppErrorMessages.FailedToHandleMessage, ex.Message));
         }
     }

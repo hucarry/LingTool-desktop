@@ -281,4 +281,10 @@ export const zhCNMessages = {
   'tools.pathPresetCustom': '自定义路径',
   'tools.pathPresetDesktop': '本地桌面',
   'tools.pathPresetAppRoot': '软件根目录',
+  'settings.diagnosticsTitle': '诊断包',
+  'settings.diagnosticsDesc': '导出包含运行日志、启动失败信息和宿主环境元数据的诊断包，便于排查现场问题。',
+  'settings.diagnosticsPlaceholder': '尚未导出诊断包',
+  'settings.diagnosticsExport': '导出诊断包',
+  'settings.diagnosticsExporting': '正在导出...',
+  'settings.diagnosticsExported': '诊断包已导出',
 } as const satisfies Record<string, string>

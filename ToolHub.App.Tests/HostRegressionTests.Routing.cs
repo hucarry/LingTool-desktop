@@ -25,7 +25,13 @@ internal static partial class HostRegressionTests
             );
             var router = new MessageRouter(
             [
-                new AppMessageHandlers(registry),
+                new AppMessageHandlers(
+                    registry,
+                    new DiagnosticBundleService(
+                        registryRoot,
+                        Path.Combine(registryRoot, "tools.json")
+                    )
+                ),
                 new ToolCatalogMessageHandlers(registry),
                 new ToolExecutionMessageHandlers(processManager, terminalManager, new ToolExecutionSupport(registry)),
                 new PythonMessageHandlers(new PythonPackageManager(registryRoot)),

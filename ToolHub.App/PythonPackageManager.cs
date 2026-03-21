@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ToolHub.App.Models;
 using ToolHub.App.Utils;
 
@@ -13,10 +15,12 @@ public sealed class PythonPackageManager : IPythonPackageService
 
     private readonly string _appRoot;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly ILogger<PythonPackageManager> _logger;
 
-    public PythonPackageManager(string appRoot)
+    public PythonPackageManager(string appRoot, ILogger<PythonPackageManager>? logger = null)
     {
         _appRoot = appRoot;
+        _logger = logger ?? NullLogger<PythonPackageManager>.Instance;
     }
 
     public async Task<PythonPackageQueryResult> GetInstalledPackagesAsync(
@@ -25,6 +29,7 @@ public sealed class PythonPackageManager : IPythonPackageService
     )
     {
         var executable = ResolvePythonExecutable(pythonPath);
+        _logger.LogInformation("Querying installed Python packages. PythonPath={PythonPath}", executable);
         ValidatePythonExecutable(executable);
         await EnsurePipAvailableAsync(executable, cancellationToken);
 
@@ -71,6 +76,11 @@ public sealed class PythonPackageManager : IPythonPackageService
         }
 
         var executable = ResolvePythonExecutable(pythonPath);
+        _logger.LogInformation(
+            "Installing Python package {PackageName}. PythonPath={PythonPath}",
+            packageName.Trim(),
+            executable
+        );
         ValidatePythonExecutable(executable);
         await EnsurePipAvailableAsync(executable, cancellationToken);
 
@@ -87,6 +97,24 @@ public sealed class PythonPackageManager : IPythonPackageService
             ? "Installation completed."
             : PickErrorMessage(run.StdErr, run.StdOut);
 
+        if (success)
+        {
+            _logger.LogInformation(
+                "Installed Python package {PackageName}. PythonPath={PythonPath}",
+                packageName.Trim(),
+                executable
+            );
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Failed to install Python package {PackageName}. PythonPath={PythonPath} ExitCode={ExitCode}",
+                packageName.Trim(),
+                executable,
+                run.ExitCode
+            );
+        }
+
         return new PythonPackageInstallResult(executable, packageName.Trim(), success, message);
     }
 
@@ -102,6 +130,11 @@ public sealed class PythonPackageManager : IPythonPackageService
         }
 
         var executable = ResolvePythonExecutable(pythonPath);
+        _logger.LogInformation(
+            "Uninstalling Python package {PackageName}. PythonPath={PythonPath}",
+            packageName.Trim(),
+            executable
+        );
         ValidatePythonExecutable(executable);
         await EnsurePipAvailableAsync(executable, cancellationToken);
 
@@ -118,6 +151,24 @@ public sealed class PythonPackageManager : IPythonPackageService
         var message = success
             ? "Uninstallation completed."
             : PickErrorMessage(run.StdErr, run.StdOut);
+
+        if (success)
+        {
+            _logger.LogInformation(
+                "Uninstalled Python package {PackageName}. PythonPath={PythonPath}",
+                packageName.Trim(),
+                executable
+            );
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Failed to uninstall Python package {PackageName}. PythonPath={PythonPath} ExitCode={ExitCode}",
+                packageName.Trim(),
+                executable,
+                run.ExitCode
+            );
+        }
 
         return new PythonPackageInstallResult(executable, packageName.Trim(), success, message);
     }
@@ -189,6 +240,7 @@ public sealed class PythonPackageManager : IPythonPackageService
             return;
         }
 
+        _logger.LogInformation("pip is unavailable. Bootstrapping ensurepip for {PythonPath}.", executable);
         var bootstrapInfo = BuildBaseStartInfo(executable);
         bootstrapInfo.ArgumentList.Add("-m");
         bootstrapInfo.ArgumentList.Add("ensurepip");
@@ -197,6 +249,11 @@ public sealed class PythonPackageManager : IPythonPackageService
         var bootstrapRun = await RunProcessCaptureAsync(bootstrapInfo, PipBootstrapTimeout, cancellationToken);
         if (bootstrapRun.ExitCode != 0)
         {
+            _logger.LogWarning(
+                "Automatic pip bootstrap failed for {PythonPath}. ExitCode={ExitCode}",
+                executable,
+                bootstrapRun.ExitCode
+            );
             throw new InvalidOperationException(
                 $"Python does not have pip available and automatic bootstrap failed (exit={bootstrapRun.ExitCode}): {PickErrorMessage(bootstrapRun.StdErr, bootstrapRun.StdOut)}"
             );
@@ -204,6 +261,7 @@ public sealed class PythonPackageManager : IPythonPackageService
 
         if (await CanRunPipAsync(executable, cancellationToken))
         {
+            _logger.LogInformation("pip bootstrap completed for {PythonPath}.", executable);
             return;
         }
 

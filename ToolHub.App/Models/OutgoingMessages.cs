@@ -254,6 +254,24 @@ public sealed class AppDefaultsMessage
     public string? DesktopPath { get; }
 }
 
+public sealed class DiagnosticBundleExportedMessage
+{
+    public DiagnosticBundleExportedMessage(string bundlePath, int entryCount, DateTimeOffset exportedAt)
+    {
+        BundlePath = bundlePath;
+        EntryCount = entryCount;
+        ExportedAt = exportedAt;
+    }
+
+    public string Type { get; } = BridgeMessageTypes.DiagnosticBundleExported;
+
+    public string BundlePath { get; }
+
+    public int EntryCount { get; }
+
+    public DateTimeOffset ExportedAt { get; }
+}
+
 public sealed class ErrorMessage
 {
     public ErrorMessage(string message, object? details = null)

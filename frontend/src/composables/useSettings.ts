@@ -13,5 +13,6 @@ export function useSettings() {
     setLocale: settingsStore.setLocale,
     setDefaultPythonPath: settingsStore.setDefaultPythonPath,
     clearDefaultPythonPath: settingsStore.clearDefaultPythonPath,
+    exportDiagnosticBundle: settingsStore.exportDiagnosticBundle,
   }
 }

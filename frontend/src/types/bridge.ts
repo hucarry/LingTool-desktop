@@ -16,6 +16,11 @@ export interface GetAppDefaultsRequest {
   type: typeof BRIDGE_MESSAGE_TYPES.GET_APP_DEFAULTS
 }
 
+export interface ExportDiagnosticBundleRequest {
+  type: typeof BRIDGE_MESSAGE_TYPES.EXPORT_DIAGNOSTIC_BUNDLE
+  outputDirectory?: string
+}
+
 export interface AddToolRequest {
   type: typeof BRIDGE_MESSAGE_TYPES.ADD_TOOL
   tool: AddToolPayload
@@ -123,6 +128,7 @@ export interface StopTerminalRequest {
 
 export type FrontMessage =
   | GetAppDefaultsRequest
+  | ExportDiagnosticBundleRequest
   | GetToolsRequest
   | AddToolRequest
   | UpdateToolRequest
@@ -249,8 +255,16 @@ export interface AppDefaultsMessage {
   desktopPath?: string
 }
 
+export interface DiagnosticBundleExportedMessage {
+  type: typeof BRIDGE_MESSAGE_TYPES.DIAGNOSTIC_BUNDLE_EXPORTED
+  bundlePath: string
+  entryCount: number
+  exportedAt: string
+}
+
 export type BackMessage =
   | AppDefaultsMessage
+  | DiagnosticBundleExportedMessage
   | ToolsMessage
   | ToolAddedMessage
   | ToolUpdatedMessage

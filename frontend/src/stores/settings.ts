@@ -76,6 +76,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const appDefaultPythonPath = ref('')
   const appRootPath = ref('')
   const desktopPath = ref('')
+  const diagnosticsExporting = ref(false)
+  const lastDiagnosticBundlePath = ref('')
   const defaultPythonPath = computed(() => storedDefaultPythonPath.value || appDefaultPythonPath.value)
   const defaultNodePath = ref(loadNodePath())
 
@@ -186,6 +188,22 @@ export const useSettingsStore = defineStore('settings', () => {
     })
   }
 
+  function exportDiagnosticBundle(): void {
+    diagnosticsExporting.value = true
+    bridge.send({
+      type: 'exportDiagnosticBundle',
+    })
+  }
+
+  function completeDiagnosticExport(bundlePath?: string): void {
+    diagnosticsExporting.value = false
+    lastDiagnosticBundlePath.value = bundlePath?.trim() ?? ''
+  }
+
+  function failDiagnosticExport(): void {
+    diagnosticsExporting.value = false
+  }
+
   return {
     theme,
     locale,
@@ -193,6 +211,8 @@ export const useSettingsStore = defineStore('settings', () => {
     appDefaultPythonPath,
     appRootPath,
     desktopPath,
+    diagnosticsExporting,
+    lastDiagnosticBundlePath,
     defaultNodePath,
     setTheme,
     setLocale,
@@ -205,5 +225,8 @@ export const useSettingsStore = defineStore('settings', () => {
     clearDefaultNodePath,
     pickDefaultPython,
     pickDefaultNode,
+    exportDiagnosticBundle,
+    completeDiagnosticExport,
+    failDiagnosticExport,
   }
 })

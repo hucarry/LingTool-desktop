@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ToolHub.App.Models;
 using ToolHub.App.Runtime;
 using ToolHub.App.Utils;
@@ -12,12 +14,14 @@ public sealed class ProcessManager : IProcessManager
 
     private readonly ConcurrentDictionary<string, RunContext> _runs = new();
     private readonly Action<object> _sendMessage;
+    private readonly ILogger<ProcessManager> _logger;
 
     private bool _disposed;
 
-    public ProcessManager(Action<object> sendMessage)
+    public ProcessManager(Action<object> sendMessage, ILogger<ProcessManager>? logger = null)
     {
         _sendMessage = sendMessage;
+        _logger = logger ?? NullLogger<ProcessManager>.Instance;
     }
 
     public RunInfo StartRun(RunnableTool tool, ResolvedRunCommand resolvedCommand)
@@ -45,6 +49,15 @@ public sealed class ProcessManager : IProcessManager
             throw new InvalidOperationException(ProcessErrorMessages.RunContextAlreadyExists(run.RunId));
         }
 
+        _logger.LogInformation(
+            "Starting tool run {RunId} for {ToolId} ({ToolName}). CommandPath={CommandPath} WorkingDirectory={WorkingDirectory}",
+            run.RunId,
+            tool.Id,
+            tool.Name,
+            resolvedCommand.CommandPath,
+            resolvedCommand.WorkingDirectory
+        );
+
         HookProcessEvents(context);
         _sendMessage(new RunStartedMessage(ProcessRunUtilities.CloneRun(run)));
 
@@ -58,6 +71,13 @@ public sealed class ProcessManager : IProcessManager
         }
         catch (Exception ex)
         {
+            _logger.LogError(
+                ex,
+                "Failed to start tool run {RunId} for {ToolId} ({ToolName}).",
+                run.RunId,
+                tool.Id,
+                tool.Name
+            );
             lock (context.SyncRoot)
             {
                 run.Status = RunStates.Failed;
@@ -87,6 +107,7 @@ public sealed class ProcessManager : IProcessManager
             return false;
         }
 
+        _logger.LogInformation("Stopping tool run {RunId}.", runId);
         context.RequestStop();
         await ProcessKiller.KillProcessTreeAsync(context.Process);
         return true;
@@ -185,6 +206,12 @@ public sealed class ProcessManager : IProcessManager
         }
 
         _sendMessage(new RunStatusMessage(ProcessRunUtilities.CloneRun(run)));
+        _logger.LogInformation(
+            "Tool run {RunId} finished with status {Status} and exit code {ExitCode}.",
+            run.RunId,
+            run.Status,
+            run.ExitCode
+        );
         ProcessRunUtilities.DisposeProcessSafe(context.Process);
         TrimCompletedRuns();
     }

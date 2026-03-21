@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pty.Net;
 using ToolHub.App.Models;
 using ToolHub.App.Runtime;
@@ -14,11 +16,13 @@ public sealed class TerminalManager : ITerminalManager
 
     private readonly Action<object> _sendMessage;
     private readonly ConcurrentDictionary<string, TerminalContext> _terminals = new();
+    private readonly ILogger<TerminalManager> _logger;
     private bool _isDisposed;
 
-    public TerminalManager(Action<object> sendMessage)
+    public TerminalManager(Action<object> sendMessage, ILogger<TerminalManager>? logger = null)
     {
         _sendMessage = sendMessage;
+        _logger = logger ?? NullLogger<TerminalManager>.Instance;
     }
 
     public async Task<TerminalInfo> StartTerminalAsync(
@@ -52,6 +56,14 @@ public sealed class TerminalManager : ITerminalManager
                 VerbatimCommandLine = false
             };
 
+            _logger.LogInformation(
+                "Starting terminal {TerminalId}. Shell={Shell} Cwd={Cwd} Title={Title}",
+                info.TerminalId,
+                info.Shell,
+                info.Cwd,
+                info.Title
+            );
+
             var connection = await PtyProvider.SpawnAsync(options, CancellationToken.None);
             var context = new TerminalContext(info, connection);
 
@@ -78,6 +90,13 @@ public sealed class TerminalManager : ITerminalManager
         }
         catch (Exception ex)
         {
+            _logger.LogError(
+                ex,
+                "Failed to start terminal {TerminalId}. Shell={Shell} Cwd={Cwd}",
+                info.TerminalId,
+                info.Shell,
+                info.Cwd
+            );
             info.Status = TerminalStates.Failed;
             info.EndTime = DateTimeOffset.UtcNow;
             _sendMessage(new TerminalStatusMessage(info));
@@ -110,8 +129,9 @@ public sealed class TerminalManager : ITerminalManager
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to send input to terminal {TerminalId}.", terminalId);
             return false;
         }
     }
@@ -161,6 +181,12 @@ public sealed class TerminalManager : ITerminalManager
         }
 
         var command = BuildRunCommand(context.Info.Shell, resolvedCommand);
+        _logger.LogInformation(
+            "Running tool {ToolId} in terminal {TerminalId}. Shell={Shell}",
+            tool.Id,
+            targetTerminalId,
+            context.Info.Shell
+        );
         await SendInputAsync(targetTerminalId, command);
     }
 
@@ -168,6 +194,7 @@ public sealed class TerminalManager : ITerminalManager
     {
         if (_terminals.TryRemove(terminalId, out var context))
         {
+            _logger.LogInformation("Stopping terminal {TerminalId}.", terminalId);
             context.RequestStop();
             ForceStopTerminalProcess(context);
 
@@ -239,6 +266,7 @@ public sealed class TerminalManager : ITerminalManager
         {
             if (!context.StopRequested)
             {
+                _logger.LogWarning(ex, "Terminal output reader failed for terminal {TerminalId}.", context.Info.TerminalId);
                 _sendMessage(new TerminalOutputMessage(
                     context.Info.TerminalId,
                     $"\r\n[TerminalManager] Read output error: {ex.Message}\r\n",
@@ -292,6 +320,12 @@ public sealed class TerminalManager : ITerminalManager
         context.Info.ExitCode = TryReadExitCode(context);
 
         _sendMessage(new TerminalStatusMessage(context.Info));
+        _logger.LogInformation(
+            "Terminal {TerminalId} exited with status {Status} and exit code {ExitCode}.",
+            context.Info.TerminalId,
+            context.Info.Status,
+            context.Info.ExitCode
+        );
         context.Dispose();
     }
 
