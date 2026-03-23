@@ -41,6 +41,15 @@ const filteredPackages = computed(() => {
   })
 })
 
+const packageColumns = computed<[PythonPackageItem[], PythonPackageItem[]]>(() => {
+  const list = filteredPackages.value
+  const half = Math.ceil(list.length / 2)
+  return [
+    list.slice(0, half),
+    list.slice(half)
+  ]
+})
+
 const statusTone = computed(() => {
   if (props.processing) {
     return 'accent'
@@ -141,36 +150,45 @@ function isRowBusy(name: string): boolean {
           <span class="h-7 w-7 animate-spin rounded-full border-2 border-border-soft border-t-accent" />
         </div>
 
-        <table v-if="filteredPackages.length > 0" class="min-w-full border-collapse text-sm">
-          <thead class="sticky top-0 bg-editor text-left text-xs font-semibold text-muted">
-            <tr>
-              <th class="border-b border-border px-3 py-2">{{ t('python.name') }}</th>
-              <th class="border-b border-border px-3 py-2">{{ t('python.version') }}</th>
-              <th class="border-b border-border px-3 py-2 text-right">{{ t('python.action') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="item in filteredPackages"
-              :key="item.name"
-              v-memo="[item.name, item.version, processing && processingAction === 'uninstall' && processingPackage === item.name]"
-              class="odd:bg-transparent even:bg-white/3 hover:bg-hovered/60"
-            >
-              <td class="border-b border-border px-3 py-1.5 font-mono text-[0.9rem] text-foreground">{{ item.name }}</td>
-              <td class="border-b border-border px-3 py-1.5 text-[0.9rem] text-foreground">{{ item.version }}</td>
-              <td class="border-b border-border px-3 py-1.5 text-right">
-                <UiButton
-                  size="sm"
-                  variant="danger"
-                  :disabled="processing && !isRowBusy(item.name)"
-                  @click="confirmUninstall(item.name)"
-                >
-                  {{ t('python.uninstall') }}
-                </UiButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-if="filteredPackages.length > 0" class="grid relative grid-cols-1 min-[900px]:grid-cols-2">
+          <div v-if="packageColumns[1].length > 0" class="pointer-events-none absolute inset-y-0 left-1/2 z-20 hidden w-px bg-border min-[900px]:block"></div>
+          <table
+            v-for="(col, index) in packageColumns"
+            :key="index"
+            v-show="col.length > 0"
+            class="min-w-full border-collapse text-sm"
+          >
+            <thead class="sticky top-0 z-10 bg-editor text-left text-xs font-semibold text-muted">
+              <tr>
+                <th class="border-b border-border px-4 py-2" :class="{ 'min-[900px]:pl-6': index === 1 }">{{ t('python.name') }}</th>
+                <th class="border-b border-border px-4 py-2">{{ t('python.version') }}</th>
+                <th class="border-b border-border px-4 py-2 text-right" :class="{ 'min-[900px]:pr-6': index === 0 }">{{ t('python.action') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, rowIdx) in col"
+                :key="item.name"
+                v-memo="[item.name, item.version, processing && processingAction === 'uninstall' && processingPackage === item.name]"
+                :class="rowIdx % 2 !== 0 ? 'bg-white/3' : 'bg-transparent'"
+                class="hover:bg-hovered/60"
+              >
+                <td class="border-b border-border px-4 py-1.5 font-mono text-[0.9rem] text-foreground break-all" :class="{ 'min-[900px]:pl-6': index === 1 }">{{ item.name }}</td>
+                <td class="border-b border-border px-4 py-1.5 text-[0.9rem] text-foreground">{{ item.version }}</td>
+                <td class="border-b border-border px-4 py-1.5 text-right" :class="{ 'min-[900px]:pr-6': index === 0 }">
+                  <UiButton
+                    size="sm"
+                    variant="danger"
+                    :disabled="processing && !isRowBusy(item.name)"
+                    @click="confirmUninstall(item.name)"
+                  >
+                    {{ t('python.uninstall') }}
+                  </UiButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div v-else class="flex min-h-56 items-center justify-center p-6">
           <div class="flex flex-col items-center gap-3 text-center">
