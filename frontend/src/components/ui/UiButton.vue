@@ -11,14 +11,16 @@ const props = withDefaults(defineProps<{
   block: false,
 })
 
-const classes = [
+import { computed } from 'vue'
+
+const classes = computed(() => [
   'ui-btn',
   props.variant === 'primary' ? 'ui-btn-primary' : '',
   props.variant === 'danger' ? 'ui-btn-danger' : '',
   props.variant === 'ghost' ? 'border-transparent bg-transparent' : '',
   props.size === 'sm' ? 'min-h-[26px] px-2 text-xs' : '',
   props.block ? 'w-full' : '',
-]
+])
 </script>
 
 <template>
