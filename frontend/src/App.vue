@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import NotificationViewport from './components/NotificationViewport.vue'
+import AiChatWidget from './components/AiChatWidget.vue'
 import WorkbenchLayout from './components/layout/WorkbenchLayout.vue'
 import { defineAsyncComponent } from 'vue'
 
@@ -41,4 +42,6 @@ onBeforeUnmount(() => {
   />
 
   <NotificationViewport />
+
+  <AiChatWidget />
 </template>
