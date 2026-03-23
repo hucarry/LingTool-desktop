@@ -26,7 +26,7 @@ import { useTerminalsStore } from '../../stores/terminals'
 import { useToolsStore } from '../../stores/tools'
 
 type DragKind = 'none' | 'terminal' | 'sidebar'
-type MenuPath = '/python' | '/tools' | '/tools/new' | '/settings'
+type MenuPath = '/python' | '/tools' | '/tools/new' | '/settings' | '/ai-settings'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,6 +57,7 @@ const menuItems = computed(() => [
   { path: '/tools' as const, glyph: 'TL', title: t('app.menu.tools') },
   { path: '/tools/new' as const, glyph: '+', title: t('app.menu.addTool') },
   { path: '/settings' as const, glyph: 'ST', title: t('app.settings') },
+  { path: '/ai-settings' as const, glyph: 'AI', title: t('app.menu.aiSettings') },
 ])
 
 function formatRuntimePathLabel(raw: string): string {
@@ -75,6 +76,10 @@ function formatRuntimePathLabel(raw: string): string {
 const activeMenu = computed<MenuPath>(() => {
   if (route.path.startsWith('/settings')) {
     return '/settings'
+  }
+
+  if (route.path.startsWith('/ai-settings')) {
+    return '/ai-settings'
   }
 
   if (route.path.startsWith('/tools/new')) {
@@ -117,6 +122,10 @@ const currentViewSummary = computed(() => {
 
   if (activeMenu.value === '/settings') {
     return t('app.status.settings')
+  }
+
+  if (activeMenu.value === '/ai-settings') {
+    return t('app.status.aiSettings')
   }
 
   return t('app.status.tools', {

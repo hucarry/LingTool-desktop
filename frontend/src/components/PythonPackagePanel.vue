@@ -89,8 +89,8 @@ function isRowBusy(name: string): boolean {
 <template>
   <UiPanel class="flex h-full min-h-0 flex-col gap-3 bg-editor p-3">
     <header class="flex flex-col gap-2 min-[500px]:flex-row min-[500px]:items-start min-[500px]:justify-between">
-      <div class="space-y-1">
-        <h2 class="text-xl font-semibold tracking-tight text-foreground">{{ t('python.managerTitle') }}</h2>
+      <div class="space-y-1.5">
+        <h2 class="text-lg font-semibold text-foreground">{{ t('python.managerTitle') }}</h2>
         <p class="text-sm text-muted">{{ t('python.managerDesc') }}</p>
       </div>
       <UiButton class="min-[500px]:self-start" :disabled="loading" @click="emit('refreshPackages')">{{ t('python.refresh') }}</UiButton>

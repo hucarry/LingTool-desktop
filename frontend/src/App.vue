@@ -11,12 +11,15 @@ const ToolRunner = defineAsyncComponent(() => import('./components/ToolRunner.vu
 import { useBridgeBootstrap } from './composables/useBridgeBootstrap'
 import { useSettingsStore } from './stores/settings'
 import { useToolsStore } from './stores/tools'
+import { useAiSettingsStore } from './stores/aiSettings'
 
 const bootstrap = useBridgeBootstrap()
 const toolsStore = useToolsStore()
 const settingsStore = useSettingsStore()
+const aiSettingsStore = useAiSettingsStore()
 const { runnerVisible, runtimeOverride, activeTool } = storeToRefs(toolsStore)
 const { defaultPythonPath, defaultNodePath } = storeToRefs(settingsStore)
+const { isCloudModelEnabled } = storeToRefs(aiSettingsStore)
 
 onMounted(() => {
   bootstrap.init()
@@ -43,5 +46,5 @@ onBeforeUnmount(() => {
 
   <NotificationViewport />
 
-  <AiChatWidget />
+  <AiChatWidget v-if="isCloudModelEnabled" />
 </template>

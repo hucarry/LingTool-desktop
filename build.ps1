@@ -76,7 +76,7 @@ function Invoke-NpmCommand([string[]]$arguments, [string]$context) {
 Push-Location frontend
 try {
     if (-not $NoFrontendInstall) {
-        $installCommand = if (Test-Path 'package-lock.json') { 'ci' } else { 'install' }
+        $installCommand = 'install'
         Run-Step "Install frontend dependencies (npm $installCommand)" {
             Invoke-NpmCommand -arguments @($installCommand) -context "npm $installCommand"
         }

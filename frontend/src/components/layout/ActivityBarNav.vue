@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface MenuItem {
-  path: '/python' | '/tools' | '/tools/new' | '/settings'
+  path: '/python' | '/tools' | '/tools/new' | '/settings' | '/ai-settings'
   glyph: string
   title: string
 }

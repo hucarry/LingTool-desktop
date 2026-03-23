@@ -35,8 +35,8 @@ const { t } = useI18n()
 <template>
   <header class="space-y-3">
     <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-      <div class="space-y-1">
-        <h2 class="text-base font-semibold text-foreground">{{ t('tools.catalog') }}</h2>
+      <div class="space-y-1.5">
+        <h2 class="text-lg font-semibold text-foreground">{{ t('tools.catalog') }}</h2>
         <p class="text-xs text-muted">{{ t('tools.items', { filtered: visibleCount, total: totalCount }) }}</p>
       </div>
 

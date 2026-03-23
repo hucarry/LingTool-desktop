@@ -1,6 +1,7 @@
 using System.Text;
 using ToolHub.App.Models;
 using ToolHub.App.Runtime;
+using ToolHub.App.Utils;
 
 namespace ToolHub.App;
 
@@ -68,7 +69,7 @@ internal static class TerminalCommandFactory
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            lines.Add($"Set-Location -LiteralPath {ToPowerShellLiteral(cwd!)} -ErrorAction Stop");
+            lines.Add($"Set-Location -LiteralPath {ShellEscaper.QuoteForPowerShell(cwd!)} -ErrorAction Stop");
         }
 
         if (!string.IsNullOrWhiteSpace(sessionSetup))
@@ -76,7 +77,7 @@ internal static class TerminalCommandFactory
             lines.Add(sessionSetup);
         }
 
-        lines.Add($"& {ToPowerShellLiteral(command.CommandPath)} {string.Join(" ", command.Arguments.Select(ToPowerShellLiteral))}".TrimEnd());
+        lines.Add($"& {ShellEscaper.QuoteForPowerShell(command.CommandPath)} {string.Join(" ", command.Arguments.Select(ShellEscaper.QuoteForPowerShell))}".TrimEnd());
         return BuildPowerShellScriptInvocation(lines);
     }
 
@@ -89,7 +90,7 @@ internal static class TerminalCommandFactory
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            lines.Add($"cd /d {ToCmdQuoted(cwd!)}");
+            lines.Add($"cd /d {ShellEscaper.QuoteForCmdArgument(cwd!)}");
         }
 
         if (!string.IsNullOrWhiteSpace(sessionSetup))
@@ -99,7 +100,7 @@ internal static class TerminalCommandFactory
 
         var parts = new List<string> { command.CommandPath };
         parts.AddRange(command.Arguments);
-        lines.Add(string.Join(" ", parts.Select(ToCmdQuoted)));
+        lines.Add(string.Join(" ", parts.Select(ShellEscaper.QuoteForCmdArgument)));
         return BuildCmdScriptInvocation(lines);
     }
 
@@ -109,7 +110,7 @@ internal static class TerminalCommandFactory
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            lines.Add($"Set-Location -LiteralPath {ToPowerShellLiteral(cwd!)} -ErrorAction Stop");
+            lines.Add($"Set-Location -LiteralPath {ShellEscaper.QuoteForPowerShell(cwd!)} -ErrorAction Stop");
         }
 
         if (!string.IsNullOrWhiteSpace(sessionSetup))
@@ -126,7 +127,7 @@ internal static class TerminalCommandFactory
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            lines.Add($"cd /d {ToCmdQuoted(cwd!)}");
+            lines.Add($"cd /d {ShellEscaper.QuoteForCmdArgument(cwd!)}");
         }
 
         if (!string.IsNullOrWhiteSpace(sessionSetup))
@@ -147,7 +148,7 @@ internal static class TerminalCommandFactory
         if (!string.IsNullOrWhiteSpace(cwd))
         {
             sb.Append("cd ");
-            sb.Append(ToGenericQuoted(cwd!));
+            sb.Append(ShellEscaper.QuoteForPosixShell(cwd!));
             sb.Append(" && ");
         }
 
@@ -159,7 +160,7 @@ internal static class TerminalCommandFactory
 
         var parts = new List<string> { command.CommandPath };
         parts.AddRange(command.Arguments);
-        sb.Append(string.Join(" ", parts.Select(ToGenericQuoted)));
+        sb.Append(string.Join(" ", parts.Select(ShellEscaper.QuoteForPosixShell)));
         sb.Append("\r");
 
         return sb.ToString();
@@ -171,7 +172,7 @@ internal static class TerminalCommandFactory
 
         if (!string.IsNullOrWhiteSpace(cwd))
         {
-            parts.Add($"cd {ToGenericQuoted(cwd!)}");
+            parts.Add($"cd {ShellEscaper.QuoteForPosixShell(cwd!)}");
         }
 
         if (!string.IsNullOrWhiteSpace(sessionSetup))
@@ -210,7 +211,7 @@ internal static class TerminalCommandFactory
             "$env:VIRTUAL_ENV_DISABLE_PROMPT = '1'",
             "$env:CONDA_CHANGEPS1 = 'false'",
             "if (-not (Test-Path Function:_ToolHub_Old_Prompt)) { Rename-Item Function:prompt _ToolHub_Old_Prompt -ErrorAction SilentlyContinue }",
-            $"function global:prompt {{ Write-Host -NoNewline -ForegroundColor Green {ToPowerShellLiteral($"({runtimePath}) ")}; if (Test-Path Function:_ToolHub_Old_Prompt) {{ & Function:_ToolHub_Old_Prompt }} else {{ \"PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) \" }} }}"
+            $"function global:prompt {{ Write-Host -NoNewline -ForegroundColor Green {ShellEscaper.QuoteForPowerShell($"({runtimePath}) ")}; if (Test-Path Function:_ToolHub_Old_Prompt) {{ & Function:_ToolHub_Old_Prompt }} else {{ \"PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) \" }} }}"
         };
 
         if (string.Equals(toolType, "python", StringComparison.OrdinalIgnoreCase))
@@ -219,13 +220,13 @@ internal static class TerminalCommandFactory
 
             if (TryGetCondaEnvironmentRoot(runtimePath, out var condaRoot))
             {
-                commands.Add($"conda activate {ToPowerShellLiteral(condaRoot)} | Out-Null");
+                commands.Add($"conda activate {ShellEscaper.QuoteForPowerShell(condaRoot)} | Out-Null");
                 return string.Join("; ", commands);
             }
 
             if (TryGetVirtualEnvActivateScript(runtimePath, out var activateScript))
             {
-                commands.Add($". {ToPowerShellLiteral(activateScript)}");
+                commands.Add($". {ShellEscaper.QuoteForPowerShell(activateScript)}");
                 return string.Join("; ", commands);
             }
 
@@ -233,8 +234,8 @@ internal static class TerminalCommandFactory
             {
                 commands.Add(BuildPowerShellPathPrependCommand(runtimeDirectory));
                 commands.AddRange(BuildPowerShellBundledPythonEnvironmentCommands(runtimePath));
-                commands.Add($"function global:python {{ & {ToPowerShellLiteral(runtimePath)} @args }}");
-                commands.Add($"function global:pip {{ & {ToPowerShellLiteral(runtimePath)} -m pip @args }}");
+                commands.Add($"function global:python {{ & {ShellEscaper.QuoteForPowerShell(runtimePath)} @args }}");
+                commands.Add($"function global:pip {{ & {ShellEscaper.QuoteForPowerShell(runtimePath)} -m pip @args }}");
                 return string.Join("; ", commands);
             }
 
@@ -246,7 +247,7 @@ internal static class TerminalCommandFactory
         {
             commands.Add(BuildPowerShellRuntimeFunctionResetCommand());
             commands.Add(BuildPowerShellPathPrependCommand(nodeRuntimeDirectory));
-            commands.Add($"function global:node {{ & {ToPowerShellLiteral(runtimePath)} @args }}");
+            commands.Add($"function global:node {{ & {ShellEscaper.QuoteForPowerShell(runtimePath)} @args }}");
             return string.Join("; ", commands);
         }
 
@@ -259,26 +260,26 @@ internal static class TerminalCommandFactory
         {
             "set \"VIRTUAL_ENV_DISABLE_PROMPT=1\"",
             "set \"CONDA_CHANGEPS1=false\"",
-            $"set \"PROMPT=({runtimePath}) $P$G\""
+            $"set \"PROMPT=({ShellEscaper.EscapeForCmdEnvironmentValue(runtimePath)}) $P$G\""
         };
 
         if (string.Equals(toolType, "python", StringComparison.OrdinalIgnoreCase))
         {
             if (TryGetVirtualEnvActivateBatch(runtimePath, out var activateBatch))
             {
-                commands.Add($"call {ToCmdQuoted(activateBatch)}");
+                commands.Add($"call {ShellEscaper.QuoteForCmdArgument(activateBatch)}");
                 return string.Join(" && ", commands);
             }
 
             if (TryGetCondaEnvironmentRoot(runtimePath, out var condaRoot))
             {
-                commands.Add($"call conda activate {ToCmdQuoted(condaRoot)}");
+                commands.Add($"call conda activate {ShellEscaper.QuoteForCmdArgument(condaRoot)}");
                 return string.Join(" && ", commands);
             }
 
             if (TryGetRuntimeDirectory(runtimePath, out var runtimeDirectory))
             {
-                commands.Add($"set \"PATH={runtimeDirectory};%PATH%\"");
+                commands.Add($"set \"PATH={ShellEscaper.EscapeForCmdEnvironmentValue(runtimeDirectory)};%PATH%\"");
                 commands.AddRange(BuildCmdBundledPythonEnvironmentCommands(runtimePath));
                 return string.Join(" && ", commands);
             }
@@ -289,7 +290,7 @@ internal static class TerminalCommandFactory
         if (string.Equals(toolType, "node", StringComparison.OrdinalIgnoreCase)
             && TryGetRuntimeDirectory(runtimePath, out var nodeRuntimeDirectory))
         {
-            commands.Add($"set \"PATH={nodeRuntimeDirectory};%PATH%\"");
+            commands.Add($"set \"PATH={ShellEscaper.EscapeForCmdEnvironmentValue(nodeRuntimeDirectory)};%PATH%\"");
             return string.Join(" && ", commands);
         }
 
@@ -315,7 +316,7 @@ internal static class TerminalCommandFactory
 
     private static string BuildPowerShellPathPrependCommand(string runtimeDirectory)
     {
-        var literal = ToPowerShellLiteral(runtimeDirectory);
+        var literal = ShellEscaper.QuoteForPowerShell(runtimeDirectory);
         return $"$env:PATH = {literal} + ';' + ((($env:PATH -split ';') | Where-Object {{ $_ -and $_ -ne {literal} }}) -join ';')";
     }
 
@@ -326,16 +327,16 @@ internal static class TerminalCommandFactory
             return [];
         }
 
-        var commands = new List<string> { $"$env:PYTHONHOME = {ToPowerShellLiteral(pythonRoot)}" };
+        var commands = new List<string> { $"$env:PYTHONHOME = {ShellEscaper.QuoteForPowerShell(pythonRoot)}" };
 
         if (TryGetTclLibraryPath(pythonRoot, out var tclLibrary))
         {
-            commands.Add($"$env:TCL_LIBRARY = {ToPowerShellLiteral(tclLibrary)}");
+            commands.Add($"$env:TCL_LIBRARY = {ShellEscaper.QuoteForPowerShell(tclLibrary)}");
         }
 
         if (TryGetTkLibraryPath(pythonRoot, out var tkLibrary))
         {
-            commands.Add($"$env:TK_LIBRARY = {ToPowerShellLiteral(tkLibrary)}");
+            commands.Add($"$env:TK_LIBRARY = {ShellEscaper.QuoteForPowerShell(tkLibrary)}");
         }
 
         return commands;
@@ -348,16 +349,16 @@ internal static class TerminalCommandFactory
             return [];
         }
 
-        var commands = new List<string> { $"set \"PYTHONHOME={pythonRoot}\"" };
+        var commands = new List<string> { $"set \"PYTHONHOME={ShellEscaper.EscapeForCmdEnvironmentValue(pythonRoot)}\"" };
 
         if (TryGetTclLibraryPath(pythonRoot, out var tclLibrary))
         {
-            commands.Add($"set \"TCL_LIBRARY={tclLibrary}\"");
+            commands.Add($"set \"TCL_LIBRARY={ShellEscaper.EscapeForCmdEnvironmentValue(tclLibrary)}\"");
         }
 
         if (TryGetTkLibraryPath(pythonRoot, out var tkLibrary))
         {
-            commands.Add($"set \"TK_LIBRARY={tkLibrary}\"");
+            commands.Add($"set \"TK_LIBRARY={ShellEscaper.EscapeForCmdEnvironmentValue(tkLibrary)}\"");
         }
 
         return commands;
@@ -543,7 +544,7 @@ internal static class TerminalCommandFactory
 
     private static IEnumerable<string> BuildPowerShellInvocationPrelude() => [];
 
-    private static IEnumerable<string> BuildCmdInvocationPrelude() => [];
+    private static IEnumerable<string> BuildCmdInvocationPrelude() => ["@setlocal DisableDelayedExpansion"];
 
     private static Encoding ResolveTerminalScriptEncoding(string extension)
     {
@@ -602,18 +603,4 @@ internal static class TerminalCommandFactory
         }
     }
 
-    private static string ToPowerShellLiteral(string value)
-    {
-        return $"'{value.Replace("'", "''")}'";
-    }
-
-    private static string ToCmdQuoted(string value)
-    {
-        return $"\"{value.Replace("\"", "\"\"")}\"";
-    }
-
-    private static string ToGenericQuoted(string value)
-    {
-        return $"\"{value.Replace("\"", "\\\"")}\"";
-    }
 }

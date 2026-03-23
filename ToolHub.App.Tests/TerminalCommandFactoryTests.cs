@@ -1,5 +1,6 @@
 using ToolHub.App;
 using ToolHub.App.Models;
+using ToolHub.App.Runtime;
 
 namespace ToolHub.App.Tests;
 
@@ -42,7 +43,28 @@ public sealed class TerminalCommandFactoryTests
             null
         );
 
-        Assert.Equal("cd \"D:\\apps\" && \"D:\\apps\\demo.exe\" \"--flag\" \"ok\"\r", command);
+        Assert.Equal("cd 'D:\\apps' && 'D:\\apps\\demo.exe' '--flag' 'ok'\r", command);
+    }
+
+    [Fact]
+    public void BuildRunCommand_ShouldEscapeGenericShellArguments()
+    {
+        var command = TerminalCommandFactory.BuildRunCommand(
+            "/bin/bash",
+            new RunnableTool
+            {
+                Id = "sh_demo",
+                Name = "Shell Demo",
+                Type = "executable",
+                Path = "/tmp/o'connor/demo.sh",
+                Cwd = "/tmp/o'connor",
+                ArgsTemplate = "--flag {value}"
+            },
+            new Dictionary<string, string?> { ["value"] = "$(touch /tmp/pwned) it's" },
+            null
+        );
+
+        Assert.Equal("cd '/tmp/o'\"'\"'connor' && '/tmp/o'\"'\"'connor/demo.sh' '--flag' '$(touch /tmp/pwned) it'\"'\"'s'\r", command);
     }
 
     [Fact]
@@ -79,6 +101,29 @@ public sealed class TerminalCommandFactoryTests
     }
 
     [Fact]
+    public void BuildRunCommand_ShouldEscapePowerShellArguments()
+    {
+        var command = TerminalCommandFactory.BuildRunCommand(
+            "powershell.exe",
+            new ResolvedRunCommand
+            {
+                ToolType = "executable",
+                CommandPath = @"D:\tools\demo.exe",
+                WorkingDirectory = @"D:\tools",
+                WorkingDirectoryOverride = @"D:\tools",
+                Arguments =
+                [
+                    "--flag",
+                    "$(Get-ChildItem) O'Brien"
+                ]
+            }
+        );
+
+        var script = ReadGeneratedScript(command, "$env:TEMP\\th\\");
+        Assert.Contains("'D:\\tools\\demo.exe' '--flag' '$(Get-ChildItem) O''Brien'", script);
+    }
+
+    [Fact]
     public void BuildRunCommand_ShouldGenerateCmdScriptInvocationForNode()
     {
         var explicitRuntime = Path.Combine(
@@ -106,10 +151,35 @@ public sealed class TerminalCommandFactoryTests
         Assert.Contains("call \"%TEMP%\\th\\", command, StringComparison.OrdinalIgnoreCase);
 
         var script = ReadGeneratedScript(command, "%TEMP%\\th\\");
+        Assert.Contains("@setlocal DisableDelayedExpansion", script);
         Assert.Contains("@echo off", script);
         Assert.Contains("cd /d \"D:\\tools\"", script);
         Assert.Contains("\"D:\\tools\\index.js\" \"--mode\" \"dev\"", script);
         Assert.Contains("set \"PATH=", script);
+    }
+
+    [Fact]
+    public void BuildRunCommand_ShouldEscapeCmdArguments()
+    {
+        var command = TerminalCommandFactory.BuildRunCommand(
+            "cmd.exe",
+            new ResolvedRunCommand
+            {
+                ToolType = "executable",
+                CommandPath = @"D:\tools\demo.exe",
+                WorkingDirectory = @"D:\tools",
+                WorkingDirectoryOverride = @"D:\tools",
+                Arguments =
+                [
+                    "--flag",
+                    "%TEMP%!USER! & del C:\\temp\\*.log"
+                ]
+            }
+        );
+
+        var script = ReadGeneratedScript(command, "%TEMP%\\th\\");
+        Assert.Contains("@setlocal DisableDelayedExpansion", script);
+        Assert.Contains("\"D:\\tools\\demo.exe\" \"--flag\" \"%%TEMP%%!USER! & del C:\\temp\\*.log\"", script);
     }
 
     private static string ReadGeneratedScript(string command, string marker)

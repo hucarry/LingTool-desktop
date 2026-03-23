@@ -28,5 +28,10 @@ export const router = createRouter({
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
     },
+    {
+      path: '/ai-settings',
+      name: 'aiSettings',
+      component: () => import('../views/AiSettingsView.vue'),
+    },
   ],
 })
